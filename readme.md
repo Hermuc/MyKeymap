@@ -1,0 +1,90 @@
+[![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/xianyukang/MyKeymap/blob/master/readme.en.md)
+
+# MyKeymap
+
+MyKeymap 是一款基于 [AutoHotkey](https://www.autohotkey.com/) 的键盘映射工具，用于增强 Windows 的键盘输入体验和窗口操作效率。
+
+## Features
+
+- **程序启动切换**: 用快捷键启动程序和切换窗口，对比搜索型的启动器，效率更高
+- **键盘控制鼠标**: 用键盘控制鼠标，能减少键鼠切换，不必为了点一下而大幅移动手掌
+- **按键重新映射**: 
+  - 把常用按键重映射到主键区，能大大提升输入速度、编辑文字的效率
+  - 内置了几套键位负责:「 光标控制 」、「 数字输入 」、「 符号输入 」
+
+## Usage
+
+- [快速入门](https://xianyukang.com/MyKeymap.html#mykeymap-%E7%AE%80%E4%BB%8B) & [视频介绍](https://www.bilibili.com/video/BV1Sf4y1c7p8)
+
+| ![features](./doc/features.png) | ![夏日大作战](./doc/夏日大作战.gif) |
+| ------------------------------- | ----------------------------------- |
+
+## Screenshots
+![settings](./doc/settings.png)
+
+## 与原版的差异
+
+本 fork 基于上游 [xianyukang/MyKeymap](https://github.com/xianyukang/MyKeymap)，以下为相对原版的修改记录。
+
+> 📌 **维护规则**：新增修改时，将新条目插入到列表**最上方**（倒序排列），格式参照现有条目：文件路径 + 修改内容 + 原因 + 效果。
+
+### 2026-08-19
+
+1. **系统性代码审查与修复**（`config-server/cmd/settings/main.go` / `config-server/internal/matrix/matrix.go` / `config-server/internal/script/config.go` / `bin/lib/Functions.ahk` / `bin/lib/Actions.ahk` / `bin/lib/KeymapManager.ahk` / `bin/lib/SelectedAction.ahk` / `bin/CollectText.ahk` / `bin/ChangeBrightness.ahk` / `config-ui/src/types/config.ts` / `config-ui/src/views/Settings.vue`）
+   - 修改：
+     - Go 端：`execCmd` 改用 `cmd.Dir` 指定子进程工作目录，消除全局 `Chdir` 竞态（此前 `os.Chdir("../")` 改变所有 goroutine 的工作目录，与并发读取相对路径配置冲突）；debug 模式 `close(nil)` panic 防护；`rundll32` 硬编码路径改为环境变量解析；代码雨 `randN` 防护 `rand.Intn` 对非正数 panic（极小窗口不再崩溃）；恢复被停用的「自定义帮助页」功能（`HelpPageHtml` 字段 + 保存时生成 `bin/site/help.html`，清空即删除旧文件）；热键分组渲染哨兵值修正（-2233 → -1）
+     - AHK 端：`CollectText.ahk` 重启功能修复（`this.__New()` 漏括号导致 GUI 不重建、重复清空收集行）；删除无用 `chromeInstance()`（含硬编码 `C:\Program Files\Google\Chrome` 路径）；`ShowFileInFoler` 拼写修正为 `ShowFileInFolder`；`statie` → `state`；`font-fontFamily` → `font-family`；双引号替换改用 `Chr(34)` 避免字符串连接歧义；删除 KeymapManager 等处注释死代码
+     - UI 端：设置页新增「帮助页面 (HTML)」编辑区（`config.helpPageHtml`，保存后生成 `bin/site/help.html`）
+   - 原因：审查发现隐藏 bug（并发竞态、close(nil) panic、随机数 panic、失效的重启功能）与无用代码；帮助页功能此前被停用（含配置字段、调用与 UI 入口）
+   - 效果：settings.exe 并发稳定性提升、代码雨在极小窗口不再崩溃、帮助页功能恢复可用、代码更易维护；构建产物已同步至 beta33 部署目录（`MyKeymap.ahk` 用户配置以 beta33 版本为准）
+
+2. **打开设置改用 Windows Terminal 承载代码雨**（`bin/lib/Functions.ahk`）
+   - 修改：`MyKeymapOpenSettings` 由直接 `Run("./bin/settings.exe", "./bin")` 改为通过 Windows Terminal 启动（实际命令 `wt.exe -d "." pwsh.exe -NoExit -Command "& '.\settings.exe'"`，wt 标签以新版 pwsh 7 为 shell 承载 settings.exe 控制台，代码雨显示在 wt 窗口中）；窗口判断由 `WinExist` 改为 `ProcessExist`，进程存在但设置窗口不可见时 `ProcessClose`/`ProcessWaitClose` 后重启
+   - 原因：settings.exe 是控制台程序，直接运行弹出的是老式控制台窗口而非 Windows Terminal；改用 wt 承载后无独立窗口标题，原 `WinExist` 判断会失效导致重复启动 settings 进程
+   - 效果：打开设置弹出 Windows Terminal 窗口（默认新版 pwsh）显示代码雨，重复点击不会重复启动，关闭 wt 窗口后 settings 随之退出
+
+2. **选中动作模拟测试与匹配一致性修复**（`bin/lib/SelectedAction.ahk` / `config-server/internal/script/actionscheme.go` / `config-server/cmd/settings/actionscheme.go` / `config-server/internal/script/config.go` / `config-ui/src/components/action/ActionTester.vue` / `config-ui/src/components/action/RuleEditor.vue` / `config-ui/src/components/action/constants.ts` / `config-ui/src/views/SelectedActionEdit.vue`）
+   - 修改：
+     - 扩展名匹配统一忽略大小写：AHK 端 `MatchFileExt`/`MatchFileGroup` 比较改为 `StrLower`，与 Go 端 `EqualFold` 一致（`.JPG` 等大写扩展名也能匹配）
+     - 模拟测试接口支持方案快照：`POST /api/action-schemes/test` 新增可选 `scheme` 字段，前端编辑中未保存的修改也能参与测试；无快照时回退读取磁盘配置
+     - Go 端 `matchFileExt`/`matchFileGroup` 取后缀后去掉点再比较，与 AHK `SplitPath` 返回不带点扩展名的语义对齐（此前条件值去点后与含点后缀比较，fileExt/fileGroup 规则在测试中永远不匹配）
+     - 正则预检：测试接口对 `textRegex` 规则预编译，Go RE2 不支持的语法（如前瞻）返回 400 并提示「AHK 运行时 (PCRE2) 可能支持，请以实际运行为准」，避免误报「不匹配」
+     - 「默认 (兜底)」规则不在最后一条时显示警告；导入方案时按数组顺序归一化 `priority`；`copyToClipboard` 文案/注释由「执行前」修正为「执行后」；`send_keys` hint 补充 `%selected%` 含按键语法的提醒
+   - 原因：AHK 与 Go 两端匹配语义不一致导致测试结果与真实行为偏差；default 规则位置无约束导致其后规则不可达
+   - 效果：模拟测试结果与真实运行一致，大小写扩展名/文件分组正确匹配，不支持的语法有明确提示，default 规则位置错误有即时警告
+
+3. **菜单高亮改为显式路由绑定**（`config-ui/src/components/NavigationDrawer.vue`）
+   - 修改：「选中动作」与各 keymap 菜单项的 `:active` 改为由 `route.path` 直接判断（选中动作用 `startsWith("/keymap/action")` 同时覆盖列表页与编辑页，keymap 项用精确匹配），不再依赖 vue-router 的 RouterLink 自动匹配
+   - 原因：嵌套路由下自动匹配行为不可靠——编辑页 `/keymap/action/:id` 时「选中动作」菜单不高亮；个别环境下路由切换后旧菜单项高亮不熄灭，出现两个菜单项同时高亮
+   - 效果：任意路由下左侧菜单恰好只有一项高亮，编辑页也正确高亮「选中动作」
+
+4. **修复设置页三个显示问题**（`config-ui/src/components/NavigationDrawer.vue` / `config-ui/src/components/action/HotkeyCapture.vue`）
+   - 修改：
+     - `NavigationDrawer.vue`：删除「选中动作」菜单项的 `:active="false"`，恢复路由驱动高亮；侧边栏改弹性布局（虚拟滚动区 `flex-grow-1` 自适应），「保存配置」按钮固定底部可见
+     - `HotkeyCapture.vue`：删除快捷键框下方的「^ = Ctrl / ! = Alt / + = Shift / # = Win / < = 左键 / > = 右键」修饰键符号说明（采用监听用户键盘方案，无需符号输入）；`v-text-field` 补 `density="compact"` 与「方案名称」框对齐
+   - 原因：菜单选中态不跟随路由（选中动作项永远无法高亮）；快捷键框被说明文字撑高且密度不一致，与相邻输入框不对齐；虚拟滚动固定高度估算不准，底部保存按钮被挤出视口
+   - 效果：菜单高亮正确跟随路由切换；快捷键框与方案名称框上下边缘齐平；保存按钮无需滚动即可见
+
+5. **无效热键注册失败不再崩溃**（`config-ui/src/components/action/constants.ts` / `bin/lib/KeymapManager.ahk` / `bin/lib/SelectedAction.ahk`）
+   - 修改：
+     - `constants.ts`：移除反引号键映射（AHK v2 无对应键名），分号键名由 `` `; `` 修正为 `;`
+     - `KeymapManager.ahk`：`_Hotkey.Enable()` 中 `Hotkey()` 注册用 try/catch 包裹，失败时 Tip 提示「热键无效, 已跳过」并继续；`Disable()` 对未启用热键直接返回而非断言
+     - `SelectedAction.ahk`：`InitActionScheme` 的 `Map()` 加 try/catch 兜底
+   - 原因：设置页热键捕获控件曾生成非法 AHK 热键名（如反引号），保存后启动注册时报 `Invalid hotkey` 崩溃退出
+   - 效果：单个无效热键方案被自动跳过，其余热键正常注册，脚本不再因坏数据崩溃
+
+6. **新增「选中动作」系统**（`config-server` / `config-ui` / `bin/lib/SelectedAction.ahk`）
+   - 修改：
+     - 数据层：`config.go` 的 `Config` 新增 `ActionSchemes` 字段与 `ActionScheme`/`ActionRule`/`RuleOptions` 结构体；新增 `internal/script/actionscheme.go`（方案渲染 `actionSchemesCode`、规则匹配 `MatchActionScheme`、执行预览 `PreviewAction`）；`script.go` 注册模板函数
+     - API：`cmd/settings/actionscheme.go` 新增 `GET/POST/PUT/DELETE /api/action-schemes[/:id]` 与 `POST /api/action-schemes/test`（模拟测试），`main.go` 注册路由
+     - AHK 规则引擎：新增 `bin/lib/SelectedAction.ahk`，`templates/mykeymap.tmpl` 引入并按 `{{ actionSchemesCode .ActionSchemes }}` 渲染；选中文本/文件后按快捷键，依据文件后缀/分组、文本正则/特征逐条匹配规则，执行打开/搜索/命令/按键/脚本/复制六类行为
+     - UI：`config-ui` 新增 `/keymap/action` 列表页与 `/keymap/action/:id` 编辑页（快捷键捕获、规则拖拽排序、冲突检测、模拟测试、导入导出），类型/store/路由/导航同步更新
+   - 原因：参考 RunAny「选中内容 + 快捷键触发预设行为」的能力，为 fork 增加可配置的选中动作系统
+   - 效果：可在设置界面可视化配置选中动作方案，规则按优先级匹配（文件后缀 > 文件分组 > 文本特征 > 默认），`%selected%` 变量承载选中内容；未配置 `actionSchemes` 时模板不输出任何代码，行为与原版完全一致
+
+### 2026-08-18
+
+1. **移除关机动作的自动模拟点击**（`bin/lib/Actions.ahk`）
+   - 修改：`SystemShutdown()` 删除 `sleep(1300)`、`CoordMode("Mouse", "Screen")`、`MouseClick("Left", 100, 100)` 三行，仅保留 `Run("SlideToShutDown.exe")`
+   - 原因：原逻辑在弹出滑动关机界面 1.3 秒后自动模拟点击，导致"界面尚未拖动即自动关机"
+   - 效果：呼出滑动关机界面后由用户手动拖动滑块确认，不再自动触发关机
