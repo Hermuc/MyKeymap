@@ -342,9 +342,14 @@ TryTrayRestoreByNav(processName, winTitle) {
       return false
 
     ; 逐个关键词尝试：导航脚本命中并激活（退出码 0）即视为成功
+    ; v12：执行引擎切 pwsh 7（冷启动 ~260ms vs powershell 5.1 ~600ms，全链实测 1.3s→0.55s）；
+    ;   无 pwsh 环境回退 powershell（脚本本身保持 5.1/7 双兼容）
     for kw in keywords {
-      cmd := 'powershell -NoProfile -ExecutionPolicy Bypass -File "' script '" -Target "' kw '" -Process "' processName '" -LogFile mk_traynav.txt'
-      exitCode := RunWait(cmd, , "Hide")
+      cmd := 'pwsh -NoProfile -ExecutionPolicy Bypass -File "' script '" -Target "' kw '" -Process "' processName '" -LogFile mk_traynav.txt'
+      try
+        exitCode := RunWait(cmd, , "Hide")
+      catch
+        exitCode := RunWait(StrReplace(cmd, "pwsh ", "powershell "), , "Hide")
       if (exitCode = 0)
         return true
     }
