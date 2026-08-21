@@ -111,7 +111,9 @@ export const languageMap = {
   209: { zh: "⚙️ MyKeymap 相关", en: "⚙️ MyKeymap" },
 
   // App Launcher
-  301: { zh: "要激活的窗口 (窗口标识符)", en: "The window to activate" },
+  301: { zh: "要激活的窗口 (进程匹配用 ahk_exe 程序名.exe)", en: "The window to activate (use ahk_exe for processes)" },
+  "301err": { zh: "以 .exe 结尾会被当作窗口标题匹配而永远失败, 应写 ahk_exe 程序名.exe", en: "A trailing .exe is treated as a window title and never matches. Use ahk_exe app.exe" },
+  "301hint": { zh: "窗口标题会变化的软件 (如聊天软件频道页) 不要用标题匹配, 应使用 ahk_exe 进程匹配", en: "Apps with changing titles (e.g. chat channels) should use ahk_exe, not a title match" },
   302: { zh: "当窗口不存在时要启动的: 程序 / 文件夹 / URL", en: "Target" },
   303: { zh: "命令行参数", en: "Arguments" },
   304: { zh: "工作目录", en: "Working directory" },

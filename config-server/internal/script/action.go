@@ -270,6 +270,18 @@ func systemActions2(a Action, inAbbrContext bool) string {
 	return ""
 }
 
+// winTitleWarning 检测可疑的窗口标识符, 返回警告注释 (空串表示无警告)
+// 裸写 "xxx.exe" 会被 AHK 当作窗口标题子串匹配, 永远匹配失败, 应写 "ahk_exe xxx.exe"
+func winTitleWarning(winTitle string) string {
+	if winTitle == "" || strings.HasPrefix(winTitle, "ahk_") || strings.HasPrefix(winTitle, "ahk-expression:") {
+		return ""
+	}
+	if strings.HasSuffix(strings.ToLower(winTitle), ".exe") {
+		return `; [配置警告] winTitle "` + winTitle + `" 以 .exe 结尾, 会被当作窗口标题匹配而永远失败, 应写 "ahk_exe ` + winTitle + `"`
+	}
+	return ""
+}
+
 func activateOrRun1(a Action, inAbbrContext bool) string {
 	ctx := Cfg.GetHotkeyContext(a)
 	winTitle := toAHKFuncArg(a.WinTitle)
@@ -286,7 +298,11 @@ func activateOrRun1(a Action, inAbbrContext bool) string {
 		return call
 	}
 
-	return fmt.Sprintf(`km.Map("%[1]s", _ => %s%s)`, a.Hotkey, call, ctx)
+	code := fmt.Sprintf(`km.Map("%[1]s", _ => %s%s)`, a.Hotkey, call, ctx)
+	if warn := winTitleWarning(a.WinTitle); warn != "" {
+		return warn + "\n" + code
+	}
+	return code
 }
 
 func builtinFunctions8(a Action, inAbbrContext bool) string {
