@@ -16,6 +16,7 @@
   mute_on := "Mute: On"
   mute_off := "Mute: Off"
   mute_falied := "Cannot mute this app"
+  app_running_in_background := "App is running in background, click the tray icon to show it"
 }
 
 class ChineseTranslation extends DefaultTranslation {
@@ -36,6 +37,7 @@ class ChineseTranslation extends DefaultTranslation {
   mute_on := "静音当前应用"
   mute_off := "取消静音"
   mute_falied := "无法静音此应用"
+  app_running_in_background := "程序在后台运行，请点击托盘图标唤出"
 }
 
 

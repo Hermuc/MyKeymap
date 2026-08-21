@@ -42,6 +42,28 @@ ActivateOrRun(winTitle := "", target := "", args := "", workingDir := "", admin 
   if (winTitle && activateWindow(winTitle, isHide))
     return
 
+  ; 窗口没找到但程序可能还在后台/托盘运行（如微信/QQ 关闭主窗口后驻留托盘），
+  ; 此时直接启动会弹出“登录新账号”等错误行为，先检测目标进程是否仍存在
+  if (winTitle) {
+    processName := GetTargetProcessName(target)
+    if (processName && ProcessExist(processName)) {
+      ; 进程在但窗口未出现，可能是程序正在启动中，短暂等待窗口出现（WinWait 超时单位是秒）
+      if (WinWait(winTitle, , 1.5)) {
+        WinActivate(winTitle)
+        return
+      }
+      ; 窗口仍不出现：通过托盘图标键盘导航自动唤出（如微信/QQ 关闭主窗口后驻留托盘），
+      ; 等效用户手动点击托盘图标，不会触发重复启动
+      if (TryTrayRestoreByNav(processName, winTitle) && WinWait(winTitle, , 1.5)) {
+        WinActivate(winTitle)
+        return
+      }
+      ; 程序在后台运行但唤不出窗口，提示用户手动唤出，绝不重启新实例
+      Tip(Translation().app_running_in_background, -2500)
+      return
+    }
+  }
+
   ; 程序没有运行，运行程序
   if not target {
     return

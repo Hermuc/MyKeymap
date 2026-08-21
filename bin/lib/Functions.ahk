@@ -5,17 +5,18 @@
  * @param MyMenu 
  */
 TrayMenuHandler(ItemName, ItemPos, MyMenu) {
-  switch ItemName {
-    case Translation().menu_exit:
-      MyKeymapExit()
-    case Translation().menu_pause:
-      MyKeymapToggleSuspend()
-    case Translation().menu_reload:
-      MyKeymapReload()
-    case Translation().menu_settings:
-      MyKeymapOpenSettings()
-    case Translation().menu_window_spy:
-      run("MyKeymap.exe /script bin\WindowSpy.ahk")
+  ; 注: 不用 switch 是因为 2.0.19 解释器无法编译 case 表达式含函数调用/属性访问
+  t := Translation()
+  if (ItemName == t.menu_exit) {
+    MyKeymapExit()
+  } else if (ItemName == t.menu_pause) {
+    MyKeymapToggleSuspend()
+  } else if (ItemName == t.menu_reload) {
+    MyKeymapReload()
+  } else if (ItemName == t.menu_settings) {
+    MyKeymapOpenSettings()
+  } else if (ItemName == t.menu_window_spy) {
+    run("MyKeymap.exe /script bin\WindowSpy.ahk")
   }
 }
 
@@ -148,6 +149,30 @@ CompleteProgramPath(target) {
   }
 
   return target
+}
+
+/**
+ * 从程序路径解析出进程名（exe 文件名），用于进程存在性检测
+ * 支持 .lnk 快捷方式（解析其指向的目标）
+ * @param target 程序路径（相对或绝对）
+ * @returns {string} 进程名（如 "WeChat.exe"），解析失败返回空字符串
+ */
+GetTargetProcessName(target) {
+  ; 补全绝对路径
+  programPath := CompleteProgramPath(target)
+
+  ; 快捷方式解析指向的真实程序
+  if SubStr(programPath, -4) == ".lnk" {
+    try FileGetShortcut(programPath, &outTarget)
+    catch
+      return ""
+    if not (outTarget)
+      return ""
+    programPath := outTarget
+  }
+
+  SplitPath(programPath, &name)
+  return name
 }
 
 /**
@@ -288,6 +313,43 @@ ActivateWindow(winTitle := "", isHide := false) {
   }
 
   return 1
+}
+
+/**
+ * 通过托盘图标键盘导航把后台驻留的窗口唤出到前台
+ * 方案：Win+B 聚焦通知区 → Enter 展开溢出面板 → 方向键导航 → UIA Invoke 激活
+ * （24H2 下从 Shell_TrayWnd 枚举不到应用图标，但键盘导航链路经真机验证可行；
+ *   激活等效用户点击托盘图标，绝不重启新实例）
+ * @param processName 进程名（如 "Weixin.exe"）
+ * @param winTitle AHK WinTitle（用于提取图标匹配关键词）
+ * @returns {boolean} 是否成功命中并激活了托盘图标
+ */
+TryTrayRestoreByNav(processName, winTitle) {
+  try {
+    ; 匹配关键词候选：清洗后的窗口标题 → 进程名（去 .exe）
+    keywords := []
+    t := RegExReplace(Trim(winTitle), "ahk_(exe|class|group)\s+\S+", "")
+    t := RegExReplace(t, "ahk_(pid|id)\s+\d+", "")
+    t := Trim(t)
+    if (t)
+      keywords.Push(t)
+    name := RegExReplace(processName, "\.exe$", "")
+    if (name)
+      keywords.Push(name)
+
+    script := A_ScriptDir "\tray_nav.ps1"
+    if (!FileExist(script))
+      return false
+
+    ; 逐个关键词尝试：导航脚本命中并激活（退出码 0）即视为成功
+    for kw in keywords {
+      cmd := 'powershell -NoProfile -ExecutionPolicy Bypass -File "' script '" -Target "' kw '" -Process "' processName '" -LogFile mk_traynav.txt'
+      exitCode := RunWait(cmd, , "Hide")
+      if (exitCode = 0)
+        return true
+    }
+  }
+  return false
 }
 
 /**
