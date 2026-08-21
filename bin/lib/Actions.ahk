@@ -47,6 +47,15 @@ ActivateOrRun(winTitle := "", target := "", args := "", workingDir := "", admin 
   if (winTitle) {
     processName := GetTargetProcessName(target)
     if (processName && ProcessExist(processName)) {
+      ; v11 层1：隐藏窗口直连激活——微信/QQ 关窗驻留 = 主窗口被隐藏（句柄保留）而非销毁，
+      ; AHK 进程内 ShowWindow 恢复 + 激活，零 PowerShell 冷启动（原耗时大头 ~970ms）
+      if (RestoreHiddenWindow(processName, winTitle)) {
+        if (WinWait(winTitle, , 0.5)) {
+          ; 窗口已由 ShowWindow(SW_RESTORE) 恢复并置前，不再 WinActivate
+          ; （微信 Qt 窗口对激活消息响应慢时 WinActivate 会阻塞数秒，v11 实测）
+          return
+        }
+      }
       ; 进程在但窗口未出现：极短等待窗口出现。托盘驻留时窗口不会自行出现，空等无意义；
       ; 启动中的窗口由 TryTrayRestoreByNav 的轮询验证（v10）与下方最终兜底捕获（WinWait 超时单位是秒）
       if (WinWait(winTitle, , 0.3)) {
@@ -56,7 +65,7 @@ ActivateOrRun(winTitle := "", target := "", args := "", workingDir := "", admin 
       ; 窗口仍不出现：通过托盘图标自动唤出（tray_nav.ps1 v10 轮询验证，窗口出现即 DONE 退出），
       ; 等效用户手动点击托盘图标，不会触发重复启动
       if (TryTrayRestoreByNav(processName, winTitle)) {
-        if (WinWait(winTitle, , 1.5)) {
+        if (WinWait(winTitle, , 0.5)) {
           WinActivate(winTitle)
           return
         }
@@ -78,6 +87,59 @@ ActivateOrRun(winTitle := "", target := "", args := "", workingDir := "", admin 
   }
   workingDir := workingDir ? workingDir : A_WorkingDir
   RunPrograms(target, args, workingDir, admin, runInBackground)
+}
+
+/**
+ * v11 层1：隐藏窗口直连激活（零 PowerShell）
+ * 微信/QQ 等关闭主窗口驻留托盘 = 主窗口被隐藏（句柄保留）而非销毁。
+ * AHK 进程内 DetectHiddenWindows + WinGetList 枚举隐藏窗口，ShowWindow(SW_RESTORE) 恢复 + 激活，
+ * 绕开 powershell 5.1 冷启动（~970ms）与整条 UIA 托盘导航链。
+ * 标题含 winTitle 的候选优先（如微信存在 [微信]/[Weixin] 两个 Qt 窗口，必须优先中文主窗口）。
+ * @param {string} processName 目标进程名（如 Weixin.exe）
+ * @param {string} winTitle 窗口标题关键词（如 微信）
+ * @returns {bool} 是否已恢复并激活窗口
+ */
+RestoreHiddenWindow(processName, winTitle) {
+  prev := A_DetectHiddenWindows
+  DetectHiddenWindows true
+  try {
+    candidates := []
+    for hwnd in WinGetList("ahk_exe " processName) {
+      ; 跳过工具窗口、消息窗/IME/托盘宿主等辅助窗口
+      if (WinGetExStyle(hwnd) & 0x80)
+        continue
+      cls := WinGetClass(hwnd)
+      if (RegExMatch(cls, "i)messagewindow|ime|notifyicon|icc_system"))
+        continue
+      ; 已可见窗口无需恢复（调用前提是 activateWindow 已失败，正常不会出现）
+      if (DllCall("user32\IsWindowVisible", "Ptr", hwnd))
+        continue
+      candidates.Push(hwnd)
+    }
+    ; 标题含 winTitle 的候选优先（主窗口；如微信存在 [微信]/[Weixin] 两个 Qt 窗口，
+    ; 只恢复匹配标题的，绝不误弹其他窗口——只试第一个匹配候选，避免 QQ 多候选连续投递弹多个窗口）
+    for hwnd in candidates
+      if (InStr(WinGetTitle(hwnd), winTitle))
+        return ShowAndActivate(hwnd)
+  } finally DetectHiddenWindows(prev)
+  return false
+}
+
+/**
+ * 恢复隐藏窗口并激活（ShowWindowAsync 异步投递，绝不阻塞）
+ * SW_RESTORE=9 自带激活请求。ShowWindowAsync 的可见性标志由目标窗口处理消息后更新，
+ * 故投递后轮询等待（最多 300ms）；不用 ShowWindow/WinActivate：同步调用会等待目标窗口响应，
+ * 微信 Qt/QQ Electron 窗口对激活消息响应慢时会阻塞数秒（v11 探针实证）
+ */
+ShowAndActivate(hwnd) {
+  DllCall("user32\ShowWindowAsync", "Ptr", hwnd, "Int", 9)
+  sw := A_TickCount
+  while (A_TickCount - sw < 300) {
+    if (DllCall("user32\IsWindowVisible", "Ptr", hwnd))
+      return true
+    Sleep 20
+  }
+  return false
 }
 
 /**
