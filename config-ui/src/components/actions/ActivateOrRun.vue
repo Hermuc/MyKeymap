@@ -14,10 +14,19 @@ watchEffect(() => {
   action.value.isEmpty = !action.value.winTitle && !action.value.target
 })
 
+// winTitle 校验: 裸写 "xxx.exe" 会被 AHK 当作窗口标题子串匹配, 永远匹配失败
+const winTitleRules = [
+  (v: string) => {
+    if (!v || v.startsWith('ahk_') || v.startsWith('ahk-expression:')) return true
+    if (/\.exe$/i.test(v)) return translate('label:301err')
+    return true
+  },
+]
+
 </script>
 
 <template>
-  <v-text-field color="primary" autocomplete="off" variant="underlined" :label="translate('label:301')" v-model="action.winTitle" />
+  <v-text-field color="primary" autocomplete="off" variant="underlined" :label="translate('label:301')" v-model="action.winTitle" :rules="winTitleRules" persistent-hint :hint="translate('label:301hint')" />
   <v-combobox class="input"
               color="primary"
               :label="translate('label:302')"
