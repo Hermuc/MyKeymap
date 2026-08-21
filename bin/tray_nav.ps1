@@ -117,6 +117,8 @@ public class TrayNav {
   [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
   [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
   [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+  [DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT pt);
+  public struct POINT { public int x; public int y; }
   [DllImport("user32.dll")] public static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extra);
   public static IntPtr[] FindWindows(uint targetPid) {
     List<IntPtr> list = new List<IntPtr>();
@@ -134,6 +136,8 @@ public class TrayNav {
     return Shell_NotifyIconGetRect(ref id, out rc);
   }
   public static void Click() { mouse_event(2, 0, 0, 0, UIntPtr.Zero); mouse_event(4, 0, 0, 0, UIntPtr.Zero); }
+  public static POINT Capture() { POINT p; GetCursorPos(out p); return p; }
+  public static void Restore(POINT p) { SetCursorPos(p.x, p.y); }
 }
 '@
   $null = [TrayNav]::SetProcessDPIAware()
@@ -148,14 +152,16 @@ public class TrayNav {
           $cx = [int](($rc.left + $rc.right) / 2)
           $cy = [int](($rc.top + $rc.bottom) / 2)
           Log "icon found hwnd=$hwnd uid=$uid center=$cx,$cy"
+          $orig = [TrayNav]::Capture()
           [TrayNav]::SetCursorPos($cx, $cy) | Out-Null
           Start-Sleep -Milliseconds 150
           [TrayNav]::Click()
-          if (Wait-Until { Test-WindowVisible $procName } 800) { Log 'ACTIVATE single click'; return $true }
+          if (Wait-Until { Test-WindowVisible $procName } 800) { [TrayNav]::Restore($orig); Log 'ACTIVATE single click'; return $true }
           [TrayNav]::Click()
           Start-Sleep -Milliseconds 120
           [TrayNav]::Click()
-          if (Wait-Until { Test-WindowVisible $procName } 1600) { Log 'ACTIVATE double click'; return $true }
+          if (Wait-Until { Test-WindowVisible $procName } 1600) { [TrayNav]::Restore($orig); Log 'ACTIVATE double click'; return $true }
+          [TrayNav]::Restore($orig)
           return $false
         }
       }
