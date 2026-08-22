@@ -74,4 +74,6 @@ foreach ($scope in @('capslock', 'semicolon')) {
   }
   echo "$scope : go=$($goSide.Count) ahk=$($ahkSide.Count)"
 }
+# 5. Cleanup transient harness artifact (keep working tree clean)
+Remove-Item "$repo\tmp_oracle_harness.ahk" -ErrorAction SilentlyContinue
 if ($bad.Count -eq 0) { echo 'ORACLE DIFF: PASS' } else { $bad | ForEach-Object { echo $_ }; echo 'ORACLE DIFF: FAIL' }
