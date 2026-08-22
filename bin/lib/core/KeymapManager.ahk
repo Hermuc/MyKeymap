@@ -62,12 +62,15 @@
     if keymap != locked {
       this.Stack.Push(keymap)
       keymap.Enable(parent)
+      ; 阶段 6: 慢事件广播 (薄观察层, 零订阅者时为空遍历; 隔离兜底, 不影响模式激活)
+      try EventBus.Publish("mode_enter", Map("name", keymap.Name))
     }
     startTick := A_TickCount
     keymap.Wait(startTick)
     if keymap != locked {
       this.Stack.Pop()
       keymap.Disable()
+      try EventBus.Publish("mode_exit", Map("name", keymap.Name))
     }
   }
 
@@ -129,6 +132,7 @@
       this.Stack[1] := this.L.toLock
       this.L.locked := this.L.toLock
       this.L.toLock := false
+      try EventBus.Publish("mode_enter", Map("name", this.L.locked.Name))
     }
   }
 
@@ -136,6 +140,7 @@
     ; 这里不好用 this, 因为 Unlock 函数会被取出来, 然后 this 指向会变
     if KeymapManager.L.locked {
       KeymapManager.L.locked.Disable()
+      try EventBus.Publish("mode_exit", Map("name", KeymapManager.L.locked.Name))
       KeymapManager.Stack[1] := KeymapManager.GlobalKeymap
       KeymapManager.L.locked := false
     }

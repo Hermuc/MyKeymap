@@ -45,6 +45,8 @@ class PluginManager {
       return false
     }
     this.Plugins[id] := Map("manifest", manifest, "enabled", true)
+    ; 阶段 6: 插件生命周期事件 (隔离兜底, 不影响注册结果)
+    try EventBus.Publish("plugin_loaded", Map("pluginId", id))
     return true
   }
 
@@ -92,6 +94,8 @@ class PluginManager {
   static _recordError(pluginId, msg) {
     this.Errors.Push(Map("pluginId", pluginId, "message", msg))
     this._log(msg)
+    ; 阶段 6: 插件错误事件 (隔离兜底)
+    try EventBus.Publish("plugin_error", Map("pluginId", pluginId, "message", msg))
   }
 
   ; 错误日志 (与 ActionRegistry._log 同策略: 追加写, 失败静默)

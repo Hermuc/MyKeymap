@@ -106,16 +106,17 @@ class APIView {
     return false ; TODO 接入: ConfigProvider.SetPluginSetting
   }
 
-  ; ---- events.* (阶段 6 桥接 IKeyEventBus) ----
+  ; ---- events.* (阶段 6 已桥接 EventBus) ----
   Subscribe(eventType, callback) {
     if (!this._has("events"))
       return this._deny("events")
-    return 0 ; TODO 阶段 6: EventBus.Subscribe
+    return EventBus.Subscribe(eventType, callback)
   }
 
   Unsubscribe(subId) {
     if (!this._has("events"))
       return this._deny("events")
-    return false ; TODO 阶段 6: EventBus.Unsubscribe
+    EventBus.Unsubscribe(subId)
+    return true
   }
 }
