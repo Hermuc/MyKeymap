@@ -2,13 +2,13 @@
 #SingleInstance Force
 #UseHook true
 
-#include lib/translation.ahk
-#Include lib/Functions.ahk
-#Include lib/Actions.ahk
-#Include lib/KeymapManager.ahk
-#Include lib/InputTipWindow.ahk
-#Include lib/Utils.ahk
-#Include lib/SelectedAction.ahk
+#include lib/core/translation.ahk
+#Include lib/core/Functions.ahk
+#Include lib/actions/Actions.ahk
+#Include lib/core/KeymapManager.ahk
+#Include lib/core/InputTipWindow.ahk
+#Include lib/core/Utils.ahk
+#Include lib/rules/SelectedAction.ahk
 
 ; #WinActivateForce   ; 先关了遇到相关问题再打开试试
 ; InstallKeybdHook    ; 这个可以重装 keyboard hook, 提高自己的 hook 优先级, 以后可能会用到
@@ -249,7 +249,7 @@ InitKeymap()
   km := km1
   km.Map("!'", _ => MyKeymapReload(), , , , "S")
   km.Map("!+'", _ => MyKeymapToggleSuspend(), , , , "S")
-  km.Map("!f17", _ => MyKeymapReload(), , , , "S")
+  km.Map("!f17", _ => MyKeymapReload(), , , , "S") ; 手工保留: 免疫 suspend 的隐藏热键 (preprocess 注入缺陷, 阶段3修复)
   km.Map("!CapsLock", _ => ToggleCapslock())
 
   ; ===== 选中动作方案 =====

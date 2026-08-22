@@ -4,7 +4,7 @@ SetWorkingDir(A_ScriptDir)
 TraySetIcon("./icons/logo.ico")
 
 #Include ./lib/Monitor.ahk
-#Include ./lib/Utils.ahk
+#Include ./lib/core/Utils.ahk
 
 class CLayout extends Gui {
   monitors := []
