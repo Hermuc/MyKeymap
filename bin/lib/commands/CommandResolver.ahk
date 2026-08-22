@@ -101,7 +101,8 @@ class CommandResolver {
     }
     for k in keys {
       e := Map("command", SubStr(k, InStr(k, ":") + 1), "steps", this.Table[k].Length)
-      if (InStr(k, "capslock:") == 1)
+      ; scope 取冒号前首段 (与 Register 的 scope 参数同源, 不硬编码前缀字符串)
+      if (SubStr(k, 1, InStr(k, ":") - 1) == "capslock")
         caps.Push(e)
       else
         semi.Push(e)

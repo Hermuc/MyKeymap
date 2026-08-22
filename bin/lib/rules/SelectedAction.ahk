@@ -64,6 +64,8 @@ RunActionScheme(scheme) {
 
 /**
  * 获取当前选中内容 (阶段2: 实现已迁移到 context/SelectionContext.ahk, 保留函数签名兼容存量调用)
+ * @deprecated 新代码请直接用 SelectionContext.Get(); 本壳保留是为兼容用户自定义代码 (data/custom_functions.ahk)
+ *             与旧配置中的遗留引用, 勿删除。
  * @returns {{type: string, content: string}} type: file / text / ""
  */
 GetSelectedContent() {
