@@ -43,6 +43,7 @@ var TemplateFuncMap = template.FuncMap{
 	"escapeAhkHotkey":      escapeAhkHotkey,
 	"actionToHotkey":       ActionToHotkey,
 	"abbrToCode":           AbbrToCode,
+	"abbrRegistryCode":     AbbrRegistryCode,
 	"sortHotkeys":          sortHotkeys,
 	"divide":               divide,
 	"renderKeymap":         renderKeymap,

@@ -40,7 +40,8 @@ bin/lib/
 │                  TypeID 拆入 `builtins/type{1,2,3,4,6,7,8,9}_*.ahk`(函数体逐行搬运,
 │                  行多重集校验通过);`Actions.ahk` 保留为聚合 include 入口,模板与生成产物不变
 ├── rules/       SelectionEngine.ahk(只匹配,不执行)
-├── commands/    CommandResolver.ahk / FuzzyStrategy.ahk
+├── commands/    CommandResolver.ahk / FuzzyStrategy.ahk —— **CommandResolver 已完成(阶段 4)**:
+│                  缩写 switch 换为运行时注册表 (闭包即待执行数据), FuzzyStrategy 留桩
 ├── plugins/     PluginManager.ahk / APIBridge.ahk / ScriptHost.ahk
 └── compat/      LegacyLoader.ahk(消费 Go 编译的遗留代码载荷)—— **占位已建(阶段 3)**:
 │                  仅定义不接入; 接入点见文件头注释 (阶段 5 收口 / 阶段 6 事件广播)
@@ -142,15 +143,42 @@ class SelectionContext {
 
 ```ahk
 class CommandResolver {
-  static Table := Map()                ; command -> 待执行数据(运行时表, 取代生成 switch)
-  static Strategy := null              ; 解析策略对象, 可插拔
-  static Resolve(command, hook) {}
-  ; 策略契约(冻结): 精确命中 → 执行;
+  static Table := Map()                ; "scope:command" -> [CommandStep, ...] 运行时表, 取代生成 switch;
+                                       ; scope 分域 ("capslock" | "semicolon"):
+                                       ; 两表命令名可重复, 必须隔离 (阶段 4 修订)
+  static Strategy := ""                ; 解析策略对象, 可插拔 (阶段 4 留桩; 空串 = 未设置,
+                                       ; 部署版 AHK v2.0.19 无 null 关键字)
+  static Register(scope, command, steps) {}
+                                       ; 由生成脚本在 InitKeymap 内调用 (路径变量之后);
+                                       ; 重复命令: 记日志, 不覆盖先到者 (约束 4)
+  static Resolve(scope, command, hook := "") {}
+  ; 策略契约(冻结): 精确命中 → 按 steps 顺序执行;
+  ;   带窗口组守卫的 step: 守卫命中 → 执行并立即返回 (对齐旧 switch 语义);
   ;   未命中 → 子序列匹配 → 编辑距离≤1 → 候选集;
   ;   唯一候选 → 静默执行 + Tip 提示实际命令; 多候选 → 仅 Tip 列出, 不执行。
-  ; 当前阶段(阶段 4)只实现精确匹配, FuzzyStrategy 留桩。
+  ; 当前阶段(阶段 4)只实现精确匹配, 未命中静默无操作, FuzzyStrategy 留桩。
+}
+
+; 步骤数据: 闭包即"待执行数据"。生成端把原 switch case 体编译为闭包,
+; 保留任意表达式 (含遗留代码载荷/路径变量引用), 参数在执行时求值,
+; {selected} 等运行时替换语义不变。
+class CommandStep {
+  call := ""                           ; Funcref, 无参闭包 () => <原 case 体语句>
+  winTitle := ""                       ; 窗口组守卫 (仅 WindowGroupID != 0 的动作有)
+  conditionType := 0                   ; 0 = 无守卫; 1-5 语义同 matchWinTitleCondition
 }
 ```
+
+**已完成(阶段 4)**:`bin/lib/commands/CommandResolver.ahk` 实现上述契约(含 `DumpAbbr(outFile)`
+Oracle 导出: 命令按字典序, 同配置多次调用结果一致);生成端 `generators/abbr_registry.go`
+的 `AbbrRegistryCode` 与 `AbbrToCode` 逐条对齐, 模板中 `ExecCapslockAbbr`/`ExecSemicolonAbbr`
+改为委托 `CommandResolver.Resolve`。验证: 新旧产物 diff 审查(35 case → 35 闭包逐字一致) +
+语义冒烟 7 项 + 整脚本 `/Validate` + **Oracle diff PASS**(capslock 命令集 35/35 与步骤数相等,
+分号段双空)。
+阶段 4 实测坑两条(影响任何独立测试脚本): ① AHK v2 的 `>` 对两个字符串按**数字**比较
+(非数字串直接报错), 字典序排序必须用 `StrCompare`; ② `type9_mykeymap.ahk` 调用仅存在于
+生成脚本的 `ExecCapslockAbbr`, AHK v2 默认 #Warn 在**加载期**弹警告对话框阻塞进程,
+`/ErrorStdOut` 无法抑制——独立测试脚本头部须加 `#Warn All, Off`。
 
 ### 3.7 PluginManager / APIBridge / ScriptHost(plugins/)
 
@@ -225,7 +253,9 @@ class ConfigProvider {
 - 生成器新增义务:可输出 **注册计划 JSON**(`settings.exe DumpPlan <config> <out>`),
   与 AHK 运行时加载器的注册计划 diff(Oracle 机制);
   **Go 侧已实现(阶段 3)**:`generators/plan.go` 的 `BuildPlan` 与渲染路径同源推导,
-  输出确定性已验证(两次运行逐字节一致);AHK 侧导出留待运行时加载器落地后对接;
+  输出确定性已验证(两次运行逐字节一致);
+  **AHK 侧已对接(阶段 4)**:`CommandResolver.DumpAbbr` 导出运行时实际注册表,
+  与 DumpPlan 的 abbr 段对比命令集 + 步骤数, 首次运行即 PASS(动作参数级对比留待阶段 5);
 - ~~`preprocess()` 的 `!f17` 注入逻辑缺陷~~(已证伪):`Preprocess` 遍历逻辑本身正确;
   真实缺陷是 `GenerateAHK` 验证命令不调用 `Preprocess`(仅运行时 `GenerateScripts` 调用),
   导致验证产物缺 `!f17`,此前"`!f17` 为手工行"的认知作废。
