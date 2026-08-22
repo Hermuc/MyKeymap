@@ -9,7 +9,7 @@
 |---|---|
 | 基线脚本 | `docs/baseline/MyKeymap.ahk.snapshot`(= 重构前部署目录 `MyKeymap-2.0-beta33\bin\MyKeymap.ahk`,**255 行**,备份自 `MyKeymap-deploy-backup-before-phase1`) |
 | 配置真源 | **部署目录 `MyKeymap-2.0-beta33\data\config.json`**(用户日常使用与保存配置的版本,16 keymaps,启用 4 模式);仓库 `data/config.json` 已同步为部署配置 |
-| 生成分支 | `refactor/modularize` |
+| 生成分支 | `dev`(原 refactor/modularize) |
 | 模式过滤规则 | `EnabledKeymaps`:仅 `id=1` 与 `id>=5` 且 `enable=true` 的 keymap 进入生成(id=2/3/4 由 CommandInput/静态 switch 处理)。部署配置启用:id=5 CapsLock / id=8 J 模式 / id=9 F 模式 / id=1 Custom Hotkeys;其余(id=6,7,10,11,12,13,14,16,17)均为 `enable=false`,不生成 |
 | 已知手工行 | ~~`!f17` 手工行~~ **已证伪**:`!f17` 由 `Preprocess` 自动注入(运行时路径 `GenerateScripts`),非手工。此前误判原因:验证用的 `GenerateAHK` 命令不调 `Preprocess`。阶段 3 已对齐两条路径,`!f17` 由生成器自动产出 |
 | 配置自变记录 | 8/20 备份后,用户经设置页新增 actionSchemes(id=1 "新的选中动作",enable=true,单条空规则)→ 生成脚本多出**空的** `ActionSchemeList := Array()` 段,无实际热键。此为配置变化,非代码引起 |
