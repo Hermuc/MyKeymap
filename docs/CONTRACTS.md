@@ -31,7 +31,9 @@
 
 ```
 bin/lib/
-├── core/        IKeyEventBus.ahk / EventBus.ahk / ModeManager.ahk(现 KeymapManager)
+├── core/        IKeyEventBus.ahk / EventBus.ahk / ModeManager.ahk(现 KeymapManager) ——
+│                  **总线已落地并接入(阶段 6)**: 进程内同步实现 + 5 处发布点,
+│                  零订阅者时行为不变; IKeyEventBus 接口冻结
 ├── context/     SelectionContext.ahk
 ├── actions/     ActionRegistry.ahk / IAction.ahk / IRegistration.ahk —— **已完成(阶段 3)**:
 │                  三件套按 §3.2-3.4 冻结接口落地(含 ActionContext), 冒烟测试 8 项全过;
@@ -46,7 +48,7 @@ bin/lib/
 │                  **框架已落地(阶段 5)**: 权限词表校验/错误隔离/权限裁剪 API 视图/子进程长任务,
 │                  冒烟 23 项全过; 仅定义不接入, Everything 插件推迟 (见 §3.7 注记)
 └── compat/      LegacyLoader.ahk(消费 Go 编译的遗留代码载荷)—— **占位已建(阶段 3)**:
-│                  仅定义不接入; 接入点见文件头注释 (阶段 5 收口 / 阶段 6 事件广播)
+│                  仅定义不接入; 接入点见文件头注释 (阶段 5 收口 / 阶段 6 事件广播已具备: EventBus)
 data/
 ├── config.json / plugins/<id>/ / plugin-settings.json
 config-server/internal/script/generators/   (actionMap 按类型拆分)
@@ -79,6 +81,17 @@ class IKeyEventBus {
 
 **实现约定**:当前阶段 `EventBus` 为进程内同步实现;`Publish` 内对每个订阅
 回调独立 `try/catch`,单个回调异常不影响其他订阅者(约束 4)。
+
+**已完成(阶段 6)**:`core/EventBus.ahk` 按冻结接口落地(胖箭头改写为普通方法体),
+发布点接入 5 处:① `KeymapManager.Activate` 进/出栈 → `mode_enter`/`mode_exit`;
+② `KeymapManager._lock`/`Unlock` 锁定切换 → 同两事件;③ `CommandResolver.Resolve`
+提交即报 `abbr_submit`(命中与否都报, `source` 由 scope 映射 "caps"|"semi");
+④ `SelectedAction.RunActionScheme` 规则命中后执行前 → `selection_action`;
+⑤ `PluginManager` 注册成功/拒绝 → `plugin_loaded`/`plugin_error`(`ActionRegistry`
+重复注册同报 `plugin_error`)。所有发布点均 `try` 包裹 + 总线自身静默兜底,
+零订阅者时为空遍历, 行为不变。模板新增 2 行 include, 生成脚本仅多此 2 行(已验证),
+`/Validate` 全脚本 exit=0, Oracle 回归 PASS, 冒烟 13 项全过(订阅/词表拒绝/
+回调隔离/退订/各发布点载荷字段/APIBridge events 桥接与拒绝)。
 
 ### 3.2 IAction — 执行型动作契约(actions/)
 
@@ -200,7 +213,17 @@ class ScriptHost {
 ```
 
 **APIBridge 暴露面清单**(L1 直接调用;L2 映射为同名 JSON-RPC method,
-协议文本在阶段 6 冻结,宿主 = 未来 Rust 守护进程,当前不落地):
+协议已冻结(阶段 6),宿主 = 未来 Rust 守护进程,当前不落地):
+
+**L2 协议文本(冻结)**:
+- 传输:子进程 **stdio**, 一行一条消息(`\n` 分隔, UTF-8, 无长度前缀);
+- 格式:JSON-RPC 2.0;宿主 → 守护进程 = request(带 `id`),守护进程 → 宿主 = response;
+- method 命名:与 APIBridge 命名空间同名(`selection.GetSelectedText` 等);
+- 事件推送:守护进程 → 宿主用 notification `events.notify`,
+  `params: {type: eventType, data: eventData}`(eventType 词表见 §3.1);
+- 错误码:保留 JSON-RPC 标准段(-32700/-32600/-32601/-32602/-32603);
+  `-32001` = 权限拒绝(对应 APIBridge 未授权命名空间);
+- 鉴权:无(本机单用户进程间通道);超时:调用方自定,宿主不设默认。
 
 | 命名空间 | 方法 | 来源 |
 |---|---|---|
@@ -290,3 +313,5 @@ class ConfigProvider {
 | 日期 | 变更 |
 |---|---|
 | 2026-08-22 | 骨架版建立(方案 D 定稿),全部接口签名冻结 |
+| 2026-08-22 | 阶段 3/4/5 完成注记; 阶段 5 裁定 Everything 插件推迟 |
+| 2026-08-22 | 阶段 6: EventBus 落地并接入 5 处发布点; L2 JSON-RPC 协议文本冻结; 模板补记阶段 4 格式 |

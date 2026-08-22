@@ -24,7 +24,6 @@ class ActionRegistry {
 
   /**
    * 注册动作。重复 Type: 记日志 + plugin_error 事件, 不覆盖先到者 (约束 4)。
-   * IKeyEventBus 落地前 (阶段 6), 错误事件以日志形式降级。
    * @param action IAction 实例
    */
   static Register(action) {
@@ -35,7 +34,8 @@ class ActionRegistry {
     }
     if (this.Actions.Has(type)) {
       ActionRegistry._log("Register rejected: duplicate Type '" type "' (first registration wins)")
-      ; TODO(阶段 6): EventBus.Publish("plugin_error", {pluginId: ..., message: ...})
+      ; 阶段 6: 重复注册广播 plugin_error (隔离兜底, 不影响注册结果)
+      try EventBus.Publish("plugin_error", Map("pluginId", type, "message", "duplicate action Type (first registration wins)"))
       return false
     }
     if (err := action.Validate()) {

@@ -39,13 +39,15 @@ RunActionScheme(scheme) {
     return
   }
 
-  for rule in scheme.rules {
+  for ruleIndex, rule in scheme.rules {
     if MatchActionRule(rule, selected) {
       if rule.options.confirm {
         if not (MsgBox("执行选中动作「" scheme.name "」?", "确认", "YesNo") == "Yes") {
           return
         }
       }
+      ; 阶段 6: 慢事件广播 (薄观察层, 隔离兜底, 不影响动作执行)
+      try EventBus.Publish("selection_action", Map("schemeId", scheme.id, "ruleIndex", ruleIndex, "selected", selected.content))
       ExecuteActionRule(rule, selected)
       ; 执行后处理: copyToClipboard 在动作执行后把选中内容保留到剪贴板 (便于执行完成后直接粘贴), 而非执行前
       if rule.options.copyToClipboard {

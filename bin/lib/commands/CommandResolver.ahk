@@ -49,15 +49,20 @@ class CommandResolver {
    *   无守卫步骤: 执行后继续下一步骤;
    *   带守卫步骤: matchWinTitleCondition 命中 → 执行并立即返回, 未命中 → 跳过。
    * 未命中 → 委托 Strategy; 阶段 4 无策略, 静默无操作。
+   * 阶段 6: 提交即广播 abbr_submit (命中与否都报, matched/fuzzy 见契约 §3.1)。
    */
   static Resolve(scope, command, hook := "") {
     key := scope ":" command
+    ; scope -> source 词表 (契约 §3.1: "caps" | "semi")
+    source := (scope == "capslock") ? "caps" : "semi"
     if (!this.Table.Has(key)) {
+      try EventBus.Publish("abbr_submit", Map("source", source, "command", command, "matched", false, "fuzzy", false))
       if (this.Strategy != "") {
         this.Strategy.Resolve(command, hook)
       }
       return
     }
+    try EventBus.Publish("abbr_submit", Map("source", source, "command", command, "matched", true, "fuzzy", false))
     for step in this.Table[key] {
       if (step.conditionType != 0) {
         if (matchWinTitleCondition(step.winTitle, step.conditionType)) {
