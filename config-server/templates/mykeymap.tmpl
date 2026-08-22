@@ -10,6 +10,7 @@
 #Include lib/core/Utils.ahk
 #Include lib/context/SelectionContext.ahk
 #Include lib/rules/SelectedAction.ahk
+#Include lib/commands/CommandResolver.ahk
 
 ; #WinActivateForce   ; 先关了遇到相关问题再打开试试
 ; InstallKeybdHook    ; 这个可以重装 keyboard hook, 提高自己的 hook 优先级, 以后可能会用到
@@ -55,7 +56,8 @@ InitKeymap()
 
   ; 路径变量
 {{ .PathVariables }}
-  ; 窗口组
+{{ if .CapslockAbbrEnabled }}  ; 缩写命令注册表 (阶段 4: 取代 ExecCapslockAbbr 内的 switch)
+{{ abbrRegistryCode .CapslockAbbr "capslock" "  " }}{{ end }}{{ if .SemicolonAbbrEnabled }}{{ abbrRegistryCode .SemicolonAbbr "semicolon" "  " }}{{ end }}  ; 窗口组
 {{ .WindowGroups }}
   KeymapManager.GlobalKeymap.DisabledAt := {{ GroupDisableMyKeymap .Options.WindowGroups }}
 {{range .EnabledKeymaps}}{{renderKeymap .}}{{end}}
@@ -66,10 +68,7 @@ InitKeymap()
 
 {{ if .CapslockAbbrEnabled -}}
 ExecCapslockAbbr(command) {
-  ; 路径变量
-{{ .PathVariables }}
-  switch command {
-{{ abbrToCode .CapslockAbbr }}  }
+  CommandResolver.Resolve("capslock", command)
 }
 {{- else -}}
 ExecCapslockAbbr(command) {
@@ -78,10 +77,7 @@ ExecCapslockAbbr(command) {
 
 {{ if .SemicolonAbbrEnabled -}}
 ExecSemicolonAbbr(command) {
-  ; 路径变量
-{{ .PathVariables }}
-  switch command {
-{{ abbrToCode .SemicolonAbbr }}  }
+  CommandResolver.Resolve("semicolon", command)
 }
 {{- else -}}
 ExecSemicolonAbbr(command) {

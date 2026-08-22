@@ -10,6 +10,7 @@
 #Include lib/core/Utils.ahk
 #Include lib/context/SelectionContext.ahk
 #Include lib/rules/SelectedAction.ahk
+#Include lib/commands/CommandResolver.ahk
 
 ; #WinActivateForce   ; 先关了遇到相关问题再打开试试
 ; InstallKeybdHook    ; 这个可以重装 keyboard hook, 提高自己的 hook 优先级, 以后可能会用到
@@ -48,6 +49,42 @@ InitKeymap()
   ; 路径变量
   programs := "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\"
 
+  ; 缩写命令注册表 (阶段 4: 取代 ExecCapslockAbbr 内的 switch)
+  CommandResolver.Register("capslock", "cw", [CommandStep(() => SmartCloseWindow())])
+  CommandResolver.Register("capslock", "dl", [CommandStep(() => ActivateOrRun("", "shell:downloads"))])
+  CommandResolver.Register("capslock", "dm", [CommandStep(() => ActivateOrRun("", A_WorkingDir))])
+  CommandResolver.Register("capslock", "et", [CommandStep(() => ActivateOrRun("Everything", "D:\PortableApps\Scoop\apps\tubatools\current\app\src\Tools\其他工具\Everything\everything.exe"))])
+  CommandResolver.Register("capslock", "ex", [CommandStep(() => MyKeymapExit())])
+  CommandResolver.Register("capslock", "fc", [CommandStep(() => ActivateOrRun("ahk_exe FlClash.exe", "shortcuts\FlClash.lnk", "", "", false, true, false))])
+  CommandResolver.Register("capslock", "fe", [CommandStep(() => ActivateOrRun("ahk_exe explorer.exe", "shortcuts\File Explorer.lnk"))])
+  CommandResolver.Register("capslock", "gd", [CommandStep(() => ActivateOrRun("Ghost Downloader", "shortcuts\Ghost Downloader 3.lnk"))])
+  CommandResolver.Register("capslock", "hm", [CommandStep(() => ActivateOrRun("HypoMux", "shortcuts\HypoMux.lnk"))])
+  CommandResolver.Register("capslock", "jy", [CommandStep(() => ActivateOrRun("剪映专业版", "D:\PortableApps\Unofficial\剪映专业版 v6.0.1\JianyingPro.exe"))])
+  CommandResolver.Register("capslock", "ka", [CommandStep(() => ActivateOrRun("ahk_exe KugouAvaloniaPlayer.exe", "shortcuts\KugouAvaloniaPlayer.lnk"))])
+  CommandResolver.Register("capslock", "kp", [CommandStep(() => CloseWindowProcesses())])
+  CommandResolver.Register("capslock", "kzm", [CommandStep(() => ActivateOrRun("Kazumi", "shortcuts\kazumi.lnk"))])
+  CommandResolver.Register("capslock", "ls", [CommandStep(() => ActivateOrRun("Lossless Scaling", "D:\PortableApps\Unofficial\LS.v3.2.1\LosslessScaling.exe"))])
+  CommandResolver.Register("capslock", "ly", [CommandStep(() => ActivateOrRun("", "ms-settings:bluetooth"))])
+  CommandResolver.Register("capslock", "me", [CommandStep(() => ActivateOrRun("ahk_exe msedge.exe", "shortcuts\Microsoft Edge.lnk"))])
+  CommandResolver.Register("capslock", "mm", [CommandStep(() => ActivateOrRun("MyKeymap2 - Visual Studio Code", "shortcuts\Visual Studio Code.lnk", "D:\MyFiles\MyKeymap2", "", false, false, false))])
+  CommandResolver.Register("capslock", "ob", [CommandStep(() => ActivateOrRun("ahk_exe Obsidian.exe", "shortcuts\Obsidian.lnk"))])
+  CommandResolver.Register("capslock", "pd", [CommandStep(() => ShowActiveProcessInFolder())])
+  CommandResolver.Register("capslock", "pp", [CommandStep(() => ActivateOrRun("PiliPlus", "shortcuts\PiliPlus.lnk"))])
+  CommandResolver.Register("capslock", "qq", [CommandStep(() => ActivateOrRun("QQ", "shortcuts\QQ.lnk"))])
+  CommandResolver.Register("capslock", "rb", [CommandStep(() => ActivateOrRun("", "shell:RecycleBinFolder"))])
+  CommandResolver.Register("capslock", "rd", [CommandStep(() => Send("#d"))])
+  CommandResolver.Register("capslock", "re", [CommandStep(() => SystemRestartExplorer())])
+  CommandResolver.Register("capslock", "sd", [CommandStep(() => SystemShutdown())])
+  CommandResolver.Register("capslock", "se", [CommandStep(() => MyKeymapOpenSettings())])
+  CommandResolver.Register("capslock", "sl", [CommandStep(() => SystemSleep())])
+  CommandResolver.Register("capslock", "steam", [CommandStep(() => ActivateOrRun(" ahk_exe steamwebhelper.exe", "shortcuts\Steam.lnk"))])
+  CommandResolver.Register("capslock", "tb", [CommandStep(() => ActivateOrRun("图吧工具箱", "D:\PortableApps\Scoop\apps\tubatools\current\app\src\TubaWinUi3.exe"))])
+  CommandResolver.Register("capslock", "tg", [CommandStep(() => ActivateOrRun("ahk_exe AyuGram.exe", "shortcuts\AyuGram.lnk"))])
+  CommandResolver.Register("capslock", "tm", [CommandStep(() => Send("^+{esc}"))])
+  CommandResolver.Register("capslock", "tu", [CommandStep(() => ActivateOrRun("Total Uninstall 专业版", "D:\PortableApps\Unofficial\TotalUninstall\TUPortable.exe"))])
+  CommandResolver.Register("capslock", "wt", [CommandStep(() => ActivateOrRun("ahk_exe WindowsTerminal.exe", "wt.exe", "-d `"{selected}`"", "", false, false, false))])
+  CommandResolver.Register("capslock", "wx", [CommandStep(() => ActivateOrRun("微信", "shortcuts\WeChat.lnk"))])
+  CommandResolver.Register("capslock", "zg", [CommandStep(() => ActivateOrRun("ahk_class Zed::Window", "shortcuts\ZedG.lnk"))])
   ; 窗口组
   GroupAdd("MY_WINDOW_GROUP__1", "Stardew Valley ahk_class SDL_app")
   GroupAdd("MY_WINDOW_GROUP__1", "ahk_exe Rune Factory 3 Special.exe")
@@ -162,81 +199,7 @@ InitKeymap()
 }
 
 ExecCapslockAbbr(command) {
-  ; 路径变量
-  programs := "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\"
-
-  switch command {
-    case "cw":
-      SmartCloseWindow()
-    case "dl":
-      ActivateOrRun("", "shell:downloads")
-    case "dm":
-      ActivateOrRun("", A_WorkingDir)
-    case "et":
-      ActivateOrRun("Everything", "D:\PortableApps\Scoop\apps\tubatools\current\app\src\Tools\其他工具\Everything\everything.exe")
-    case "ex":
-      MyKeymapExit()
-    case "fc":
-      ActivateOrRun("ahk_exe FlClash.exe", "shortcuts\FlClash.lnk", "", "", false, true, false)
-    case "fe":
-      ActivateOrRun("ahk_exe explorer.exe", "shortcuts\File Explorer.lnk")
-    case "gd":
-      ActivateOrRun("Ghost Downloader", "shortcuts\Ghost Downloader 3.lnk")
-    case "hm":
-      ActivateOrRun("HypoMux", "shortcuts\HypoMux.lnk")
-    case "jy":
-      ActivateOrRun("剪映专业版", "D:\PortableApps\Unofficial\剪映专业版 v6.0.1\JianyingPro.exe")
-    case "ka":
-      ActivateOrRun("ahk_exe KugouAvaloniaPlayer.exe", "shortcuts\KugouAvaloniaPlayer.lnk")
-    case "kp":
-      CloseWindowProcesses()
-    case "kzm":
-      ActivateOrRun("Kazumi", "shortcuts\kazumi.lnk")
-    case "ls":
-      ActivateOrRun("Lossless Scaling", "D:\PortableApps\Unofficial\LS.v3.2.1\LosslessScaling.exe")
-    case "ly":
-      ActivateOrRun("", "ms-settings:bluetooth")
-    case "me":
-      ActivateOrRun("ahk_exe msedge.exe", "shortcuts\Microsoft Edge.lnk")
-    case "mm":
-      ActivateOrRun("MyKeymap2 - Visual Studio Code", "shortcuts\Visual Studio Code.lnk", "D:\MyFiles\MyKeymap2", "", false, false, false)
-    case "ob":
-      ActivateOrRun("ahk_exe Obsidian.exe", "shortcuts\Obsidian.lnk")
-    case "pd":
-      ShowActiveProcessInFolder()
-    case "pp":
-      ActivateOrRun("PiliPlus", "shortcuts\PiliPlus.lnk")
-    case "qq":
-      ActivateOrRun("QQ", "shortcuts\QQ.lnk")
-    case "rb":
-      ActivateOrRun("", "shell:RecycleBinFolder")
-    case "rd":
-      Send("#d")
-    case "re":
-      SystemRestartExplorer()
-    case "sd":
-      SystemShutdown()
-    case "se":
-      MyKeymapOpenSettings()
-    case "sl":
-      SystemSleep()
-    case "steam":
-      ActivateOrRun(" ahk_exe steamwebhelper.exe", "shortcuts\Steam.lnk")
-    case "tb":
-      ActivateOrRun("图吧工具箱", "D:\PortableApps\Scoop\apps\tubatools\current\app\src\TubaWinUi3.exe")
-    case "tg":
-      ActivateOrRun("ahk_exe AyuGram.exe", "shortcuts\AyuGram.lnk")
-    case "tm":
-      Send("^+{esc}")
-    case "tu":
-      ActivateOrRun("Total Uninstall 专业版", "D:\PortableApps\Unofficial\TotalUninstall\TUPortable.exe")
-    case "wt":
-      ActivateOrRun("ahk_exe WindowsTerminal.exe", "wt.exe", "-d `"{selected}`"", "", false, false, false)
-    case "wx":
-      ActivateOrRun("微信", "shortcuts\WeChat.lnk")
-    case "zg":
-      ActivateOrRun("ahk_class Zed::Window", "shortcuts\ZedG.lnk")
-  }
+  CommandResolver.Resolve("capslock", command)
 }
 
 ExecSemicolonAbbr(command) {
