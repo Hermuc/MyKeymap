@@ -17,35 +17,6 @@ var fileGroupExts = map[string][]string{
 	"audio":   {"mp3", "wav", "flac", "ogg", "aac", "m4a"},
 }
 
-// actionSchemesCode 把 actionSchemes 配置渲染为 AHK 代码 (用于 mykeymap.tmpl 模板)
-// 生成的数据结构由 bin/lib/rules/SelectedAction.ahk 中的 InitActionScheme 消费
-func actionSchemesCode(schemes []ActionScheme) string {
-	if len(schemes) == 0 {
-		return ""
-	}
-
-	var buf strings.Builder
-	buf.WriteString("  ; ===== 选中动作方案 =====\n")
-	buf.WriteString("  ActionSchemeList := Array(\n")
-	for _, s := range schemes {
-		if !s.Enable || s.Hotkey == "" {
-			continue
-		}
-		buf.WriteString(fmt.Sprintf("    {id: %d, name: %s, hotkey: %s, rules: Array(\n",
-			s.ID, ahkString(s.Name), ahkString(s.Hotkey)))
-		for _, r := range s.Rules {
-			buf.WriteString(fmt.Sprintf("      {priority: %d, matchType: %s, matchValue: %s, actionType: %s, actionValue: %s, workingDir: %s, options: {copyToClipboard: %t, clearSelection: %t, confirm: %t}},\n",
-				r.Priority, ahkString(r.MatchType), ahkString(r.MatchValue), ahkString(r.ActionType),
-				ahkString(r.ActionValue), ahkString(r.WorkingDir),
-				r.Options.CopyToClipboard, r.Options.ClearSelection, r.Options.Confirm))
-		}
-		buf.WriteString("    )},\n")
-	}
-	buf.WriteString("  )\n")
-	buf.WriteString("  InitActionScheme(ActionSchemeList)\n")
-	return buf.String()
-}
-
 // ValidateActionSchemeRegexes 预检所有 textRegex 规则的正则能否在 Go RE2 下编译
 // Go 的 regexp 是 RE2 (不支持前瞻/回溯等 PCRE 语法), 而 AHK 端 RegExMatch 用 PCRE2,
 // 编译失败时返回该正则与错误, 调用方应明确提示用户而非误报"不匹配"
