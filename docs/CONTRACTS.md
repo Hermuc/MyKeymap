@@ -34,7 +34,9 @@ bin/lib/
 ├── core/        IKeyEventBus.ahk / EventBus.ahk / ModeManager.ahk(现 KeymapManager)
 ├── context/     SelectionContext.ahk
 ├── actions/     ActionRegistry.ahk / IAction.ahk / IRegistration.ahk
-│   └── builtins/  9 类内置动作各一文件
+│   └── builtins/  9 类内置动作各一文件 —— **已完成(阶段 3)**:`Actions.ahk` 的 42 个函数已按
+│                  TypeID 拆入 `builtins/type{1,2,3,4,6,7,8,9}_*.ahk`(函数体逐行搬运,
+│                  行多重集校验通过);`Actions.ahk` 保留为聚合 include 入口,模板与生成产物不变
 ├── rules/       SelectionEngine.ahk(只匹配,不执行)
 ├── commands/    CommandResolver.ahk / FuzzyStrategy.ahk
 ├── plugins/     PluginManager.ahk / APIBridge.ahk / ScriptHost.ahk
