@@ -36,6 +36,10 @@ func GenerateAHK(args ...string) {
 		logger.Fatal(err)
 	}
 
+	// 与运行时路径(GenerateScripts)保持一致: 先预处理(注入 !f17 免疫热键等)再生成,
+	// 否则验证产物与真实运行产物不一致, 无法用于零行为变更验证/Oracle diff
+	script.Preprocess(config)
+
 	if err := script.SaveAHK(config, templateFile, outputFile); err != nil {
 		logger.Fatal(err)
 	}

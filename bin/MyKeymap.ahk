@@ -149,7 +149,7 @@ InitKeymap()
   km := km1
   km.Map("!'", _ => MyKeymapReload(), , , , "S")
   km.Map("!+'", _ => MyKeymapToggleSuspend(), , , , "S")
-  km.Map("!f17", _ => MyKeymapReload(), , , , "S") ; 手工保留: 免疫 suspend 的隐藏热键 (preprocess 注入缺陷, 阶段3修复)
+  km.Map("!f17", _ => MyKeymapReload(), , , , "S")
   km.Map("#+F23", _ => ToggleCapslock())
 
   ; ===== 选中动作方案 =====

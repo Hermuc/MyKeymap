@@ -10,7 +10,7 @@ import (
 )
 
 func GenerateScripts(config *Config) {
-	preprocess(config)
+	Preprocess(config)
 
 	if err := SaveAHK(config, "./templates/MyKeymap.tmpl", "../bin/MyKeymap.ahk"); err != nil {
 		panic(err)
@@ -23,8 +23,10 @@ func GenerateScripts(config *Config) {
 	// }
 }
 
-func preprocess(cfg *Config) {
-	// 添加一个隐藏的全局热键, 且免疫 suspend, 否则 ahk 的 suspend 会把键盘钩子临时移除
+// Preprocess 对配置做生成前的预处理。
+// 添加一个隐藏的全局热键(!f17), 且免疫 suspend, 否则 ahk 的 suspend 会把键盘钩子临时移除。
+// 注意: 任何生成验证命令(如 GenerateAHK)都必须调用本函数, 保证验证路径与运行时路径(GenerateScripts)一致。
+func Preprocess(cfg *Config) {
 	for _, km := range cfg.Keymaps {
 		if km.ID == 1 {
 			km.Hotkeys["!f17"] = []Action{{TypeID: 9, ValueID: 2}}
