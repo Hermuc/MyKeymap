@@ -438,23 +438,15 @@ ReplaceSelectedText(&target, &args) {
 }
 
 /**
- * 获取选中的文字
+ * 获取选中的文字 (阶段2: 实现已迁移到 context/SelectionContext.ahk, 保留函数签名兼容存量调用)
  * @returns {void|string} 
  */
 GetSelectedText() {
-  temp := A_Clipboard
-  ; 清空剪贴板
-  A_Clipboard := ""
-
-  Send("^c")
-  if not (ClipWait(0.4)) {
-    Tip(Translation().no_items_selected, -700)
+  sel := SelectionContext.Get(false)
+  if not (sel.content) {
     return
   }
-  text := A_Clipboard
-
-  A_Clipboard := temp
-  return RTrim(text, "`r`n")
+  return sel.content
 }
 
 /**
