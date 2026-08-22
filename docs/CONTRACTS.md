@@ -302,7 +302,7 @@ class ConfigProvider {
 
 | 功能 | 落点 |
 |---|---|
-| 1. 命令模糊输入 | `CommandResolver` 换入 `FuzzyStrategy`(静默兜底版;候选提示版待 CommandInput 源码可控) |
+| 1. 命令模糊输入 | **已实现(2026-08-22)**: 逐字符实时后缀校验 `FuzzySuffixFire`(接在 `InputHook.OnChar`,最长后缀优先);命中即停钩执行,`abbr_submit.fuzzy=true`。`Strategy` 桩保留给未来的编辑距离≤1/候选提示类策略 |
 | 2. Everything 搜索 | 首个官方插件 `everything-search`(含 `everythingPath` 设置项与自动启动逻辑)——**阶段 5 裁定推迟到全部阶段完成后**;框架已就位(§3.7) |
 | 3. 外接脚本/函数 | L1 插件 = `custom_functions.ahk` 正式化;长任务走 ScriptHost |
 | 4. 开放 API/插件市场 | 双层插件体系 + 权限化 APIBridge;内置同接口倒逼 API 完备 |
@@ -315,3 +315,4 @@ class ConfigProvider {
 | 2026-08-22 | 骨架版建立(方案 D 定稿),全部接口签名冻结 |
 | 2026-08-22 | 阶段 3/4/5 完成注记; 阶段 5 裁定 Everything 插件推迟 |
 | 2026-08-22 | 阶段 6: EventBus 落地并接入 5 处发布点; L2 JSON-RPC 协议文本冻结; 模板补记阶段 4 格式 |
+| 2026-08-22 | §6 第 1 条落地: 命令模糊输入(逐字符后缀校验, 最长优先, CapsLock 域); `Resolve` 增 `fuzzy` 可选参数(默认不变); `config-server/templates` 副本补齐阶段 6 include |
