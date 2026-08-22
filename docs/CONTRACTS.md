@@ -209,8 +209,12 @@ class ConfigProvider {
 
 - 阶段 3 起,`config-server/internal/script/action.go` 的 `actionMap` 拆入
   `generators/` 目录,每个 TypeID 一文件;
+  **已完成(阶段 3)**:数据模型在 `model/` 包,9 个 TypeID 渲染函数各一文件,
+  原文件已删除,外部调用经 `script` 包类型别名兼容,生成产物逐字节回归通过;
 - 生成器新增义务:可输出 **注册计划 JSON**(`settings.exe DumpPlan <config> <out>`),
   与 AHK 运行时加载器的注册计划 diff(Oracle 机制);
+  **Go 侧已实现(阶段 3)**:`generators/plan.go` 的 `BuildPlan` 与渲染路径同源推导,
+  输出确定性已验证(两次运行逐字节一致);AHK 侧导出留待运行时加载器落地后对接;
 - ~~`preprocess()` 的 `!f17` 注入逻辑缺陷~~(已证伪):`Preprocess` 遍历逻辑本身正确;
   真实缺陷是 `GenerateAHK` 验证命令不调用 `Preprocess`(仅运行时 `GenerateScripts` 调用),
   导致验证产物缺 `!f17`,此前"`!f17` 为手工行"的认知作废。

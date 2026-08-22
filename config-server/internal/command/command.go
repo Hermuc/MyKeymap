@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"settings/internal/script"
+	"settings/internal/script/generators"
 	"strings"
 	"text/template"
 )
@@ -16,6 +17,7 @@ import (
 var Map = map[string]func(args ...string){
 	"AlignText":       AlignText,
 	"GenerateAHK":     GenerateAHK,
+	"DumpPlan":        DumpPlan,
 	"ChangeVersion":   ChangeVersion,
 	"GenerateScripts": GenerateScripts,
 	"UseOriginalAHK":  UseOriginalAHK,
@@ -41,6 +43,30 @@ func GenerateAHK(args ...string) {
 	script.Preprocess(config)
 
 	if err := script.SaveAHK(config, templateFile, outputFile); err != nil {
+		logger.Fatal(err)
+	}
+}
+
+// DumpPlan 输出注册计划 JSON (Oracle 机制的生成端义务, 见 docs/CONTRACTS.md §5)。
+// 用法: settings.exe DumpPlan <config.json> <plan.json>
+// 未来与 AHK 运行时加载器导出的计划 diff, 验证零行为变更。
+func DumpPlan(args ...string) {
+	if len(os.Args) < 4 {
+		logger.Fatal("DumpPlan requires 2 arguments, for example: DumpPlan ./config.json ./plan.json")
+	}
+	configFile := os.Args[2]
+	outputFile := os.Args[3]
+
+	config, err := script.ParseConfig(configFile)
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	// 与运行时路径(GenerateScripts)保持一致: 先预处理(注入 !f17 免疫热键等)再推导计划,
+	// 否则计划与真实运行注册不一致, Oracle diff 失去意义
+	script.Preprocess(config)
+
+	if err := generators.WritePlan(config, outputFile); err != nil {
 		logger.Fatal(err)
 	}
 }

@@ -42,7 +42,7 @@
 
 特殊:
 - [ ] `0` 清行并输入固定文本段落(含 Sleep 1000 + 回车确认)
-- [ ] 单击(450ms 内松开)→ 进入 CapsLock 缩写输入(`EnterCapslockAbbr`,InputHook 词表 33 条)
+- [ ] 单击(450ms 内松开)→ 进入 CapsLock 缩写输入(`EnterCapslockAbbr`,InputHook 词表 35 条)
 
 ## 模式 2 — J 模式(`*j`,id=8,Vim 风格方向键)
 
@@ -66,7 +66,7 @@
 - [ ] 窗口组:`MY_WINDOW_GROUP_1` = chrome+msedge+firefox(web 浏览器组);`MY_WINDOW_GROUP__1` = 游戏组(禁用全局)
 - [ ] 无按键重映射(#HotIf 块为空)
 
-## CapsLock 缩写(33 条,`ExecCapslockAbbr` switch)
+## CapsLock 缩写(35 条,`ExecCapslockAbbr` switch)
 
 - [ ] 窗口/程序:fc FlClash / fe 资源管理器 / me Edge / ka KugouAvaloniaPlayer / kzm Kazumi
   ob Obsidian / pp PiliPlus / qq QQ / steam Steam / tg AyuGram / wx 微信 / hm HypoMux
