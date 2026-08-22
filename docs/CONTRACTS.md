@@ -42,7 +42,9 @@ bin/lib/
 ├── rules/       SelectionEngine.ahk(只匹配,不执行)
 ├── commands/    CommandResolver.ahk / FuzzyStrategy.ahk —— **CommandResolver 已完成(阶段 4)**:
 │                  缩写 switch 换为运行时注册表 (闭包即待执行数据), FuzzyStrategy 留桩
-├── plugins/     PluginManager.ahk / APIBridge.ahk / ScriptHost.ahk
+├── plugins/     PluginManager.ahk / APIBridge.ahk / ScriptHost.ahk / Plugins.ahk(聚合入口) ——
+│                  **框架已落地(阶段 5)**: 权限词表校验/错误隔离/权限裁剪 API 视图/子进程长任务,
+│                  冒烟 23 项全过; 仅定义不接入, Everything 插件推迟 (见 §3.7 注记)
 └── compat/      LegacyLoader.ahk(消费 Go 编译的遗留代码载荷)—— **占位已建(阶段 3)**:
 │                  仅定义不接入; 接入点见文件头注释 (阶段 5 收口 / 阶段 6 事件广播)
 data/
@@ -210,6 +212,15 @@ class ScriptHost {
 | `events.*` | Subscribe / Unsubscribe | 桥接 IKeyEventBus |
 | `config.*` | GetSetting / SetSetting(读写 plugin-settings.json) | ConfigProvider |
 
+**已完成(阶段 5)**:`bin/lib/plugins/` 落地 `PluginManager` / `APIBridge` / `ScriptHost`
+三件套框架(含 permissions 词表校验、错误隔离、按权限裁剪的 API 视图、子进程长任务),
+冒烟测试覆盖注册/重复拒绝/权限非法拒绝/未知 Get/按权限裁剪/未授权调用不抛出/卸载。
+**范围调整(用户裁定)**:① AHK v2 无运行时动态加载能力, L1 插件 `main.ahk` 须经编译期
+`#Include`——生成端接入(扫描 `data/plugins` 生成 Include 行 + 调用 `Register(api)`)留待后续;
+② 首个官方插件 `everything-search`(含 `everythingPath` 设置项与自动启动逻辑)**推迟到全部阶段完成后**再做;
+③ `ConfigProvider` 的 JSON 解析(`plugin-settings.json` 读写)随首个真实插件落地。
+本阶段仅定义不接入运行路径, 模板与生成产物不变(零行为变更)。
+
 ### 3.8 ConfigProvider — 配置读取收口
 
 ```ahk
@@ -269,7 +280,7 @@ class ConfigProvider {
 | 功能 | 落点 |
 |---|---|
 | 1. 命令模糊输入 | `CommandResolver` 换入 `FuzzyStrategy`(静默兜底版;候选提示版待 CommandInput 源码可控) |
-| 2. Everything 搜索 | 首个官方插件 `everything-search`(阶段 5,含 `everythingPath` 设置项与自动启动逻辑) |
+| 2. Everything 搜索 | 首个官方插件 `everything-search`(含 `everythingPath` 设置项与自动启动逻辑)——**阶段 5 裁定推迟到全部阶段完成后**;框架已就位(§3.7) |
 | 3. 外接脚本/函数 | L1 插件 = `custom_functions.ahk` 正式化;长任务走 ScriptHost |
 | 4. 开放 API/插件市场 | 双层插件体系 + 权限化 APIBridge;内置同接口倒逼 API 完备 |
 | 5. Rust 重写 | IKeyEventBus 抽象已就位;Rust 守护进程 = 总线实现 + L2 宿主 |
