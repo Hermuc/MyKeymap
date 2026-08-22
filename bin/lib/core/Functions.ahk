@@ -1,4 +1,14 @@
 /**
+ * Functions.ahk —— 全局通用工具函数集 (均为慢路径辅助, 不参与重映射/发键/鼠标快路径)。
+ * 分组: 托盘菜单与生命周期 (TrayMenuHandler/Exit/Suspend/Reload) |
+ *       程序启动 (CompleteProgramPath/ShellRun/RunPrograms/RunAsAdmin) |
+ *       窗口查找与激活 (ActivateWindow/FindWindows/TryTrayRestoreByNav) |
+ *       选中占位符替换 (ReplaceSelectedText) | 命令输入框消息 (PostMessageToCpasAbbr) |
+ *       剪贴板/编码/显示杂项 (URIEncode/HtmlEncode/PasteToPrograms 等)。
+ * 兼容壳: GetSelectedText 实现已迁移至 context/SelectionContext.ahk, 仅保留签名。
+ */
+
+/**
  * 托盘菜单被点击
  * @param ItemName 
  * @param ItemPos 

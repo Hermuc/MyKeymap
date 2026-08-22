@@ -1,4 +1,10 @@
 /**
+ * Utils.ahk —— 轻量级系统交互工具: 提示气泡 (Tip)、输入法控制 (DisableIME)、
+ * 光标定位 (GetCaretPos, uia/acc/ahk 多通道逐级降级) 与屏幕坐标换算 (GetPosRelativeScreen)。
+ * 被命令输入框/选中动作等多处复用, 保持无状态、无副作用累积。
+ */
+
+/**
  * 自动关闭的提示窗口 
  * @param message 要提示的文本
  * @param {number} time 超时后关闭

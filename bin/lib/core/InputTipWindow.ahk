@@ -1,3 +1,8 @@
+/**
+ * InputTipWindow.ahk —— 命令输入时的跟随提示小窗 (跟随鼠标位置显示键入内容)。
+ * 供 CommandInput 输入链路使用: Show 追加/替换文本, Backspace 退格, Hide 隐藏;
+ * 窗口为无边框置顶工具窗, 附 FrameShadow (DWM 阴影, 本文件底部定义)。
+ */
 Class InputTipWindow {
 
   __New(text := "                       ", fontSize := 12, marginX := 2, marginY := 2, offsetX := 9, offsetY := 7) {
