@@ -33,14 +33,17 @@
 bin/lib/
 ├── core/        IKeyEventBus.ahk / EventBus.ahk / ModeManager.ahk(现 KeymapManager)
 ├── context/     SelectionContext.ahk
-├── actions/     ActionRegistry.ahk / IAction.ahk / IRegistration.ahk
+├── actions/     ActionRegistry.ahk / IAction.ahk / IRegistration.ahk —— **已完成(阶段 3)**:
+│                  三件套按 §3.2-3.4 冻结接口落地(含 ActionContext), 冒烟测试 8 项全过;
+│                  仅定义不接入运行路径, 模板与生成产物不变 (快路径仍编译期直连)
 │   └── builtins/  9 类内置动作各一文件 —— **已完成(阶段 3)**:`Actions.ahk` 的 42 个函数已按
 │                  TypeID 拆入 `builtins/type{1,2,3,4,6,7,8,9}_*.ahk`(函数体逐行搬运,
 │                  行多重集校验通过);`Actions.ahk` 保留为聚合 include 入口,模板与生成产物不变
 ├── rules/       SelectionEngine.ahk(只匹配,不执行)
 ├── commands/    CommandResolver.ahk / FuzzyStrategy.ahk
 ├── plugins/     PluginManager.ahk / APIBridge.ahk / ScriptHost.ahk
-└── compat/      LegacyLoader.ahk(消费 Go 编译的遗留代码载荷)
+└── compat/      LegacyLoader.ahk(消费 Go 编译的遗留代码载荷)—— **占位已建(阶段 3)**:
+│                  仅定义不接入; 接入点见文件头注释 (阶段 5 收口 / 阶段 6 事件广播)
 data/
 ├── config.json / plugins/<id>/ / plugin-settings.json
 config-server/internal/script/generators/   (actionMap 按类型拆分)
@@ -116,6 +119,12 @@ class ActionRegistry {
   static Execute(type, ctx) {}         ; 统一 try/catch → 日志 + Tip; 快路径动作禁止走此入口
 }
 ```
+
+**已完成(阶段 3)**:§3.2 `IAction`+`ActionContext`、§3.3 `IRegistration`、§3.4 `ActionRegistry`
+已按冻结接口落地于 `bin/lib/actions/`(胖箭头方法改写为普通方法体, 因部署版 AHK 不支持;
+接口形状不变)。冒烟测试覆盖: 注册/重复拒绝(先到者胜)/空 Type 拒绝/未知 Get 返回空串/
+Execute 传 ctx/异常隔离不抛出/未知 Type 不抛出/内置类型拒绝注销——全部通过。
+`compat/LegacyLoader.ahk` 占位已建。四者均未被模板或生成脚本引用, 零行为变更。
 
 ### 3.5 SelectionContext — 选中文本统一入口(context/)
 
