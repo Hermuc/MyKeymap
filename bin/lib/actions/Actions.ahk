@@ -4,6 +4,10 @@
  * 函数体逐行搬运未做修改。本文件保留原 include 路径 (模板引用
  * lib/actions/Actions.ahk), 生成产物与拆分前完全一致。
  * AHK 中函数为全局定义, include 顺序不影响可见性。
+ *
+ * 注意: 本聚合**有意不包含** ActionRegistry / IAction / IRegistration ——
+ * 注册表服务插件动作, 尚未接入生成脚本 (零行为变更原则);
+ * 内置动作仍由 Go 生成端编译期直连渲染 (快路径红线, 见 IAction.ahk 头注)。
  */
 #Include builtins\type1_activate_or_run.ahk
 #Include builtins\type2_system.ahk

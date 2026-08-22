@@ -1,4 +1,10 @@
-﻿class DefaultTranslation {
+﻿/**
+ * translation.ahk —— 界面文案多语言 (中文/英文)。
+ * DefaultTranslation 为英文基类, ChineseTranslation 继承并覆写中文文案;
+ * Translation() 按系统语言缓存单例 (首次调用后固定, 不随运行中变化)。
+ * 新增文案: 先在 DefaultTranslation 加英文, 再在 ChineseTranslation 加中文。
+ */
+class DefaultTranslation {
   mykeymap_on := "🚀  MyKeymap: On  "
   mykeymap_off := "⏸️  MyKeymap: Off  "
   
@@ -41,11 +47,13 @@ class ChineseTranslation extends DefaultTranslation {
 }
 
 
+; 按系统语言选择翻译单例; static 缓存, 全进程只判断一次。
 Translation() {
   static t := SysLangIsChinese() ? ChineseTranslation() : DefaultTranslation()
   return t
 }
 
+; A_Language 为区域标识十六进制串, 凡是中文系区域都视为中文 (见注释中的官方语言表链接)。
 SysLangIsChinese()
 {
   ; https://www.autohotkey.com/docs/v2/misc/Languages.htm

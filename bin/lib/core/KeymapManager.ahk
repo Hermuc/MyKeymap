@@ -1,4 +1,18 @@
-﻿class KeymapManager {
+﻿/**
+ * KeymapManager.ahk —— 模式栈与热键绑定核心 (快路径所在, 全文件零依赖外部注册表)。
+ *
+ * 结构: KeymapManager (静态类: 模式栈/锁定状态/激活流程) +
+ *        Keymap (单个模式: 热键表/启停/重映射/发键) +
+ *        MouseKeymap / TaskSwitchKeymap (专用模式子类)。
+ *
+ * 关键流程: 引导键触发 -> handler 调 Activate(进栈+启用热键) ->
+ *           Wait 等待引导键释放(含单击动作判定) -> 出栈禁用。
+ *
+ * 红线: 本文件的 Map/SendKeys/Remap* 均为快路径 (重映射/发键/鼠标),
+ *       由 AHK 钩子直达, 禁止引入查表/事件总线等间接层 (约束 6)。
+ *       EventBus.Publish 仅出现在 Activate/_lock/Unlock 等慢事件点。
+ */
+class KeymapManager {
   static GlobalKeymap := Keymap("GlobalKeymap")
   static Stack := Array(this.GlobalKeymap)
   static L := { toLock: false, locked: false, show: false, toggle: false }
@@ -52,6 +66,10 @@
     }
   }
 
+  ; 模式激活主流程 (慢事件点: 进出栈各广播一次, 零订阅者时为空遍历):
+  ; 1) 处理组合键延迟 (_handleDelay); 2) 进栈并启用该模式热键;
+  ; 3) Wait 阻塞等待引导键释放 (期间该模式热键生效, 含单击动作);
+  ; 4) 出栈并禁用, 恢复父模式热键。已锁定的常驻模式不走进出栈。
   static Activate(keymap) {
     if this._handleDelay(keymap) {
       return
