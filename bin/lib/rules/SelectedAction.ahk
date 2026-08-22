@@ -4,8 +4,11 @@
 ; 配置由 config-server 渲染到生成的 MyKeymap.ahk 中:
 ;   ActionSchemeList := Array({id:1, name:"...", hotkey:"^+q", rules:Array(...)})
 ;   InitActionScheme(ActionSchemeList)
-; 变量约定: 在命令或脚本中使用 %selected% 表示当前选中的文本或文件路径
-; (多文件用换行分隔, 与资源管理器复制文件到剪贴板的格式一致)
+; 变量约定: 在命令或脚本中使用 {selected} 表示当前选中的文本或文件路径,
+; %selected% 为兼容形 (由 context/SelectionContext.ahk 归一处理);
+; 多文件用换行分隔, 与资源管理器复制文件到剪贴板的格式一致。
+; 阶段2拆分说明: 本文件保留匹配层 (Match*) 与执行层 (Execute*/Run*);
+; 选中内容获取已统一到 SelectionContext, 执行层未来 (阶段3) 委托 ActionRegistry。
 ; ============================================================
 
 /**
@@ -30,7 +33,7 @@ InitActionScheme(schemes) {
  * @param scheme 方案对象
  */
 RunActionScheme(scheme) {
-  selected := GetSelectedContent()
+  selected := SelectionContext.Get()
   if not (selected.content) {
     Tip(Translation().no_items_selected, -700)
     return
@@ -58,26 +61,11 @@ RunActionScheme(scheme) {
 }
 
 /**
- * 获取当前选中内容
- * 优先尝试资源管理器选中文件 (剪贴板 CF_HDROP), 否则获取选中文本
+ * 获取当前选中内容 (阶段2: 实现已迁移到 context/SelectionContext.ahk, 保留函数签名兼容存量调用)
  * @returns {{type: string, content: string}} type: file / text / ""
  */
 GetSelectedContent() {
-  saved := ClipboardAll()
-  ; 清空剪贴板
-  A_Clipboard := ""
-
-  Send("^c")
-  if not (ClipWait(0.4)) {
-    A_Clipboard := saved
-    return {type: "", content: ""}
-  }
-  ; CF_HDROP: 剪贴板中存在文件列表 (资源管理器复制/剪切文件)
-  isFile := DllCall("IsClipboardFormatAvailable", "UInt", 15)
-  content := A_Clipboard
-
-  A_Clipboard := saved
-  return {type: isFile ? "file" : "text", content: RTrim(content, "`r`n")}
+  return SelectionContext.Get()
 }
 
 /**
@@ -208,14 +196,14 @@ ExecuteActionRule(rule, selected) {
     case "run":
       RunReplaced(rule.actionValue, content, rule.workingDir)
     case "search":
-      url := StrReplace(rule.actionValue, "%selected%", URIEncode(content))
+      url := SelectionContext.NormalizeForSearch(rule.actionValue, content)
       Run(url)
     case "send_keys":
-      Send(StrReplace(rule.actionValue, "%selected%", content))
+      Send(SelectionContext.Normalize(rule.actionValue, content))
     case "script":
       RunScriptWithSelected(rule.actionValue, content)
     case "copy":
-      A_Clipboard := StrReplace(rule.actionValue, "%selected%", content)
+      A_Clipboard := SelectionContext.Normalize(rule.actionValue, content)
   }
 }
 
@@ -229,11 +217,11 @@ ExecuteActionRule(rule, selected) {
 RunReplaced(command, content, workingDir := "") {
   lines := StrSplit(content, "`n")
   if lines.Length == 1 {
-    Run(StrReplace(command, "%selected%", QuoteIfSpace(lines[1])), workingDir)
+    Run(SelectionContext.Normalize(command, QuoteIfSpace(lines[1])), workingDir)
     return
   }
   for line in lines {
-    Run(StrReplace(command, "%selected%", QuoteIfSpace(line)), workingDir)
+    Run(SelectionContext.Normalize(command, QuoteIfSpace(line)), workingDir)
   }
 }
 

@@ -8,6 +8,7 @@
 #Include lib/core/KeymapManager.ahk
 #Include lib/core/InputTipWindow.ahk
 #Include lib/core/Utils.ahk
+#Include lib/context/SelectionContext.ahk
 #Include lib/rules/SelectedAction.ahk
 
 ; #WinActivateForce   ; 先关了遇到相关问题再打开试试
