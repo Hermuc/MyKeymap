@@ -7,7 +7,7 @@ import (
 )
 
 // 文件类型分组: 分组名 -> 后缀名列表
-// AHK 端 (bin/lib/SelectedAction.ahk) 中维护了一份相同的表, 修改时需要同步
+// AHK 端 (bin/lib/rules/SelectedAction.ahk) 中维护了一份相同的表, 修改时需要同步
 var fileGroupExts = map[string][]string{
 	"image":   {"jpg", "jpeg", "png", "gif", "bmp", "webp", "svg", "ico"},
 	"doc":     {"doc", "docx", "xls", "xlsx", "ppt", "pptx", "pdf", "txt", "md"},
@@ -18,7 +18,7 @@ var fileGroupExts = map[string][]string{
 }
 
 // actionSchemesCode 把 actionSchemes 配置渲染为 AHK 代码 (用于 mykeymap.tmpl 模板)
-// 生成的数据结构由 bin/lib/SelectedAction.ahk 中的 InitActionScheme 消费
+// 生成的数据结构由 bin/lib/rules/SelectedAction.ahk 中的 InitActionScheme 消费
 func actionSchemesCode(schemes []ActionScheme) string {
 	if len(schemes) == 0 {
 		return ""
