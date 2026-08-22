@@ -262,7 +262,7 @@
     {
       "id": 6,
       "name": "CapsLock + F",
-      "enable": true,
+      "enable": false,
       "hotkey": "*f",
       "parentID": 5,
       "delay": 0,
@@ -344,8 +344,8 @@
           {
             "windowGroupID": 0,
             "actionTypeID": 8,
-            "comment": "如果 QQ.exe 进程存在则输入 Ctrl+Alt+Z 热键激活 QQ，否则启动 QQ",
-            "ahkCode": "ProcessExistSendKeyOrRun(\"QQ.exe\", \"^!z\", \"shortcuts\\QQ.lnk\")"
+            "comment": "如果 TIM.exe 进程存在则输入 Ctrl+Alt+Z 热键激活 TIM，否则启动 TIM",
+            "ahkCode": "ProcessExistSendKeyOrRun(\"TIM.exe\", \"^!z\", \"shortcuts\\TIM.lnk\")"
           }
         ],
         "*n": [
@@ -424,7 +424,7 @@
     {
       "id": 7,
       "name": "CapsLock + Space",
-      "enable": true,
+      "enable": false,
       "hotkey": "*Space",
       "parentID": 5,
       "delay": 0,
@@ -526,24 +526,24 @@
           {
             "windowGroupID": 0,
             "actionTypeID": 7,
-            "comment": "label:39",
-            "actionValueID": 2
+            "comment": "label:47",
+            "actionValueID": 10
           }
         ],
         "*e": [
           {
             "windowGroupID": 0,
             "actionTypeID": 7,
-            "comment": "label:38",
-            "actionValueID": 1
+            "comment": "label:46",
+            "actionValueID": 9
           }
         ],
         "*f": [
           {
             "windowGroupID": 0,
             "actionTypeID": 7,
-            "comment": "label:41",
-            "actionValueID": 4
+            "comment": "label:49",
+            "actionValueID": 12
           }
         ],
         "*g": [
@@ -590,8 +590,8 @@
           {
             "windowGroupID": 0,
             "actionTypeID": 7,
-            "comment": "label:40",
-            "actionValueID": 3
+            "comment": "label:48",
+            "actionValueID": 11
           }
         ],
         "*space": [
@@ -655,7 +655,7 @@
     {
       "id": 9,
       "name": "F 模式",
-      "enable": false,
+      "enable": true,
       "hotkey": "f",
       "parentID": 0,
       "delay": 100,
@@ -834,7 +834,7 @@
     {
       "id": 10,
       "name": "3 模式",
-      "enable": true,
+      "enable": false,
       "hotkey": "*3",
       "parentID": 0,
       "delay": 0,
@@ -1211,7 +1211,7 @@
     {
       "id": 13,
       "name": "分号模式( ; )",
-      "enable": true,
+      "enable": false,
       "hotkey": "*;",
       "parentID": 0,
       "delay": 0,
@@ -1396,9 +1396,9 @@
         "singlePress": [
           {
             "windowGroupID": 0,
-            "actionTypeID": 9,
-            "comment": "label:75",
-            "actionValueID": 5
+            "actionTypeID": 6,
+            "comment": "输入 ; 键",
+            "keysToSend": "{blind}{;}"
           }
         ]
       }
@@ -1406,7 +1406,7 @@
     {
       "id": 14,
       "name": "句号模式( . )",
-      "enable": true,
+      "enable": false,
       "hotkey": "*.",
       "parentID": 0,
       "delay": 0,
@@ -1569,7 +1569,7 @@
     {
       "id": 16,
       "name": "鼠标右键",
-      "enable": true,
+      "enable": false,
       "hotkey": "RButton",
       "parentID": 0,
       "delay": 0,
@@ -1741,7 +1741,7 @@
             "actionValueID": 1
           }
         ],
-        "!CapsLock": [
+        "#+F23": [
           {
             "windowGroupID": 0,
             "actionTypeID": 9,
@@ -1760,45 +1760,15 @@
       "delay": 0,
       "disableAt": "",
       "hotkeys": {
-        "bb": [
+        "cw": [
           {
             "windowGroupID": 0,
-            "actionTypeID": 1,
-            "comment": "查询选中的单词 (低配版划词翻译)",
-            "winTitle": "Bing 词典",
-            "target": "msedge.exe",
-            "args": "--app=https://www.bing.com/dict/search?q={selected}"
+            "actionTypeID": 3,
+            "comment": "label:1",
+            "actionValueID": 1
           }
         ],
-        "ca": [
-          {
-            "windowGroupID": 0,
-            "actionTypeID": 1,
-            "comment": "Calculator ( 计算器 )",
-            "winTitle": "计算器",
-            "target": "calc.exe"
-          }
-        ],
-        "cc": [
-          {
-            "windowGroupID": 0,
-            "actionTypeID": 1,
-            "comment": "用 VS Code 打开选中的文件，在新窗口中打开",
-            "target": "shortcuts\\Visual Studio Code.lnk",
-            "args": "-n \"{selected}\""
-          }
-        ],
-        "cmd": [
-          {
-            "windowGroupID": 0,
-            "actionTypeID": 1,
-            "comment": "位于 PATH 环境变量中的命令 (比如 cmd.exe) 无需使用绝对路径",
-            "winTitle": "ahk_exe cmd.exe",
-            "target": "cmd.exe",
-            "args": "/k cd /d %userprofile%"
-          }
-        ],
-        "dd": [
+        "dl": [
           {
             "windowGroupID": 0,
             "actionTypeID": 1,
@@ -1814,6 +1784,15 @@
             "target": "ahk-expression: A_WorkingDir"
           }
         ],
+        "et": [
+          {
+            "windowGroupID": 0,
+            "actionTypeID": 1,
+            "comment": "打开 Everything",
+            "winTitle": "Everything",
+            "target": "D:\\PortableApps\\Scoop\\apps\\tubatools\\current\\app\\src\\Tools\\其他工具\\Everything\\everything.exe"
+          }
+        ],
         "ex": [
           {
             "windowGroupID": 0,
@@ -1822,29 +1801,59 @@
             "actionValueID": 3
           }
         ],
-        "ga": [
+        "fc": [
           {
             "windowGroupID": 0,
             "actionTypeID": 1,
-            "comment": "打开桌面的 Game 文件夹",
-            "winTitle": "Game ahk_exe explorer.exe",
-            "target": "ahk-expression: A_Desktop \"\\Game\""
+            "comment": "打开 FlClash",
+            "winTitle": "ahk_exe FlClash.exe",
+            "target": "shortcuts\\FlClash.lnk",
+            "detectHiddenWindow": true
           }
         ],
-        "gg": [
+        "fe": [
           {
             "windowGroupID": 0,
             "actionTypeID": 1,
-            "comment": "用 Google 搜索选中的内容，或跳转到选中的 HTTP 链接",
-            "target": "https://www.google.com/search?q={selected}"
+            "comment": "打开 文件资源管理器（File Explorer）",
+            "winTitle": "ahk_exe explorer.exe",
+            "target": "shortcuts\\File Explorer.lnk"
           }
         ],
-        "gj": [
+        "gd": [
           {
             "windowGroupID": 0,
-            "actionTypeID": 2,
-            "comment": "label:19",
-            "actionValueID": 3
+            "actionTypeID": 1,
+            "comment": "打开 Ghost Downloader",
+            "winTitle": "Ghost Downloader",
+            "target": "shortcuts\\Ghost Downloader 3.lnk"
+          }
+        ],
+        "hm": [
+          {
+            "windowGroupID": 0,
+            "actionTypeID": 1,
+            "comment": "打开 HypoMux",
+            "winTitle": "HypoMux",
+            "target": "shortcuts\\HypoMux.lnk"
+          }
+        ],
+        "jy": [
+          {
+            "windowGroupID": 0,
+            "actionTypeID": 1,
+            "comment": "打开 剪映",
+            "winTitle": "剪映专业版",
+            "target": "D:\\PortableApps\\Unofficial\\剪映专业版 v6.0.1\\JianyingPro.exe"
+          }
+        ],
+        "ka": [
+          {
+            "windowGroupID": 0,
+            "actionTypeID": 1,
+            "comment": "打开 KA Music",
+            "winTitle": "ahk_exe KugouAvaloniaPlayer.exe",
+            "target": "shortcuts\\KugouAvaloniaPlayer.lnk"
           }
         ],
         "kp": [
@@ -1855,20 +1864,22 @@
             "actionValueID": 15
           }
         ],
-        "ld": [
-          {
-            "windowGroupID": 0,
-            "actionTypeID": 2,
-            "comment": "label:22",
-            "actionValueID": 6
-          }
-        ],
-        "lj": [
+        "kzm": [
           {
             "windowGroupID": 0,
             "actionTypeID": 1,
-            "comment": "打开「 回收站 」文件夹",
-            "target": "shell:RecycleBinFolder"
+            "comment": "打开 Kazumi",
+            "winTitle": "Kazumi",
+            "target": "shortcuts\\kazumi.lnk"
+          }
+        ],
+        "ls": [
+          {
+            "windowGroupID": 0,
+            "actionTypeID": 1,
+            "comment": "打开 Lossless Scaling",
+            "winTitle": "Lossless Scaling",
+            "target": "D:\\PortableApps\\Unofficial\\LS.v3.2.1\\LosslessScaling.exe"
           }
         ],
         "ly": [
@@ -1877,6 +1888,15 @@
             "actionTypeID": 1,
             "comment": "打开蓝牙设置",
             "target": "ms-settings:bluetooth"
+          }
+        ],
+        "me": [
+          {
+            "windowGroupID": 0,
+            "actionTypeID": 1,
+            "comment": "打开 Microsoft Edge",
+            "winTitle": "ahk_exe msedge.exe",
+            "target": "shortcuts\\Microsoft Edge.lnk"
           }
         ],
         "mm": [
@@ -1889,31 +1909,13 @@
             "args": "D:\\MyFiles\\MyKeymap2"
           }
         ],
-        "ms": [
+        "ob": [
           {
             "windowGroupID": 0,
             "actionTypeID": 1,
-            "comment": "个人常用项目 - My Site",
-            "winTitle": "my_site - Visual Studio Code",
-            "target": "shortcuts\\Visual Studio Code.lnk",
-            "args": "D:\\project\\my_site"
-          }
-        ],
-        "mu": [
-          {
-            "windowGroupID": 0,
-            "actionTypeID": 2,
-            "comment": "label:2401",
-            "actionValueID": 9
-          }
-        ],
-        "no": [
-          {
-            "windowGroupID": 0,
-            "actionTypeID": 1,
-            "comment": "记事本",
-            "winTitle": "记事本",
-            "target": "notepad.exe"
+            "comment": "打开 Obsidian",
+            "winTitle": "ahk_exe Obsidian.exe",
+            "target": "shortcuts\\Obsidian.lnk"
           }
         ],
         "pd": [
@@ -1924,20 +1926,54 @@
             "actionValueID": 10
           }
         ],
+        "pp": [
+          {
+            "windowGroupID": 0,
+            "actionTypeID": 1,
+            "comment": "打开 PiliPlus",
+            "winTitle": "PiliPlus",
+            "target": "shortcuts\\PiliPlus.lnk"
+          }
+        ],
+        "qq": [
+          {
+            "windowGroupID": 0,
+            "actionTypeID": 1,
+            "comment": "打开 QQ",
+            "winTitle": "QQ",
+            "target": "shortcuts\\QQ.lnk"
+          }
+        ],
         "rb": [
           {
             "windowGroupID": 0,
-            "actionTypeID": 2,
-            "comment": "label:20",
-            "actionValueID": 4
+            "actionTypeID": 1,
+            "comment": "打开「 回收站 」文件夹",
+            "target": "shell:RecycleBinFolder"
           }
         ],
-        "rex": [
+        "rd": [
+          {
+            "windowGroupID": 0,
+            "actionTypeID": 6,
+            "comment": "回到桌面（Return Desk）",
+            "keysToSend": "#d"
+          }
+        ],
+        "re": [
           {
             "windowGroupID": 0,
             "actionTypeID": 2,
             "comment": "label:23",
             "actionValueID": 7
+          }
+        ],
+        "sd": [
+          {
+            "windowGroupID": 0,
+            "actionTypeID": 2,
+            "comment": "label:19",
+            "actionValueID": 3
           }
         ],
         "se": [
@@ -1956,22 +1992,31 @@
             "actionValueID": 2
           }
         ],
-        "sp": [
+        "steam": [
           {
             "windowGroupID": 0,
             "actionTypeID": 1,
-            "comment": "Spotify 网页",
-            "winTitle": "Spotify",
-            "target": "https://open.spotify.com/"
+            "comment": "打开 steam",
+            "winTitle": " ahk_exe steamwebhelper.exe",
+            "target": "shortcuts\\Steam.lnk"
           }
         ],
-        "ss": [
+        "tb": [
           {
             "windowGroupID": 0,
             "actionTypeID": 1,
-            "comment": "Spotify 应用",
-            "winTitle": "ahk_exe Spotify.exe",
-            "target": "shortcuts\\Spotify.lnk"
+            "comment": "打开 图吧工具箱",
+            "winTitle": "图吧工具箱",
+            "target": "D:\\PortableApps\\Scoop\\apps\\tubatools\\current\\app\\src\\TubaWinUi3.exe"
+          }
+        ],
+        "tg": [
+          {
+            "windowGroupID": 0,
+            "actionTypeID": 1,
+            "comment": "打开 AyuGram",
+            "winTitle": "ahk_exe AyuGram.exe",
+            "target": "shortcuts\\AyuGram.lnk"
           }
         ],
         "tm": [
@@ -1982,29 +2027,13 @@
             "keysToSend": "^+{esc}"
           }
         ],
-        "vm": [
+        "tu": [
           {
             "windowGroupID": 0,
             "actionTypeID": 1,
-            "comment": "Volume Mixer 音量合成器",
-            "target": "ms-settings:apps-volume"
-          }
-        ],
-        "we": [
-          {
-            "windowGroupID": 0,
-            "actionTypeID": 1,
-            "comment": "网易云音乐 UWP 版",
-            "winTitle": "网易云音乐",
-            "target": "shortcuts\\网易云音乐.lnk"
-          }
-        ],
-        "wf": [
-          {
-            "windowGroupID": 0,
-            "actionTypeID": 1,
-            "comment": "查看周围 WiFi",
-            "target": "ms-availablenetworks:"
+            "comment": "打开 Total Uninstall",
+            "winTitle": "Total Uninstall 专业版",
+            "target": "D:\\PortableApps\\Unofficial\\TotalUninstall\\TUPortable.exe"
           }
         ],
         "wt": [
@@ -2012,8 +2041,27 @@
             "windowGroupID": 0,
             "actionTypeID": 1,
             "comment": "用 Windows Terminal 打开选中的文件夹",
+            "winTitle": "ahk_exe WindowsTerminal.exe",
             "target": "wt.exe",
             "args": "-d \"{selected}\""
+          }
+        ],
+        "wx": [
+          {
+            "windowGroupID": 0,
+            "actionTypeID": 1,
+            "comment": "打开 微信",
+            "winTitle": "微信",
+            "target": "shortcuts\\WeChat.lnk"
+          }
+        ],
+        "zg": [
+          {
+            "windowGroupID": 0,
+            "actionTypeID": 1,
+            "comment": "打开 ZedG",
+            "winTitle": "ahk_class Zed::Window",
+            "target": "shortcuts\\ZedG.lnk"
           }
         ]
       }
@@ -2021,7 +2069,7 @@
     {
       "id": 3,
       "name": "Abbreviation",
-      "enable": true,
+      "enable": false,
       "hotkey": "semicolonAbbr",
       "parentID": 0,
       "delay": 0,
@@ -2190,7 +2238,7 @@
   ],
   "options": {
     "hideMatrix": false,
-    "mykeymapVersion": "",
+    "mykeymapVersion": "2.0-beta33",
     "windowGroups": [
       {
         "id": -1,
@@ -2256,7 +2304,7 @@
         "value": "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\"
       }
     ],
-    "startup": false,
+    "startup": true,
     "language": "zh",
     "keyMapping": "",
     "keyboardLayout": "1 2 3 4 5 6 7 8 9 0\nq w e r t y u i o p\na s d f g h j k l ;\nz x c v b n m , . /\nspace enter backspace - [ ' singlePress"
@@ -2266,7 +2314,7 @@
       "id": 1,
       "name": "新的选中动作",
       "hotkey": "",
-      "enable": false,
+      "enable": true,
       "rules": [
         {
           "priority": 1,
