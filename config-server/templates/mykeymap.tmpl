@@ -3,6 +3,8 @@
 #UseHook true
 
 #include lib/core/translation.ahk
+#Include lib/core/IKeyEventBus.ahk
+#Include lib/core/EventBus.ahk
 #Include lib/core/Functions.ahk
 #Include lib/actions/Actions.ahk
 #Include lib/core/KeymapManager.ahk
@@ -41,7 +43,7 @@ InitKeymap()
   capsHook := InputHook("", "{CapsLock}{Esc}", "{{ .CapslockAbbrKeys }}")
   capsHook.KeyOpt("{CapsLock}", "S")
   capsHook.KeyOpt("{Backspace}", "N")
-  capsHook.OnChar := PostCharToCaspAbbr
+  capsHook.OnChar := (ih, char) => (PostCharToCaspAbbr(ih, char), FuzzySuffixFire(ih, char, "capslock"))
   capsHook.OnKeyDown := PostBackspaceToCaspAbbr
   Run("bin\MyKeymap-CommandInput.exe")
 {{ end }}
