@@ -211,8 +211,11 @@ class ConfigProvider {
   `generators/` 目录,每个 TypeID 一文件;
 - 生成器新增义务:可输出 **注册计划 JSON**(`settings.exe DumpPlan <config> <out>`),
   与 AHK 运行时加载器的注册计划 diff(Oracle 机制);
-- `preprocess()` 的 `!f17` 注入逻辑缺陷(仅遍历首个 keymap)在阶段 3 修复,
-  修复后生成产物与基线的该行保持一致;
+- ~~`preprocess()` 的 `!f17` 注入逻辑缺陷~~(已证伪):`Preprocess` 遍历逻辑本身正确;
+  真实缺陷是 `GenerateAHK` 验证命令不调用 `Preprocess`(仅运行时 `GenerateScripts` 调用),
+  导致验证产物缺 `!f17`,此前"`!f17` 为手工行"的认知作废。
+  阶段 3 已修复:`Preprocess` 导出,`GenerateAHK` 对齐运行时路径,
+  修复后生成产物与部署运行产物**逐行完全一致**(已验证);
 - 遗留代码载荷(`ahkCode` / `ahk-expression:` / `ahk:` 行 / conditionType 5 表达式)
   继续由 Go 编译,输出到 `compat/` 消费格式,直至用户迁移为插件。
 

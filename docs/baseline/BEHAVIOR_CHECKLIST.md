@@ -11,7 +11,7 @@
 | 配置真源 | **部署目录 `MyKeymap-2.0-beta33\data\config.json`**(用户日常使用与保存配置的版本,16 keymaps,启用 4 模式);仓库 `data/config.json` 已同步为部署配置 |
 | 生成分支 | `refactor/modularize` |
 | 模式过滤规则 | `EnabledKeymaps`:仅 `id=1` 与 `id>=5` 且 `enable=true` 的 keymap 进入生成(id=2/3/4 由 CommandInput/静态 switch 处理)。部署配置启用:id=5 CapsLock / id=8 J 模式 / id=9 F 模式 / id=1 Custom Hotkeys;其余(id=6,7,10,11,12,13,14,16,17)均为 `enable=false`,不生成 |
-| 已知手工行 | `km.Map("!f17", _ => MyKeymapReload(), , , , "S")`(Custom Hotkeys 块):因 `preprocess()` 仅在 keymaps 首位为 id=1 时才注入免疫热键,当前配置首位为 id=5,该行由历史手工保留,是**基线固有行为,必须保持**(阶段 3 修复注入逻辑) |
+| 已知手工行 | ~~`!f17` 手工行~~ **已证伪**:`!f17` 由 `Preprocess` 自动注入(运行时路径 `GenerateScripts`),非手工。此前误判原因:验证用的 `GenerateAHK` 命令不调 `Preprocess`。阶段 3 已对齐两条路径,`!f17` 由生成器自动产出 |
 | 配置自变记录 | 8/20 备份后,用户经设置页新增 actionSchemes(id=1 "新的选中动作",enable=true,单条空规则)→ 生成脚本多出**空的** `ActionSchemeList := Array()` 段,无实际热键。此为配置变化,非代码引起 |
 | 已废弃 | 仓库原始 `data/config.json`(上游样例,57686 字节)与部署配置不同(多出 CapsLock+F/Space、3/分号/句号模式、28 条缩写、gg/bb 等),不再作为基线依据 |
 
@@ -61,7 +61,7 @@
 
 ## 模式 4 — Custom Hotkeys(id=1)
 
-- [ ] `!'` 重载(免疫挂起)/ `!+'` 暂停切换(免疫挂起)/ **`!f17` 重载(基线固有手工行,阶段 3 修复前必须保留)**
+- [ ] `!'` 重载(免疫挂起)/ `!+'` 暂停切换(免疫挂起)/ **`!f17` 重载(`Preprocess` 自动注入,阶段 3 已验证逐行复现)**
 - [ ] `#+F23` 切换大写锁定状态(`ToggleCapslock`)
 - [ ] 窗口组:`MY_WINDOW_GROUP_1` = chrome+msedge+firefox(web 浏览器组);`MY_WINDOW_GROUP__1` = 游戏组(禁用全局)
 - [ ] 无按键重映射(#HotIf 块为空)
@@ -90,7 +90,7 @@
 
 ## 核对方法
 
-1. 阶段 1/2 验证结论:重构后代码 + 部署配置生成的脚本(259 行)与部署运行产物(260 行,含 `!f17`)
-   归一化后逐行一致,**行为零变更 PASS**(差异仅 #Include 路径行与 `!f17` 手工行)
+1. 阶段 3 验证结论(最强形式):重构后代码 + 部署配置生成的脚本与部署运行产物(260 行)
+   **逐行完全一致**(含 `!f17` 自动注入),零行为变更 PASS
 2. 阶段 3+:与上一阶段产物做行为 diff,逐项人工验证本清单中标注受影响的条目
 3. 关键交互(模式进栈/出栈、单击检测、缩写输入)须在真实键盘上验证
