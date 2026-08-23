@@ -97,10 +97,11 @@ export interface ActionScheme {
 // 规则按 priority 升序匹配, 第一个匹配的规则生效
 export interface ActionRule {
   priority: number
-  // fileExt(文件后缀) / fileGroup(文件分组) / textRegex(文本正则) / textType(文本特征) / default(兜底)
+  // matchType: fileExt(文件后缀) / fileGroup(文件分组) / textType(文本特征) / default(兜底)
   matchType: string
   matchValue: string
-  // open(程序打开) / search(搜索) / run(执行命令) / send_keys(发送按键) / script(AHK脚本) / copy(复制到剪贴板)
+  // actionType: open(程序打开) / search(搜索) / run(执行命令) / send_keys(发送按键) / script(AHK脚本) / copy(复制到剪贴板)
+  //   + textType 专用: open_url / open_path / open_folder / magnet_download / open_registry (见 constants.ts TEXT_TYPE_ACTIONS)
   actionType: string
   actionValue: string
   workingDir?: string

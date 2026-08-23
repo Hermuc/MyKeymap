@@ -90,11 +90,6 @@ MatchActionRule(rule, selected) {
         return false
       }
       return MatchFileGroup(rule.matchValue, selected.content)
-    case "textRegex":
-      if selected.type != "text" {
-        return false
-      }
-      return RegExMatch(selected.content, rule.matchValue) > 0
     case "textType":
       if selected.type != "text" {
         return false
@@ -168,7 +163,8 @@ MatchFileGroup(group, content) {
 }
 
 /**
- * 文本特征匹配: url(链接) / path(路径) / plain(纯文本)
+ * 文本特征匹配: url(链接) / path(路径) / magnet(磁力链接) / plain(纯文本)
+ * 与 config-server/internal/script/actionscheme.go 的 matchTextType 保持一致
  * @param t 特征类型
  * @param content 选中文本
  * @returns {boolean}
@@ -176,25 +172,41 @@ MatchFileGroup(group, content) {
 MatchTextType(t, content) {
   isURL := RegExMatch(content, "i)^(https?|ftp)://") > 0
   isPath := RegExMatch(content, "^(\\\\[^\\]+\\[^\\]+|[a-zA-Z]:\\)") > 0
+  isMagnet := RegExMatch(content, "i)^magnet:") > 0
   switch Trim(t) {
     case "url":
       return isURL
     case "path":
       return isPath
+    case "magnet":
+      return isMagnet
     case "plain":
-      return not (isURL or isPath)
+      return not (isURL or isPath or isMagnet)
   }
   return false
 }
 
 /**
  * 执行规则对应的行为
+ * textType 特征的专用行为 (open_url 等) 直接作用于选中内容, 不接受命令模板;
+ * 特征与行为的合法组合见 config-server/internal/script/actionscheme.go 的 textTypeActions
  * @param rule 规则对象
  * @param selected 选中内容
  */
 ExecuteActionRule(rule, selected) {
   content := selected.content
   switch rule.actionType {
+    case "open_url":
+      ; 默认浏览器打开选中网址 (AHK Run 对 http(s)/ftp URL 自动调用系统默认浏览器)
+      Run(Trim(content))
+    case "open_path":
+      OpenSelectedPaths(content)
+    case "open_folder":
+      OpenSelectedFolder(content)
+    case "magnet_download":
+      DownloadMagnet(content)
+    case "open_registry":
+      OpenRegistryKey(content)
     case "open":
       RunReplaced(rule.actionValue, content, rule.workingDir)
     case "run":
@@ -209,6 +221,95 @@ ExecuteActionRule(rule, selected) {
     case "copy":
       A_Clipboard := SelectionContext.Normalize(rule.actionValue, content)
   }
+}
+
+/**
+ * 打开选中路径 (逐行), 按系统关联程序打开, 等同资源管理器双击
+ * @param content 路径列表 (换行分隔)
+ */
+OpenSelectedPaths(content) {
+  for line in StrSplit(content, "`n") {
+    line := Trim(line)
+    if (line) {
+      Run(QuoteIfSpace(line))
+    }
+  }
+}
+
+/**
+ * 打开选中路径所在文件夹: 选中本身是目录时直接打开, 是文件时打开其父目录
+ * 多选时只处理第一行 (行为语义: 打开第一个路径所在文件夹)
+ * @param content 选中内容
+ */
+OpenSelectedFolder(content) {
+  line := Trim(StrSplit(content, "`n")[1])
+  if not (line) {
+    return
+  }
+  ; FileExist 返回属性串, 含 "D" 表示目录
+  if InStr(FileExist(line), "D") {
+    Run(QuoteIfSpace(line))
+    return
+  }
+  SplitPath(line, , &dir)
+  if (dir) {
+    Run(QuoteIfSpace(dir))
+  }
+}
+
+/**
+ * 用默认 BT 下载工具下载磁力链接 (走 magnet: 协议关联, 不硬编码具体下载软件)
+ * 系统未注册默认处理器时给出中文提示而非静默失败
+ * @param content 选中内容
+ */
+DownloadMagnet(content) {
+  line := Trim(StrSplit(content, "`n")[1])
+  if not (line) {
+    return
+  }
+  if not (CheckMagnetHandler()) {
+    Tip(Translation().magnet_no_handler, -2500)
+    return
+  }
+  Run(line)
+}
+
+/**
+ * 检测系统是否注册了 magnet: 协议默认处理器
+ * HKCR 为 HKLM/HKCU 类注册的合并视图, 普通用户权限可读
+ * @returns {boolean}
+ */
+CheckMagnetHandler() {
+  try {
+    cmd := RegRead("HKCR\magnet\shell\open\command")
+    return cmd != ""
+  }
+  catch {
+    return false
+  }
+}
+
+/**
+ * 打开注册表编辑器并定位到选中键路径
+ * 原理: regedit 启动时读取 LastKey 值自动定位 (系统内置行为, 无需第三方工具与管理员权限)
+ * regedit 已在运行时先结束再重开 (regedit 无未保存数据, 杀进程安全)
+ * @param content 选中内容
+ */
+OpenRegistryKey(content) {
+  path := Trim(StrSplit(content, "`n")[1])
+  if not (path) {
+    return
+  }
+  try RegWrite(path, "REG_SZ", "HKCU\Software\Microsoft\Windows\CurrentVersion\Applets\Regedit", "LastKey")
+  catch {
+    Tip(Translation().registry_open_failed, -2500)
+    return
+  }
+  if ProcessExist("regedit.exe") {
+    ProcessClose("regedit.exe")
+    ProcessWaitClose("regedit.exe", 2)
+  }
+  Run("regedit.exe")
 }
 
 /**

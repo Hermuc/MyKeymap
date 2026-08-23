@@ -227,6 +227,14 @@ func SaveConfigHandler(debug bool) gin.HandlerFunc {
 			panic(err)
 		}
 
+		// 校验选中动作方案组合合法性 (textType 特征 -> 行为 必须语义匹配), 非法组合拒绝保存
+		for i := range config.ActionSchemes {
+			if err := script.ValidateActionSchemeRules(&config.ActionSchemes[i]); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"message": "保存失败: " + err.Error()})
+				return
+			}
+		}
+
 		// 生成帮助文件: 有自定义内容才生成, 内容被清空时删除旧文件避免残留
 		if config.HelpPageHtml != "" {
 			saveHelpPageHtml(config.HelpPageHtml)

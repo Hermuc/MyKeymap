@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { ActionRule } from "@/types/config";
-import { ACTION_TYPES, FILE_GROUPS, MATCH_TYPES } from "./constants";
+import { ACTION_TYPES, FILE_GROUPS, MATCH_TYPES, TEXT_ACTIONS } from "./constants";
 
 const props = defineProps<{
   rules: Array<ActionRule>
@@ -38,6 +38,10 @@ function actionValueText(rule: ActionRule) {
   if (rule.actionType == "search") return "搜索: " + rule.actionValue
   if (rule.actionType == "send_keys") return "按键: " + rule.actionValue
   if (rule.actionType == "copy") return "复制: " + rule.actionValue
+  // 文本特征专用行为: 无命令模板, 直接显示行为名 (避免误显示"未设置行为")
+  if (TEXT_ACTIONS.has(rule.actionType)) {
+    return ACTION_TYPES.find(x => x.value == rule.actionType)?.label ?? rule.actionType
+  }
   return rule.actionValue
 }
 

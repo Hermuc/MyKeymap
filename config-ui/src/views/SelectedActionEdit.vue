@@ -7,7 +7,7 @@ import HotkeyCapture from "@/components/action/HotkeyCapture.vue";
 import RuleList from "@/components/action/RuleList.vue";
 import RuleEditor from "@/components/action/RuleEditor.vue";
 import ActionTester from "@/components/action/ActionTester.vue";
-import { collectUsedHotkeys, createRule } from "@/components/action/constants";
+import { collectUsedHotkeys, createRule, ACTION_TYPES, TEXT_TYPE_ACTIONS, TEXT_TYPE_LABELS } from "@/components/action/constants";
 
 const store = useConfigStore()
 const route = useRoute()
@@ -110,6 +110,17 @@ function confirmImport() {
     if (!parsed.rules || !Array.isArray(parsed.rules)) {
       importError.value = "JSON 格式不正确: 缺少 rules 数组"
       return
+    }
+    // 校验 textType 特征与行为的组合合法性 (与后端保存校验一致, 非法组合拒绝导入)
+    for (const [i, r] of parsed.rules.entries()) {
+      if (r.matchType == "textType") {
+        const allowed = TEXT_TYPE_ACTIONS[r.matchValue] ?? []
+        if (!allowed.includes(r.actionType)) {
+          const actionLabel = ACTION_TYPES.find(x => x.value == r.actionType)?.label ?? r.actionType
+          importError.value = `第 ${i + 1} 条规则: 文本特征「${TEXT_TYPE_LABELS[r.matchValue] ?? r.matchValue}」与行为「${actionLabel}」不匹配, 无法导入`
+          return
+        }
+      }
     }
     // 只导入规则集, 保留当前方案的 id/name/hotkey/enable
     // 按数组顺序重写 priority, 保证与匹配顺序一致 (手工编辑的导入 JSON 可能乱序, 会导致测试命中高亮错位)

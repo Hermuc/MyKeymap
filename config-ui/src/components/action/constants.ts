@@ -1,16 +1,22 @@
 // 选中动作系统的常量与工具函数
 
 // 匹配条件类型
+// 注: 「文本正则」已移除 (2026-08-23), 文本匹配统一走「文本特征」
 export const MATCH_TYPES = [
   { value: "fileExt", label: "文件后缀", hint: "如 .txt 或 txt,md (逗号分隔多个), * 匹配任意文件" },
   { value: "fileGroup", label: "文件分组", hint: "image / doc / code / archive / video / audio" },
-  { value: "textRegex", label: "文本正则", hint: "如 ^https?:// 或 ^[a-zA-Z]:\\\\" },
-  { value: "textType", label: "文本特征", hint: "url (链接) / path (路径) / plain (纯文本)" },
+  { value: "textType", label: "文本特征", hint: "url (链接) / path (路径) / magnet (磁力链接) / plain (纯文本)" },
   { value: "default", label: "默认 (兜底)", hint: "任何内容都匹配, 一般放在规则列表最后" },
 ]
 
 // 行为类型
+// textType 特征下可选行为受 TEXT_TYPE_ACTIONS 联动约束 (特征与行为必须语义匹配)
 export const ACTION_TYPES = [
+  { value: "open_url", label: "默认浏览器打开网址", hint: "用系统默认浏览器打开选中的网址, 不硬编码具体浏览器" },
+  { value: "open_path", label: "打开文件/程序 (系统关联)", hint: "按系统关联程序打开选中的路径, 等同资源管理器双击" },
+  { value: "open_folder", label: "打开文件夹", hint: "用系统默认文件管理器打开选中路径所在文件夹" },
+  { value: "magnet_download", label: "磁力链接下载", hint: "用系统默认 BT 下载工具下载选中磁力链接 (走 magnet: 协议关联, 不依赖具体软件)" },
+  { value: "open_registry", label: "注册表定位", hint: "打开注册表编辑器并自动定位到选中的键路径" },
   { value: "open", label: "程序打开", hint: "用指定程序打开选中文件, 如 code.exe %selected%" },
   { value: "search", label: "搜索", hint: "把 %selected% 作为关键词搜索, 如 https://www.google.com/search?q=%selected%" },
   { value: "run", label: "执行命令", hint: "执行命令, 支持 %selected% 变量, 如 notepad.exe %selected%" },
@@ -18,6 +24,38 @@ export const ACTION_TYPES = [
   { value: "script", label: "AHK 脚本", hint: "执行一段 AutoHotkey 脚本片段, %selected% 会替换为字符串字面量" },
   { value: "copy", label: "复制", hint: "把 %selected% 替换后的文本写入剪贴板" },
 ]
+
+// 文本特征 -> 可选行为类型 映射 (单一真源, 需同步的副本):
+//   - Go 端: config-server/internal/script/actionscheme.go 的 textTypeActions (保存/测试校验用)
+//   - AHK 端: bin/lib/rules/SelectedAction.ahk 的 ExecuteActionRule 分支
+// 联动规则: 特征与行为必须语义匹配, 禁止出现「链接 + 程序打开」这类错配组合
+export const TEXT_TYPE_ACTIONS: Record<string, Array<string>> = {
+  url: ["open_url", "search"],
+  path: ["open_path", "open_folder"],
+  magnet: ["magnet_download"],
+  plain: ["open_registry", "search", "run", "send_keys", "script", "copy"],
+}
+
+// 切换文本特征时自动选用的默认行为
+// 注: 与「url 特征不展示程序打开」同理, 切换特征时若原行为不在新特征的可选范围内, 会自动落到这里
+//  (与 Go 端 textTypeActions 键集一致, 保证前端动态列表与后端校验结果相同)
+export const TEXT_TYPE_DEFAULT_ACTION: Record<string, string> = {
+  url: "open_url",
+  path: "open_path",
+  magnet: "magnet_download",
+  plain: "search",
+}
+
+// 文本特征的中文名 (与 Go 端 textTypeLabels 保持一致, 供联动提示/规则列表展示)
+export const TEXT_TYPE_LABELS: Record<string, string> = {
+  url: "链接",
+  path: "路径",
+  magnet: "磁力链接",
+  plain: "纯文本",
+}
+
+// 文本特征专用行为集合 (无命令模板, actionValue 恒为空; 供编辑器/规则列表共用)
+export const TEXT_ACTIONS = new Set(["open_url", "open_path", "open_folder", "magnet_download", "open_registry"])
 
 // 文件分组 (与后端 actionscheme.go / AHK SelectedAction.ahk 保持一致)
 export const FILE_GROUPS = [
@@ -30,9 +68,11 @@ export const FILE_GROUPS = [
 ]
 
 // 文本特征
+// 注: magnet(磁力链接) 为 2026-08-23 新增, plain 的判定会排除 magnet (见 Go 端 matchTextType / AHK 端 MatchTextType)
 export const TEXT_TYPES = [
   { value: "url", label: "链接" },
   { value: "path", label: "路径" },
+  { value: "magnet", label: "磁力链接" },
   { value: "plain", label: "纯文本" },
 ]
 

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -62,6 +61,10 @@ func CreateActionSchemeHandler(c *gin.Context) {
 	if err := c.ShouldBindJSON(&scheme); err != nil {
 		panic(err)
 	}
+	if err := script.ValidateActionSchemeRules(&scheme); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		return
+	}
 	schemes := loadActionSchemes()
 	maxID := 0
 	for _, s := range schemes {
@@ -80,6 +83,10 @@ func UpdateActionSchemeHandler(c *gin.Context) {
 	var scheme script.ActionScheme
 	if err := c.ShouldBindJSON(&scheme); err != nil {
 		panic(err)
+	}
+	if err := script.ValidateActionSchemeRules(&scheme); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		return
 	}
 	schemes := loadActionSchemes()
 	for i, s := range schemes {
@@ -138,9 +145,9 @@ func TestActionSchemeHandler(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"message": "scheme not found"})
 		return
 	}
-	// 预检正则: Go RE2 不支持 PCRE 部分语法 (如前瞻 (?=...)), 编译失败时明确提示而非误报"不匹配"
-	if badValue, err := script.ValidateActionSchemeRegexes(scheme); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": fmt.Sprintf("正则 %q 无法在测试环境解析 (Go RE2 限制), AHK 运行时 (PCRE2) 可能支持该语法, 请以实际运行为准: %v", badValue, err)})
+	// 校验组合合法性: textType 特征 -> 行为 必须语义匹配 (非法组合拒绝测试, 与保存行为一致)
+	if err := script.ValidateActionSchemeRules(scheme); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
 	rule := script.MatchActionScheme(scheme, req.IsFile, req.Content)

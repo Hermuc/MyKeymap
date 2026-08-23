@@ -17,19 +17,67 @@ var fileGroupExts = map[string][]string{
 	"audio":   {"mp3", "wav", "flac", "ogg", "aac", "m4a"},
 }
 
-// ValidateActionSchemeRegexes 预检所有 textRegex 规则的正则能否在 Go RE2 下编译
-// Go 的 regexp 是 RE2 (不支持前瞻/回溯等 PCRE 语法), 而 AHK 端 RegExMatch 用 PCRE2,
-// 编译失败时返回该正则与错误, 调用方应明确提示用户而非误报"不匹配"
-func ValidateActionSchemeRegexes(s *ActionScheme) (badValue string, err error) {
+// 文本特征 -> 可选行为类型 映射 (单一真源, 需同步的副本):
+//   - 前端: config-ui/src/components/action/constants.ts 的 TEXT_TYPE_ACTIONS
+//   - AHK 端: bin/lib/rules/SelectedAction.ahk 的 ExecuteActionRule 分支
+// 规则: 特征与行为必须语义匹配, 禁止出现「链接 + 程序打开」这类错配组合
+var textTypeActions = map[string][]string{
+	"url":    {"open_url", "search"},
+	"path":   {"open_path", "open_folder"},
+	"magnet": {"magnet_download"},
+	"plain":  {"open_registry", "search", "run", "send_keys", "script", "copy"},
+}
+
+// 特征/行为的中文显示名 (保存校验的错误提示用, 与前端 constants.ts label 保持一致)
+var textTypeLabels = map[string]string{
+	"url":    "链接",
+	"path":   "路径",
+	"magnet": "磁力链接",
+	"plain":  "纯文本",
+}
+
+var actionTypeLabels = map[string]string{
+	"open_url":        "默认浏览器打开网址",
+	"open_path":       "打开文件/程序 (系统关联)",
+	"open_folder":     "打开文件夹",
+	"magnet_download": "磁力链接下载",
+	"open_registry":   "注册表定位",
+}
+
+// ValidateActionSchemeRules 校验方案规则的组合合法性 (textType 特征 -> 行为 必须语义匹配)
+// 非法组合返回含中文提示的错误, 调用方应拒绝保存
+func ValidateActionSchemeRules(s *ActionScheme) error {
 	for i := range s.Rules {
 		r := &s.Rules[i]
-		if r.MatchType == "textRegex" && r.MatchValue != "" {
-			if _, err := regexp.Compile(r.MatchValue); err != nil {
-				return r.MatchValue, err
+		if r.MatchType != "textType" {
+			continue
+		}
+		allowed, ok := textTypeActions[r.MatchValue]
+		if !ok {
+			return fmt.Errorf("未知的文本特征「%s», 可选: 链接 / 路径 / 磁力链接 / 纯文本", r.MatchValue)
+		}
+		for _, a := range allowed {
+			if a == r.ActionType {
+				return nil
 			}
 		}
+		return fmt.Errorf("文本特征「%s」与行为「%s」不匹配, 可选行为: %s",
+			textTypeLabels[r.MatchValue], actionTypeLabels[r.ActionType], joinActionLabels(allowed))
 	}
-	return "", nil
+	return nil
+}
+
+// joinActionLabels 把行为类型列表拼接为中文提示 (无显示名的回退原值)
+func joinActionLabels(actions []string) string {
+	labels := make([]string, 0, len(actions))
+	for _, a := range actions {
+		if l, ok := actionTypeLabels[a]; ok {
+			labels = append(labels, l)
+		} else {
+			labels = append(labels, a)
+		}
+	}
+	return strings.Join(labels, " / ")
 }
 
 // MatchActionScheme 按优先级匹配第一个符合条件的规则, 供模拟测试 API 使用
@@ -55,15 +103,6 @@ func matchActionRule(rule *ActionRule, isFile bool, content string) bool {
 			return false
 		}
 		return matchFileGroup(rule.MatchValue, content)
-	case "textRegex":
-		if isFile {
-			return false
-		}
-		re, err := regexp.Compile(rule.MatchValue)
-		if err != nil {
-			return false
-		}
-		return re.MatchString(content)
 	case "textType":
 		if isFile {
 			return false
@@ -119,17 +158,21 @@ func matchFileGroup(group, content string) bool {
 	return false
 }
 
-// matchTextType 匹配文本特征: url(链接) / path(路径) / plain(纯文本)
+// matchTextType 匹配文本特征: url(链接) / path(路径) / magnet(磁力链接) / plain(纯文本)
+// 与 AHK 端 MatchTextType 保持一致
 func matchTextType(t, content string) bool {
 	reURL := regexp.MustCompile(`(?i)^(https?|ftp)://`)
 	rePath := regexp.MustCompile(`^(\\\\[^\\]+\\[^\\]+|[a-zA-Z]:\\)`)
+	reMagnet := regexp.MustCompile(`(?i)^magnet:`)
 	switch strings.ToLower(strings.TrimSpace(t)) {
 	case "url":
 		return reURL.MatchString(content)
 	case "path":
 		return rePath.MatchString(content)
+	case "magnet":
+		return reMagnet.MatchString(content)
 	case "plain":
-		return !reURL.MatchString(content) && !rePath.MatchString(content)
+		return !reURL.MatchString(content) && !rePath.MatchString(content) && !reMagnet.MatchString(content)
 	}
 	return false
 }
@@ -139,6 +182,16 @@ func PreviewAction(rule *ActionRule, content string) string {
 	switch rule.ActionType {
 	case "search":
 		return strings.ReplaceAll(rule.ActionValue, "%selected%", urlEncode(content))
+	case "open_url":
+		return "用默认浏览器打开: " + content
+	case "open_path":
+		return "按系统关联程序打开: " + content
+	case "open_folder":
+		return "打开选中路径所在文件夹"
+	case "magnet_download":
+		return "用默认 BT 下载工具下载: " + content
+	case "open_registry":
+		return "打开注册表编辑器并定位: " + content
 	default:
 		return strings.ReplaceAll(rule.ActionValue, "%selected%", content)
 	}

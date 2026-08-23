@@ -23,6 +23,8 @@ class DefaultTranslation {
   mute_off := "Mute: Off"
   mute_falied := "Cannot mute this app"
   app_running_in_background := "App is running in background, click the tray icon to show it"
+  magnet_no_handler := "No handler registered for magnet: links. Install a BT client first"
+  registry_open_failed := "Cannot locate the registry key"
 }
 
 class ChineseTranslation extends DefaultTranslation {
@@ -44,6 +46,8 @@ class ChineseTranslation extends DefaultTranslation {
   mute_off := "取消静音"
   mute_falied := "无法静音此应用"
   app_running_in_background := "程序在后台运行，请点击托盘图标唤出"
+  magnet_no_handler := "未检测到磁力链接的默认下载程序 (magnet: 协议未关联), 请先安装 BT 下载工具"
+  registry_open_failed := "无法定位注册表路径, 请检查选中内容是否为注册表键路径"
 }
 
 

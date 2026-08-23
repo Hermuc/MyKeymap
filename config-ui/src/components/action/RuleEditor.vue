@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { ActionRule } from "@/types/config";
-import { ACTION_TYPES, DEFAULT_SEARCH_URL, FILE_GROUPS, MATCH_TYPES, TEXT_TYPES } from "./constants";
+import { ACTION_TYPES, DEFAULT_SEARCH_URL, FILE_GROUPS, MATCH_TYPES, TEXT_TYPES, TEXT_TYPE_ACTIONS, TEXT_TYPE_DEFAULT_ACTION, TEXT_TYPE_LABELS, TEXT_ACTIONS } from "./constants";
 
 const props = defineProps<{
   rule: ActionRule
@@ -22,12 +22,13 @@ const matchType = computed({
 const actionType = computed({
   get: () => props.rule.actionType,
   set: (v: string) => {
-    // 切换行为类型时给出默认模板
+    // 切换行为类型时给出默认模板; 文本特征专用行为不接受命令模板, actionValue 置空
     let value = props.rule.actionValue
-    if (v == "search" && !value) {
+    if (TEXT_ACTIONS.has(v)) {
+      value = ""
+    } else if (v == "search" && !value) {
       value = DEFAULT_SEARCH_URL
-    }
-    if (v == "run" && !value) {
+    } else if (v == "run" && !value) {
       value = "%selected%"
     }
     emit("update", { ...props.rule, actionType: v, actionValue: value })
@@ -37,8 +38,30 @@ const actionType = computed({
 const matchTypeMeta = computed(() => MATCH_TYPES.find(x => x.value == props.rule.matchType))
 const actionTypeMeta = computed(() => ACTION_TYPES.find(x => x.value == props.rule.actionType))
 
+// 行为下拉选项: 文本特征 (textType) 时随特征动态联动, 其余匹配类型展示全量行为
+const actionTypeItems = computed(() => {
+  if (props.rule.matchType != "textType") return ACTION_TYPES
+  const allowed = TEXT_TYPE_ACTIONS[props.rule.matchValue] ?? []
+  return ACTION_TYPES.filter(x => allowed.includes(x.value))
+})
+
+// 是否文本特征专用行为 (无命令模板)
+const isTextAction = computed(() => TEXT_ACTIONS.has(props.rule.actionType))
+
 function update(partial: Partial<ActionRule>) {
   emit("update", { ...props.rule, ...partial })
+}
+
+// 切换文本特征: 若当前行为不在新特征的可选范围内, 自动纠正为默认行为 (联动规则, 见 constants.ts TEXT_TYPE_ACTIONS)
+function onTextTypeChange(v: string) {
+  const allowed = TEXT_TYPE_ACTIONS[v] ?? []
+  let actionType = props.rule.actionType
+  if (!allowed.includes(actionType)) {
+    actionType = TEXT_TYPE_DEFAULT_ACTION[v] ?? ""
+  }
+  // 纠正到无参行为时清空命令模板, 避免残留模板误导
+  const actionValue = TEXT_ACTIONS.has(actionType) ? "" : props.rule.actionValue
+  update({ matchValue: v, actionType, actionValue })
 }
 
 // 各匹配类型的条件值控件
@@ -99,7 +122,9 @@ const showMatchValueInput = computed(() => !["fileGroup", "textType", "default"]
             label="文本特征"
             density="compact"
             variant="outlined"
-            @update:model-value="update({ matchValue: $event })"
+            :hint="'行为将随特征联动: ' + (TEXT_TYPE_LABELS[rule.matchValue] ?? rule.matchValue)"
+            persistent-hint
+            @update:model-value="onTextTypeChange($event)"
           ></v-select>
         </v-col>
       </v-row>
@@ -110,7 +135,7 @@ const showMatchValueInput = computed(() => !["fileGroup", "textType", "default"]
         <v-col cols="12">
           <v-select
             :model-value="rule.actionType"
-            :items="ACTION_TYPES"
+            :items="actionTypeItems"
             item-title="label"
             item-value="value"
             label="行为类型"
@@ -124,6 +149,7 @@ const showMatchValueInput = computed(() => !["fileGroup", "textType", "default"]
       <v-row dense>
         <v-col cols="12">
           <v-textarea
+            v-if="!isTextAction"
             :model-value="rule.actionValue"
             label="目标命令 / URL / 脚本"
             density="compact"
@@ -135,6 +161,9 @@ const showMatchValueInput = computed(() => !["fileGroup", "textType", "default"]
             persistent-hint
             @update:model-value="update({ actionValue: $event })"
           ></v-textarea>
+          <v-alert v-else type="info" density="compact" variant="tonal" class="mb-1">
+            该行为直接作用于选中内容 ({{ actionTypeMeta?.hint }}), 无需配置命令模板。
+          </v-alert>
         </v-col>
       </v-row>
 
