@@ -154,7 +154,7 @@ func planAbbr(cfg *model.Config) PlanAbbr {
 }
 
 func planAbbrEntries(cfg *model.Config, abbrMap map[string][]model.Action) []PlanAbbrEntry {
-	// 与 AbbrToCode 一致: 按缩写字典序, 动作经 sortActions, 跳过未注册 TypeID
+	// 与 AbbrRegistryCode 一致: 按缩写字典序, 动作经 sortActions, 跳过未注册 TypeID
 	type Abbr struct {
 		abbr    string
 		actions []model.Action
@@ -200,7 +200,7 @@ func planActionSchemes(cfg *model.Config) []PlanActionScheme {
 
 func toPlanEntry(cfg *model.Config, a model.Action) PlanEntry {
 	winTitle, conditionType := cfg.GetWinTitle(a)
-	// 与 AbbrToCode 一致: conditionType 5 的表达式去掉包裹的单引号
+	// 与 AbbrRegistryCode 一致: conditionType 5 的表达式去掉包裹的单引号
 	if conditionType == 5 {
 		winTitle = strings.Trim(winTitle, "'")
 	}

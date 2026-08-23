@@ -106,7 +106,6 @@ func UseOriginalAHK(args ...string) {
 	}
 	if err := execCmd("cmd.exe", "/c", "copy /y bin\\Launcher.ahk MyKeymap.ahk"); err != nil {
 		panic(err)
-		return
 	}
 	fmt.Println("\ndone!")
 }

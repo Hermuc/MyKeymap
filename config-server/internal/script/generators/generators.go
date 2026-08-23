@@ -42,7 +42,6 @@ var TemplateFuncMap = template.FuncMap{
 	"ahkString":            model.AhkString,
 	"escapeAhkHotkey":      escapeAhkHotkey,
 	"actionToHotkey":       ActionToHotkey,
-	"abbrToCode":           AbbrToCode,
 	"abbrRegistryCode":     AbbrRegistryCode,
 	"sortHotkeys":          sortHotkeys,
 	"divide":               divide,
