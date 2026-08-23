@@ -31,8 +31,9 @@ InitActionScheme(schemes) {
 /**
  * 方案入口: 获取选中内容 -> 按优先级匹配规则 -> 执行行为
  * @param scheme 方案对象
+ * @param trigger 热键名: 热键回调经 BoundFunc 调用时会把绑定参数前置并追加本参数, 此处仅吸收避免超参 (KeymapManager._wrapHandler 调用 handler(thisHotkey))
  */
-RunActionScheme(scheme) {
+RunActionScheme(scheme, trigger := "") {
   selected := SelectionContext.Get()
   if not (selected.content) {
     Tip(Translation().no_items_selected, -700)
