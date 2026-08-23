@@ -293,7 +293,10 @@ ShortcutTargetExist(LnkPath) {
  */
 ActivateWindow(winTitle := "", isHide := false) {
   ; 如果匹配不到窗口且认为窗口为隐藏窗口时查找隐藏窗口
-  hwnds := FindWindows(winTitle, (hwnd) => WinGetTitle(hwnd) != "")
+  ; 谓词排除桌面壳窗口 (Progman 即 Program Manager, 归属 explorer.exe 且常驻):
+  ; 否则 ahk_exe explorer.exe 类匹配会把桌面当成"已打开的窗口"提前返回,
+  ; 导致真正的资源管理器窗口永远不会被启动 (fe 命令冷启动失效的根因)
+  hwnds := FindWindows(winTitle, (hwnd) => WinGetTitle(hwnd) != "" && WinGetClass(hwnd) != "Progman")
   if ((!hwnds.Length) && isHide) {
     hwnds := FindHiddenWindows(winTitle)
     if hwnds.Length {

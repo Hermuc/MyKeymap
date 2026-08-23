@@ -316,3 +316,4 @@ class ConfigProvider {
 | 2026-08-22 | 阶段 3/4/5 完成注记; 阶段 5 裁定 Everything 插件推迟 |
 | 2026-08-22 | 阶段 6: EventBus 落地并接入 5 处发布点; L2 JSON-RPC 协议文本冻结; 模板补记阶段 4 格式 |
 | 2026-08-22 | §6 第 1 条落地: 命令模糊输入(逐字符后缀校验, 最长优先, CapsLock 域); `Resolve` 增 `fuzzy` 可选参数(默认不变); `config-server/templates` 副本补齐阶段 6 include |
+| 2026-08-23 | 修复存量缺陷: `ActivateWindow` 谓词排除桌面壳窗口 (Progman) —— 此前 `ahk_exe explorer.exe` 类匹配把常驻桌面窗口当成"已打开的窗口"提前返回, 导致 fe 等命令在无真实窗口时永远不启动目标程序 (冷启动失效); 实证与模糊输入功能无关 |
