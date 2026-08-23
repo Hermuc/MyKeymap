@@ -617,18 +617,6 @@ HtmlEncode(text) {
 }
 
 /**
- * Map根据值找到键
- * @param m Map
- * @param value 值
- */
-MapFindKey(m, targetValue) {
-  for key, value in m {
-    if (value == targetValue)
-      return key
-  }
-}
-
-/**
  * 获取活动窗口的位置和宽高
  * @param hwnd 窗口句柄
  */
@@ -681,13 +669,4 @@ ShowFileInFolder(filepath) {
   DllCall("shell32\SHParseDisplayName", "Str", filepath, "Ptr", 0, "Ptr*", &pidl := 0, "UInt", 0, "Ptr", 0, "HRESULT")
   DllCall("shell32\SHOpenFolderAndSelectItems", "Ptr", pidl, "UInt", 0, "Ptr", 0, "UInt", 0, "HRESULT")
   DllCall("ole32\CoTaskMemFree", "Ptr", pidl)
-}
-
-Join(sep, params*) {
-  str := ""
-
-  for index, param in params
-    str .= sep . param
-
-  return SubStr(str, StrLen(sep) + 1)
 }
