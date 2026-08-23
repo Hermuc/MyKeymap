@@ -68,9 +68,10 @@ MyKeymapToggleSuspend() {
  * 打开设置
  */
 MyKeymapOpenSettings() {
-  ; settings.exe 是控制台程序, 用 Windows Terminal (默认新版 pwsh) 承载代码雨界面, 替代老式控制台窗口
+  ; settings.exe 是控制台程序, 用 Windows Terminal 承载代码雨界面, 替代老式控制台窗口;
+  ; 直接运行 settings.exe (绕过 pwsh 层) 可显著缩短设置入口启动延迟
   launchSettings() {
-    Run("wt.exe -d `".`" pwsh.exe -NoExit -Command `"& '.\settings.exe'`"", "./bin")
+    Run('wt.exe -d "' A_ScriptDir '" "' A_ScriptDir '\settings.exe"', A_ScriptDir)
   }
   if (!ProcessExist("settings.exe")) {
     launchSettings()

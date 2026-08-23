@@ -18,11 +18,9 @@ import (
 	"settings/internal/matrix"
 	"settings/internal/script"
 	"text/template"
-	"time"
 )
 
 func main() {
-
 	if len(os.Args) >= 2 {
 		if handler, ok := command.Map[os.Args[1]]; ok {
 			handler(os.Args[2:]...)
@@ -113,7 +111,7 @@ func server(hasError chan<- struct{}, rainDone <-chan struct{}, debug bool) {
 }
 
 func openBrowser(addr net.Addr) error {
-	time.Sleep(600 * time.Millisecond)
+	// 端口已就绪 (net.Listen 成功后调用), 无需固定延迟; 立即打开浏览器可显著缩短设置入口感知延迟
 	if addr, ok := addr.(*net.TCPAddr); ok {
 		// rundll32 位于系统 PATH 中, 无需硬编码绝对路径
 		return exec.Command("rundll32.exe", "url.dll,FileProtocolHandler", fmt.Sprintf("http://localhost:%d", addr.Port)).Start()
