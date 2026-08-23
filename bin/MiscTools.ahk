@@ -47,13 +47,13 @@ if A_Args[1] = "GenerateShortcuts" {
 }
 
 if A_Args[1] = "RunAtStartup" {
-  linkFile := A_Startup "\MyKeymap.lnk"
+  ; 开机自启使用 HKCU\Run 注册表键 (2026-08-23 迁移, 替代旧版启动文件夹快捷方式)
+  runKey := "HKCU\Software\Microsoft\Windows\CurrentVersion\Run"
   if A_Args[2] = "On" {
-    FileCreateShortcut(A_WorkingDir "\MyKeymap.exe", linkFile, A_WorkingDir)
+    ; 值数据为带引号的完整路径, 路径含空格时也能正确启动
+    RegWrite('"' A_WorkingDir '\MyKeymap.exe"', "REG_SZ", runKey, "MyKeymap")
   } else if (A_Args[2] = "Off") {
-    if FileExist(linkFile) {
-      FileDelete(linkFile)
-    }
+    try RegDelete(runKey, "MyKeymap")
   }
   return
 }
