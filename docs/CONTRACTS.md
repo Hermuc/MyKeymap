@@ -317,3 +317,4 @@ class ConfigProvider {
 | 2026-08-22 | 阶段 6: EventBus 落地并接入 5 处发布点; L2 JSON-RPC 协议文本冻结; 模板补记阶段 4 格式 |
 | 2026-08-22 | §6 第 1 条落地: 命令模糊输入(逐字符后缀校验, 最长优先, CapsLock 域); `Resolve` 增 `fuzzy` 可选参数(默认不变); `config-server/templates` 副本补齐阶段 6 include |
 | 2026-08-23 | 修复存量缺陷: `ActivateWindow` 谓词排除桌面壳窗口 (Progman) —— 此前 `ahk_exe explorer.exe` 类匹配把常驻桌面窗口当成"已打开的窗口"提前返回, 导致 fe 等命令在无真实窗口时永远不启动目标程序 (冷启动失效); 实证与模糊输入功能无关 |
+| 2026-08-23 | 死代码/过时代码审计与清理 (零行为变更): ① 删 `Functions.ahk` 孤立工具 `MapFindKey`/`Join` (零调用); ② 删 Go 端 `AbbrToCode` 生成器及其 FuncMap 注册 (阶段 4 已被 `AbbrRegistryCode` 取代, 模板零引用) + `command.go` panic 后不可达 return (go vet); ③ 删 config-ui 脚手架残留 `HelloWorld.vue` (零 import); ④ 部署目录 `bin/lib/` 平铺旧库 7 文件 (重构前布局残留, 仅基线文档引用) 备份后删除, 同步 `ActionRegistry.ahk` 部署副本至 phase6 版 (留桩, 不在运行链) |
