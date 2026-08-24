@@ -147,8 +147,7 @@ function toggleEnable(scheme: ActionScheme, val?: boolean) {
 }
 
 .hotkey-text {
-  font-family: monospace;
-  font-weight: bold;
+  /* 与页面其他文字同字体 (默认无衬线), 仅保留蓝色标识 */
   color: #4169e1;
 }
 </style>
