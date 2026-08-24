@@ -88,7 +88,7 @@ function toggleEnable(scheme: ActionScheme, val?: boolean) {
               @update:model-value="toggleEnable(scheme, $event)"
             >
               <template #label>
-                <span :class="scheme.enable ? 'text-primary' : 'text-grey'">
+                <span :class="scheme.enable ? 'enable-label' : 'text-grey'">
                   {{ scheme.enable ? '启用' : '关闭' }}
                 </span>
               </template>
@@ -146,8 +146,9 @@ function toggleEnable(scheme: ActionScheme, val?: boolean) {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.hotkey-text {
-  /* 与页面其他文字同字体 (默认无衬线), 仅保留蓝色标识 */
+/* 蓝色标识色 (快捷键与「启用」标签共用, 单源) */
+.hotkey-text,
+.enable-label {
   color: #4169e1;
 }
 </style>
