@@ -298,6 +298,22 @@ class ConfigProvider {
 - 遗留代码载荷(`ahkCode` / `ahk-expression:` / `ahk:` 行 / conditionType 5 表达式)
   继续由 Go 编译,输出到 `compat/` 消费格式,直至用户迁移为插件。
 
+## 5.1 settings.exe `--headless` 模式契约(2026-08 冻结)
+
+供 Avalonia 原生设置壳(`config-ui-avalonia/`)以子进程方式拉起后端,与既有模式共存:
+
+- **启动方式**:`settings.exe --headless`(工作目录约定与既有启动方式一致: 部署根目录, 与无参模式相同);
+- **端口通告**:stdout **首行**输出 `MYKEYMAP_PORT=<数字>`(实际监听端口),无任何其他装饰输出;
+  GUI 壳逐行读取并匹配 `MYKEYMAP_PORT=` 前缀获取端口;
+- **端口回退**:默认尝试 12333,被占用时回退随机可用端口并**如实通告**(通告行永远反映真实监听端口);
+- **行为差异(仅此三项)**:跳过代码雨动画、跳过自动打开浏览器、不打印 "MyKeymap config server is running..." 装饰行;
+- **不变项**:全部 HTTP 路由与响应格式、配置写盘(仍由 Go 后端唯一负责, 写盘格式不变)、
+  无参 / `debug` / CLI 子命令(如 `DumpPlan`/`GenerateAHK`)行为完全不受影响。
+- **进程生命周期**:由 GUI 壳管理(命名 Mutex 单实例、Job Object 强杀兜底),后端自身无感知。
+- 实现:`config-server/cmd/settings/main.go`; 入口:`bin/lib/core/Functions.ahk` 启动 `bin\ui\MyKeymap.Settings.exe`;
+  构建:`make buildClientAvalonia` → `bin/ui/`(`.gitignore` 忽略)。
+- 部署实测(2026-08, beta33):GUI 打开/关闭/进程回收正常, 配置哈希不变。
+
 ## 6. 未来功能落点(不在本次实现)
 
 | 功能 | 落点 |
@@ -323,3 +339,5 @@ class ConfigProvider {
 | 2026-08-24 | 文件分组并入文件后缀 (fileGroups 配置化): ① 删除「文件分组」匹配类型 —— Go `matchFileGroup`/`fileGroupExts`、AHK `MatchFileGroup`/内置表、前端 MATCH_TYPES 项/RuleEditor 控件/RuleList 分支、类型注释全清, 运行时引擎只认 fileExt 后缀列表; ② 分组表收敛为配置数据 `config.json` 新增 `fileGroups` 段 (name/label/exts, 默认 6 组, 用户可自行增改), Go `Config`/`model.FileGroup`/前端 `FileGroup` 类型同步, `SaveConfigHandler` 新增 `ValidateFileGroups` 结构校验 (名称/显示名/后缀非空, 非法拒绝保存); ③ 前端「文件后缀」条件值下方新增「常用分组快捷填入」下拉 (数据源=配置 fileGroups, 选择分组展开为逗号分隔后缀列表, 可继续手改; 配置缺失时不显示, 降级为纯手输); 存量配置零 fileGroup 规则故无迁移; 生成链路 (actionSchemesCode 原样透传规则字段) 与 Oracle plan 输出不受影响 |
 | 2026-08-23 | 修复存量缺陷: 选中动作热键触发报 Too many parameters (RunActionScheme) —— 热键回调 `handler(thisHotkey)` 经 `RunActionScheme.Bind(scheme)` 调用时, BoundFunc 把绑定参数前置并追加调用参数, 实际以 2 参数调用只定义 1 参数的 `RunActionScheme(scheme)`; 修复为签名加默认参数 `RunActionScheme(scheme, trigger := "")` 吸收追加参数 (闭包捕获 for 变量有指向最后一方案陷阱, 故不用箭头函数改注册) |
 | 2026-08-23 | 选中动作功能改造: ① 移除「文本正则」匹配类型 (Go 匹配分支 / AHK case / 前端选项 / 类型注释全清); ② 「文本特征→行为类型」动态联动 (textTypeActions 单一真源: url→[open_url,search], path→[open_path,open_folder], magnet→[magnet_download], plain→[open_registry,search,run,send_keys,script,copy]; Go 端保存/建/改/测四入口校验非法组合拒绝并中文提示, 前端动态渲染+自动纠正+导入校验); ③ 新增 5 类文本特征行为 open_url/open_path/open_folder/magnet_download/open_registry (全走系统默认关联: Run() ShellExecute / magnet: 协议处理检测失败给中文提示 / regedit LastKey 定位, 零第三方依赖零提权); ④ 修复 CheckMagnetHandler try 无 catch 导致 magnet 未注册时异常弹窗; GenerateScripts 产物逐字节一致, /Validate exit=0, Oracle 35/35 PASS |
+| 2026-08 | 新增 §5.1 `settings.exe --headless` 模式契约并冻结: 供 Avalonia 原生设置壳子进程拉起, stdout 首行 `MYKEYMAP_PORT=<端口>` 通告 (12333 占用回退随机端口并如实通告), 跳过代码雨/浏览器/装饰行, 路由与配置写盘与无参模式完全一致 |
+| 2026-08 | 设置界面原生窗口化 (零行为变更, 旧浏览器版保留): ① 新增 `config-ui-avalonia/` (Avalonia 11 / .NET 10 / CommunityToolkit.Mvvm, 完整移植键位图/自定义热键/缩写/选中动作/设置/主页全部页面) 与仓库根目录 `MyKeymap.Settings.Tests/` (74 个单元测试全绿); ② Go 后端新增 `--headless` 模式 (§5.1); ③ Makefile 新增 `buildClientAvalonia` (dotnet publish 自包含 win-x64 + ReadyToRun → `bin/ui/`, 已入 `build` 依赖链), `.gitignore` 追加 `bin/ui/`; ④ AHK 设置入口 (`bin/lib/core/Functions.ahk`) 改启动 `bin\ui\MyKeymap.Settings.exe`; ⑤ 配置写盘权不变: GUI 仅经 localhost HTTP 调用, Go 后端保持 config.json 唯一写盘权; 部署实测: GUI 打开/关闭/进程回收正常, 配置哈希不变 |

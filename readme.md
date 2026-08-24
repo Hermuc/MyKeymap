@@ -27,6 +27,7 @@ MyKeymap 是一款基于 [AutoHotkey](https://www.autohotkey.com/) 的键盘映�
 本 fork 基于上游 [xianyukang/MyKeymap](https://github.com/xianyukang/MyKeymap)，在原版基础上主要有这些不同：
 
 - **更炫酷的设置窗口**：打开设置时显示「黑客帝国」风格的代码雨动画，并默认用 Windows Terminal（新版终端）承载，不再是老式黑窗口
+- **原生设置窗口（Avalonia GUI）**：设置界面提供独立原生窗口版（源码见 `config-ui-avalonia/`），由托盘/热键入口直接打开，不再依赖浏览器；GUI 以子进程方式拉起 `settings.exe --headless` 并通过 localhost HTTP 通信，配置写盘仍由 Go 后端统一负责；旧浏览器版设置页（settings.exe 内置 site）仍保留可用
 - **新增「选中动作」系统**：选中文字或文件后按快捷键，即可执行预设操作；规则可在设置界面可视化配置，无需改动任何代码。匹配类型 3 类——「文件后缀」（jpg, png, … 支持「常用分组快捷填入」，一键填入图片/文档/代码/压缩包/视频/音频等分组后缀，分组表可在配置文件自定义增改）、「文本特征」（自动识别链接 / 路径 / 磁力链接 / 纯文本）、「任意」；文本特征与可选行为强制联动（如磁力链接只能配「磁力下载」），避免「选中链接却程序打开」的错配；内置 5 类文本专用行为：打开网址、打开路径、打开文件夹、磁力下载（自动唤起默认 BT 工具）、注册表定位（自动跳转到指定注册表项）
 - **自定义帮助页**：在设置界面直接填写 HTML 帮助内容，保存后即可通过动作打开查看
 - **更不容易崩溃**：某个热键配置出错时会自动跳过并提示，不会再导致整个程序退出；收集文本、关机动作等细节行为也更稳定
@@ -59,3 +60,10 @@ MyKeymap 是一款基于 [AutoHotkey](https://www.autohotkey.com/) 的键盘映�
 | Rust 重写（键盘捕获与事件分发） | IKeyEventBus 抽象已就位，守护进程待做 |
 
 详细契约（接口签名、插件清单格式、L2 JSON-RPC 协议、7 条不可协商约束）见 [docs/CONTRACTS.md](./docs/CONTRACTS.md)。
+
+### 原生设置界面（Avalonia GUI）构建说明（2026-08）
+
+- **源码位置**：`config-ui-avalonia/`（GUI 壳，.NET 10 / Avalonia 11 / CommunityToolkit.Mvvm）；单元测试位于仓库根目录 `MyKeymap.Settings.Tests/`
+- **构建**：`make buildClientAvalonia`（完整构建 `make build` 已包含），`dotnet publish` 自包含 win-x64 + ReadyToRun 发布到 `bin/ui/`（不入库）；开发环境需 .NET 10 SDK
+- **运行原理**：GUI 拉起 `settings.exe --headless` 子进程（命名 Mutex 单实例、Job Object 兜底回收），经 localhost HTTP 调用既有全部 API；配置写盘仍由 Go 后端统一负责，GUI 不直接写 config.json
+- **入口**：AHK 设置入口（`bin/lib/core/Functions.ahk`）启动 `bin\ui\MyKeymap.Settings.exe`；旧浏览器版设置页（无参运行 settings.exe）保留可用
