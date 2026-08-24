@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 import { ActionRule } from "@/types/config";
 import { useConfigStore } from "@/store/config";
 import { ACTION_TYPES, DEFAULT_SEARCH_URL, MATCH_TYPES, TEXT_TYPES, TEXT_TYPE_ACTIONS, TEXT_TYPE_DEFAULT_ACTION, TEXT_TYPE_LABELS, TEXT_ACTIONS } from "./constants";
@@ -72,10 +72,31 @@ const showMatchValueInput = computed(() => !["textType", "default"].includes(pro
 const configStore = useConfigStore()
 const fileGroups = computed(() => configStore.config?.fileGroups ?? [])
 
+// 快捷填入下拉的选中值: null=未选 (显示占位符) / ""=「无」/ 分组 name (显示对应 label)
+const fileGroupSelected = ref<string | null>(null)
+// 选项列表: 首位固定「无」, 其后为配置分组
+const groupItems = computed(() => [
+  { label: "无", value: "" },
+  ...fileGroups.value.map(g => ({ label: g.label, value: g.name })),
+])
+
+// 切换匹配类型时复位快捷填入选择, 避免切回后残留旧选中显示
+watch(() => props.rule.matchType, () => { fileGroupSelected.value = null })
+
 function onFileGroupFill(name: string | null) {
-  if (!name) return
-  const group = fileGroups.value.find(g => g.name == name)
-  if (group) update({ matchValue: group.exts.join(", ") })
+  if (name) {
+    // 选中具体分组: 展开为逗号分隔后缀列表填入条件值
+    const group = fileGroups.value.find(g => g.name == name)
+    if (group) update({ matchValue: group.exts.join(", ") })
+    fileGroupSelected.value = name
+  } else if (name === "") {
+    // 选中「无」: 清空条件值
+    update({ matchValue: "" })
+    fileGroupSelected.value = ""
+  } else {
+    // 点击清除按钮 (×): 回到未选状态, 保留条件值供手改
+    fileGroupSelected.value = null
+  }
 }
 </script>
 
@@ -112,15 +133,15 @@ function onFileGroupFill(name: string | null) {
         </v-col>
         <v-col cols="12" v-if="rule.matchType == 'fileExt' && fileGroups.length > 0">
           <v-select
-            :model-value="null"
-            :items="fileGroups"
+            :model-value="fileGroupSelected"
+            :items="groupItems"
             item-title="label"
-            item-value="name"
+            item-value="value"
             label="常用分组快捷填入"
             density="compact"
             variant="outlined"
             clearable
-            :hint="'选择分组自动填入后缀列表, 可继续手改'"
+            :hint="'选择分组自动填入后缀列表, 可继续手改; 选「无」清空条件值'"
             persistent-hint
             @update:model-value="onFileGroupFill($event)"
           ></v-select>
