@@ -70,7 +70,7 @@ const showMatchValueInput = computed(() => !["textType", "default"].includes(pro
 
 // 文件分组 (来自配置 fileGroups, 仅作「文件后缀」条件值的快捷填充; 选择后展开为逗号分隔后缀列表, 可继续手改)
 const configStore = useConfigStore()
-const fileGroups = computed(() => configStore.config?.value?.fileGroups ?? [])
+const fileGroups = computed(() => configStore.config?.fileGroups ?? [])
 
 function onFileGroupFill(name: string | null) {
   if (!name) return
