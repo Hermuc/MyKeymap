@@ -193,6 +193,9 @@ InitKeymap()
 
   ; ===== 选中动作方案 =====
   ActionSchemeList := Array(
+    {id: 1, name: "新的选中动作", hotkey: ">^p", rules: Array(
+      {priority: 1, matchType: "textType", matchValue: "path", actionType: "open_folder", actionValue: "", workingDir: "", options: {copyToClipboard: false, clearSelection: false, confirm: false}},
+    )},
   )
   InitActionScheme(ActionSchemeList)
 
