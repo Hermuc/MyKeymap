@@ -169,7 +169,7 @@ function goBack() {
       </div>
       <v-switch v-model="scheme.enable" color="primary" density="compact" hide-details class="mx-2">
               <template #label>
-                <span :class="scheme.enable ? 'text-primary' : 'text-grey'">
+                <span :class="scheme.enable ? 'enable-label' : 'text-grey'">
                   {{ scheme.enable ? '启用' : '关闭' }}
                 </span>
               </template>

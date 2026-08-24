@@ -33,3 +33,16 @@ onMounted(() => {
   })
 })
 </script>
+
+<!-- 全局样式: 蓝色标识色单源 (选中动作页面的快捷键与「启用」标签共用) -->
+<style>
+.hotkey-text,
+.enable-label {
+  color: #4169e1;
+}
+
+/* v-switch 的 v-label 默认 opacity ~0.6 (opacity 复合相乘, 会稀释子元素颜色), 仅对含蓝色标识的标签复原 */
+.v-label:has(.enable-label) {
+  opacity: 1;
+}
+</style>

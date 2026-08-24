@@ -145,10 +145,4 @@ function toggleEnable(scheme: ActionScheme, val?: boolean) {
 .scheme-card:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
-
-/* 蓝色标识色 (快捷键与「启用」标签共用, 单源) */
-.hotkey-text,
-.enable-label {
-  color: #4169e1;
-}
 </style>
