@@ -6,17 +6,6 @@ import (
 	"strings"
 )
 
-// 文件类型分组: 分组名 -> 后缀名列表
-// AHK 端 (bin/lib/rules/SelectedAction.ahk) 中维护了一份相同的表, 修改时需要同步
-var fileGroupExts = map[string][]string{
-	"image":   {"jpg", "jpeg", "png", "gif", "bmp", "webp", "svg", "ico"},
-	"doc":     {"doc", "docx", "xls", "xlsx", "ppt", "pptx", "pdf", "txt", "md"},
-	"code":    {"c", "cpp", "h", "hpp", "java", "py", "js", "ts", "jsx", "tsx", "go", "rs", "rb", "php", "html", "css", "scss", "json", "xml", "yml", "yaml", "sh", "bat"},
-	"archive": {"zip", "rar", "7z", "tar", "gz", "bz2", "xz"},
-	"video":   {"mp4", "avi", "mkv", "mov", "wmv", "flv", "webm"},
-	"audio":   {"mp3", "wav", "flac", "ogg", "aac", "m4a"},
-}
-
 // 文本特征 -> 可选行为类型 映射 (单一真源, 需同步的副本):
 //   - 前端: config-ui/src/components/action/constants.ts 的 TEXT_TYPE_ACTIONS
 //   - AHK 端: bin/lib/rules/SelectedAction.ahk 的 ExecuteActionRule 分支
@@ -80,6 +69,23 @@ func joinActionLabels(actions []string) string {
 	return strings.Join(labels, " / ")
 }
 
+// ValidateFileGroups 校验文件分组表结构: 名称/显示名非空, 后缀列表非空 (分组为快捷填充数据, 结构非法时拒绝保存)
+func ValidateFileGroups(groups []FileGroup) error {
+	for i := range groups {
+		g := &groups[i]
+		if strings.TrimSpace(g.Name) == "" {
+			return fmt.Errorf("文件分组第 %d 项缺少名称 (name)", i+1)
+		}
+		if strings.TrimSpace(g.Label) == "" {
+			return fmt.Errorf("文件分组「%s」缺少显示名 (label)", g.Name)
+		}
+		if len(g.Exts) == 0 {
+			return fmt.Errorf("文件分组「%s」的后缀列表 (exts) 为空", g.Name)
+		}
+	}
+	return nil
+}
+
 // MatchActionScheme 按优先级匹配第一个符合条件的规则, 供模拟测试 API 使用
 func MatchActionScheme(scheme *ActionScheme, isFile bool, content string) *ActionRule {
 	for i := range scheme.Rules {
@@ -98,11 +104,6 @@ func matchActionRule(rule *ActionRule, isFile bool, content string) bool {
 			return false
 		}
 		return matchFileExt(rule.MatchValue, content)
-	case "fileGroup":
-		if !isFile {
-			return false
-		}
-		return matchFileGroup(rule.MatchValue, content)
 	case "textType":
 		if isFile {
 			return false
@@ -130,27 +131,6 @@ func matchFileExt(matchValue, content string) bool {
 			v = strings.TrimSpace(v)
 			v = strings.TrimPrefix(v, ".")
 			if v == "*" || strings.EqualFold(v, ext) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-// matchFileGroup 匹配文件类型分组, 选中内容中的任意文件命中分组即匹配
-func matchFileGroup(group, content string) bool {
-	exts, ok := fileGroupExts[strings.ToLower(strings.TrimSpace(group))]
-	if !ok {
-		return false
-	}
-	for _, line := range strings.Split(content, "\n") {
-		// fileExt 返回含点后缀, 去掉点后与分组表比较 (与 AHK 端 SplitPath 返回不带点扩展名的语义一致)
-		ext := strings.TrimPrefix(fileExt(line), ".")
-		if ext == "" {
-			continue
-		}
-		for _, v := range exts {
-			if strings.EqualFold(v, ext) {
 				return true
 			}
 		}

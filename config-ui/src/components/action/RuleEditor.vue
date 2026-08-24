@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { ActionRule } from "@/types/config";
-import { ACTION_TYPES, DEFAULT_SEARCH_URL, FILE_GROUPS, MATCH_TYPES, TEXT_TYPES, TEXT_TYPE_ACTIONS, TEXT_TYPE_DEFAULT_ACTION, TEXT_TYPE_LABELS, TEXT_ACTIONS } from "./constants";
+import { useConfigStore } from "@/store/config";
+import { ACTION_TYPES, DEFAULT_SEARCH_URL, MATCH_TYPES, TEXT_TYPES, TEXT_TYPE_ACTIONS, TEXT_TYPE_DEFAULT_ACTION, TEXT_TYPE_LABELS, TEXT_ACTIONS } from "./constants";
 
 const props = defineProps<{
   rule: ActionRule
@@ -14,7 +15,7 @@ const matchType = computed({
   get: () => props.rule.matchType,
   set: (v: string) => {
     // 切换匹配类型时重置条件值
-    const value = v == "fileGroup" ? "image" : v == "textType" ? "url" : v == "default" ? "*" : ""
+    const value = v == "textType" ? "url" : v == "default" ? "*" : ""
     emit("update", { ...props.rule, matchType: v, matchValue: value })
   },
 })
@@ -65,7 +66,17 @@ function onTextTypeChange(v: string) {
 }
 
 // 各匹配类型的条件值控件
-const showMatchValueInput = computed(() => !["fileGroup", "textType", "default"].includes(props.rule.matchType))
+const showMatchValueInput = computed(() => !["textType", "default"].includes(props.rule.matchType))
+
+// 文件分组 (来自配置 fileGroups, 仅作「文件后缀」条件值的快捷填充; 选择后展开为逗号分隔后缀列表, 可继续手改)
+const configStore = useConfigStore()
+const fileGroups = computed(() => configStore.config?.value?.fileGroups ?? [])
+
+function onFileGroupFill(name: string | null) {
+  if (!name) return
+  const group = fileGroups.value.find(g => g.name == name)
+  if (group) update({ matchValue: group.exts.join(", ") })
+}
 </script>
 
 <template>
@@ -99,18 +110,19 @@ const showMatchValueInput = computed(() => !["fileGroup", "textType", "default"]
             @update:model-value="update({ matchValue: $event })"
           ></v-text-field>
         </v-col>
-        <v-col cols="12" v-else-if="rule.matchType == 'fileGroup'">
+        <v-col cols="12" v-if="rule.matchType == 'fileExt' && fileGroups.length > 0">
           <v-select
-            :model-value="rule.matchValue"
-            :items="FILE_GROUPS"
+            :model-value="null"
+            :items="fileGroups"
             item-title="label"
-            item-value="value"
-            label="文件分组"
+            item-value="name"
+            label="常用分组快捷填入"
             density="compact"
             variant="outlined"
-            :hint="'后缀: ' + (FILE_GROUPS.find(g => g.value == rule.matchValue)?.exts ?? '')"
+            clearable
+            :hint="'选择分组自动填入后缀列表, 可继续手改'"
             persistent-hint
-            @update:model-value="update({ matchValue: $event })"
+            @update:model-value="onFileGroupFill($event)"
           ></v-select>
         </v-col>
         <v-col cols="12" v-else-if="rule.matchType == 'textType'">

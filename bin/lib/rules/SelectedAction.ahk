@@ -86,11 +86,6 @@ MatchActionRule(rule, selected) {
         return false
       }
       return MatchFileExt(rule.matchValue, selected.content)
-    case "fileGroup":
-      if selected.type != "file" {
-        return false
-      }
-      return MatchFileGroup(rule.matchValue, selected.content)
     case "textType":
       if selected.type != "text" {
         return false
@@ -122,40 +117,6 @@ MatchFileExt(matchValue, content) {
       v := LTrim(Trim(v), ".")
       ; 扩展名比较忽略大小写 (与 Go 端 EqualFold 一致): Windows 上 .JPG/.PNG 等大写扩展名也必须能匹配
       if v == "*" || StrLower(v) == StrLower(ext) {
-        return true
-      }
-    }
-  }
-  return false
-}
-
-/**
- * 文件类型分组匹配, 选中内容中的任意文件命中分组即匹配
- * 与 config-server/internal/script/actionscheme.go 中的分组表保持一致
- * @param group 分组名: image / doc / code / archive / video / audio
- * @param content 文件路径列表 (换行分隔)
- * @returns {boolean}
- */
-MatchFileGroup(group, content) {
-  exts := Map(
-    "image", ["jpg", "jpeg", "png", "gif", "bmp", "webp", "svg", "ico"],
-    "doc", ["doc", "docx", "xls", "xlsx", "ppt", "pptx", "pdf", "txt", "md"],
-    "code", ["c", "cpp", "h", "hpp", "java", "py", "js", "ts", "jsx", "tsx", "go", "rs", "rb", "php", "html", "css", "scss", "json", "xml", "yml", "yaml", "sh", "bat"],
-    "archive", ["zip", "rar", "7z", "tar", "gz", "bz2", "xz"],
-    "video", ["mp4", "avi", "mkv", "mov", "wmv", "flv", "webm"],
-    "audio", ["mp3", "wav", "flac", "ogg", "aac", "m4a"]
-  )
-  list := exts.Get(Trim(group), false)
-  if not (list) {
-    return false
-  }
-  for line in StrSplit(content, "`n") {
-    SplitPath(line, , , &ext)
-    if not (ext) {
-      continue
-    }
-    for v in list {
-      if StrLower(v) == StrLower(ext) {
         return true
       }
     }

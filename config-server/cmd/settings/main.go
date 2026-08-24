@@ -235,6 +235,12 @@ func SaveConfigHandler(debug bool) gin.HandlerFunc {
 			}
 		}
 
+		// 校验文件分组表结构 (名称/显示名/后缀列表非空), 非法分组拒绝保存
+		if err := script.ValidateFileGroups(config.FileGroups); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"message": "保存失败: " + err.Error()})
+			return
+		}
+
 		// 生成帮助文件: 有自定义内容才生成, 内容被清空时删除旧文件避免残留
 		if config.HelpPageHtml != "" {
 			saveHelpPageHtml(config.HelpPageHtml)

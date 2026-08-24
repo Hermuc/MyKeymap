@@ -17,6 +17,7 @@ type (
 	Action           = model.Action
 	ActionScheme     = model.ActionScheme
 	ActionRule       = model.ActionRule
+	FileGroup        = model.FileGroup
 	RuleOptions      = model.RuleOptions
 	Options          = model.Options
 	WindowGroup      = model.WindowGroup

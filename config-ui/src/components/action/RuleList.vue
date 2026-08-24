@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { ActionRule } from "@/types/config";
-import { ACTION_TYPES, FILE_GROUPS, MATCH_TYPES, TEXT_ACTIONS } from "./constants";
+import { ACTION_TYPES, MATCH_TYPES, TEXT_ACTIONS } from "./constants";
 
 const props = defineProps<{
   rules: Array<ActionRule>
@@ -28,9 +28,6 @@ function actionTypeLabel(type: string) {
 
 function matchValueText(rule: ActionRule) {
   if (rule.matchType == "default") return "任意内容"
-  if (rule.matchType == "fileGroup") {
-    return FILE_GROUPS.find(g => g.value == rule.matchValue)?.label ?? rule.matchValue
-  }
   return rule.matchValue || "(未设置)"
 }
 

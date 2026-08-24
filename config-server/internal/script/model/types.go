@@ -9,6 +9,7 @@ type Config struct {
 	Keymaps       []Keymap       `json:"keymaps,omitempty"`
 	Options       Options        `json:"options,omitempty"`
 	ActionSchemes []ActionScheme `json:"actionSchemes,omitempty"`
+	FileGroups    []FileGroup    `json:"fileGroups,omitempty"` // 文件分组: 前端「文件后缀」条件值的快捷填充数据, 非独立匹配类型
 	HelpPageHtml  string         `json:"helpPageHtml,omitempty"` // 自定义帮助页 HTML, 保存时生成 bin/site/help.html
 	KeyMapping    string         `json:"-"`
 }
@@ -35,8 +36,18 @@ type ActionScheme struct {
 	Rules  []ActionRule `json:"rules"`
 }
 
+// 文件分组: 供前端「文件后缀」条件值快捷填充 (选择分组 -> 展开为逗号分隔后缀列表), 非独立匹配类型
+// 引擎层不感知分组概念, 规则 matchValue 始终是后缀列表; 分组定义是配置数据, 用户可自行增改
+// (2026-08-24 由 fileGroup 匹配类型收敛而来: 原 Go/AHK 双端内置表已删除)
+type FileGroup struct {
+	Name  string   `json:"name"`  // 分组标识 (英文, 如 image)
+	Label string   `json:"label"` // 中文显示名 (如 图片)
+	Exts  []string `json:"exts"`  // 后缀列表 (不含点, 如 ["jpg","jpeg"])
+}
+
 // 规则按 Priority 升序匹配, 第一个匹配的规则生效
-// MatchType: fileExt(文件后缀) / fileGroup(文件分组) / textType(文本特征) / default(兜底)
+// MatchType: fileExt(文件后缀) / textType(文本特征) / default(兜底)
+//   - fileExt 条件值为逗号分隔后缀列表, 可用配置中的 fileGroups 快捷填充
 // ActionType: open(程序打开) / search(搜索) / run(执行命令) / send_keys(发送按键) / script(AHK脚本) / copy(复制到剪贴板)
 //   + textType 专用行为: open_url(默认浏览器打开网址) / open_path(系统关联打开) / open_folder(打开文件夹)
 //     / magnet_download(磁力链接下载) / open_registry(注册表定位); 特征与行为的合法组合见 actionscheme.go 的 textTypeActions

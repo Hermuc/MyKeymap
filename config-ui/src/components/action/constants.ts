@@ -1,10 +1,9 @@
 // 选中动作系统的常量与工具函数
 
 // 匹配条件类型
-// 注: 「文本正则」已移除 (2026-08-23), 文本匹配统一走「文本特征」
+// 注: 「文本正则」已移除 (2026-08-23); 「文件分组」已并入「文件后缀」快捷填充 (2026-08-24, 分组数据见配置 fileGroups)
 export const MATCH_TYPES = [
   { value: "fileExt", label: "文件后缀", hint: "如 .txt 或 txt,md (逗号分隔多个), * 匹配任意文件" },
-  { value: "fileGroup", label: "文件分组", hint: "image / doc / code / archive / video / audio" },
   { value: "textType", label: "文本特征", hint: "url (链接) / path (路径) / magnet (磁力链接) / plain (纯文本)" },
   { value: "default", label: "默认 (兜底)", hint: "任何内容都匹配, 一般放在规则列表最后" },
 ]
@@ -56,16 +55,6 @@ export const TEXT_TYPE_LABELS: Record<string, string> = {
 
 // 文本特征专用行为集合 (无命令模板, actionValue 恒为空; 供编辑器/规则列表共用)
 export const TEXT_ACTIONS = new Set(["open_url", "open_path", "open_folder", "magnet_download", "open_registry"])
-
-// 文件分组 (与后端 actionscheme.go / AHK SelectedAction.ahk 保持一致)
-export const FILE_GROUPS = [
-  { value: "image", label: "图片", exts: "jpg jpeg png gif bmp webp svg ico" },
-  { value: "doc", label: "文档", exts: "doc docx xls xlsx ppt pptx pdf txt md" },
-  { value: "code", label: "代码", exts: "c cpp h hpp java py js ts jsx tsx go rs rb php html css scss json xml yml yaml sh bat" },
-  { value: "archive", label: "压缩包", exts: "zip rar 7z tar gz bz2 xz" },
-  { value: "video", label: "视频", exts: "mp4 avi mkv mov wmv flv webm" },
-  { value: "audio", label: "音频", exts: "mp3 wav flac ogg aac m4a" },
-]
 
 // 文本特征
 // 注: magnet(磁力链接) 为 2026-08-23 新增, plain 的判定会排除 magnet (见 Go 端 matchTextType / AHK 端 MatchTextType)

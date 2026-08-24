@@ -80,6 +80,8 @@ export interface Config {
   keymaps: Array<Keymap>
   options: Options
   actionSchemes?: Array<ActionScheme>
+  // 文件分组: 「文件后缀」条件值的快捷填充数据 (选择分组 -> 展开为后缀列表), 非独立匹配类型
+  fileGroups?: Array<FileGroup>
   // 自定义帮助页 HTML, 保存后生成 bin/site/help.html (通过 MyKeymap 动作 openHelpHtml 打开)
   helpPageHtml?: string
 }
@@ -94,10 +96,19 @@ export interface ActionScheme {
   rules: Array<ActionRule>
 }
 
+// 文件分组: 供「文件后缀」条件值快捷填充 (选择分组 -> 展开为逗号分隔后缀列表), 非独立匹配类型
+// 分组定义是配置数据 (config.json fileGroups), 用户可自行增改
+// (2026-08-24 由 fileGroup 匹配类型收敛而来: 原 Go/AHK 双端内置表已删除)
+export interface FileGroup {
+  name: string  // 分组标识 (英文, 如 image)
+  label: string // 中文显示名 (如 图片)
+  exts: Array<string> // 后缀列表 (不含点, 如 ["jpg","jpeg"])
+}
+
 // 规则按 priority 升序匹配, 第一个匹配的规则生效
 export interface ActionRule {
   priority: number
-  // matchType: fileExt(文件后缀) / fileGroup(文件分组) / textType(文本特征) / default(兜底)
+  // matchType: fileExt(文件后缀) / textType(文本特征) / default(兜底)
   matchType: string
   matchValue: string
   // actionType: open(程序打开) / search(搜索) / run(执行命令) / send_keys(发送按键) / script(AHK脚本) / copy(复制到剪贴板)
