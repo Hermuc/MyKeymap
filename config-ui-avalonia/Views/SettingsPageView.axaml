@@ -1,0 +1,338 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MyKeymap.Settings.ViewModels"
+             xmlns:models="using:MyKeymap.Settings.Models"
+             x:Class="MyKeymap.Settings.Views.SettingsPageView"
+             x:Name="Root"
+             x:DataType="vm:SettingsPageViewModel">
+
+  <UserControl.Styles>
+    <!-- 分区标题按钮: 无底色、整行可点 -->
+    <Style Selector="Button.sectionHeader">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    </Style>
+    <!-- 紧凑开关 (表格行内的启用开关) -->
+    <Style Selector="ToggleSwitch.rowSwitch">
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="OnContent" Value="{x:Null}" />
+      <Setter Property="OffContent" Value="{x:Null}" />
+    </Style>
+  </UserControl.Styles>
+
+  <ScrollViewer Background="#F0F2F7">
+    <Grid ColumnDefinitions="500,*" Margin="24,20,24,28">
+
+      <!-- ===================== 左列: 快捷键方案 (label:915, 复刻 Settings.vue 表格) ===================== -->
+      <Border Grid.Column="0" Background="White" CornerRadius="12" Padding="16"
+              Height="560" VerticalAlignment="Top" Margin="0,0,16,0">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top"
+                     Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=915}"
+                     FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12" />
+
+          <!-- 底部: 新增一个 (label:405) -->
+          <Button DockPanel.Dock="Bottom" Command="{Binding AddKeymapCommand}"
+                  Background="Transparent" BorderBrush="#4169E1" BorderThickness="1"
+                  Foreground="#4169E1" Padding="8,5" CornerRadius="8" Margin="0,10,0,0"
+                  HorizontalAlignment="Left">
+            <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=405}" />
+          </Button>
+
+          <!-- 表头 -->
+          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="6" Margin="0,0,0,6">
+            <TextBlock Width="112" Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=501}" Foreground="#8A8F98" FontSize="12" />
+            <TextBlock Width="112" Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=502}" Foreground="#8A8F98" FontSize="12" />
+            <TextBlock Width="118" Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=503}" Foreground="#8A8F98" FontSize="12" />
+            <TextBlock Width="60" Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=504}" Foreground="#8A8F98" FontSize="12" />
+          </StackPanel>
+
+          <!-- 表行 -->
+          <ScrollViewer>
+            <ItemsControl ItemsSource="{Binding KeymapRows}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:KeymapRowViewModel">
+                  <Grid ColumnDefinitions="112,112,118,60,*" Margin="0,2">
+                    <!-- 名称 (失焦复刻 checkKeymapData) -->
+                    <TextBox Text="{Binding Name}" LostFocus="OnRowFieldLostFocus"
+                             Margin="0,0,6,0" Padding="6,4" FontSize="13" />
+                    <!-- 触发键 -->
+                    <TextBox Grid.Column="1" Text="{Binding Hotkey}" LostFocus="OnRowFieldLostFocus"
+                             Margin="0,0,6,0" Padding="6,4" FontSize="13" />
+                    <!-- 上层 (被依赖时禁用, 复刻 hasSubKeymap) -->
+                    <ComboBox Grid.Column="2" ItemsSource="{Binding ParentOptions}"
+                              SelectedItem="{Binding ParentSelection}"
+                              IsEnabled="{Binding !HasSubKeymap}"
+                              Margin="0,0,6,0" Padding="6,3" FontSize="13"
+                              HorizontalAlignment="Stretch" MinWidth="0">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="models:Keymap">
+                          <TextBlock Text="{Binding Name}" />
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <!-- 开关 (级联逻辑在 VM 的 ToggleKeymapEnable) -->
+                    <ToggleSwitch Grid.Column="3" Classes="rowSwitch" IsChecked="{Binding Enable}"
+                                  VerticalAlignment="Center" />
+                    <!-- 删除 (启用中/被依赖时禁用, 复刻 disabledKeymapOption) -->
+                    <Button Grid.Column="4" Content="✕"
+                            IsEnabled="{Binding CanDelete}"
+                            ToolTip.Tip="{Binding DeleteTip}"
+                            Command="{Binding #Root.((vm:SettingsPageViewModel)DataContext).RemoveKeymapRowCommand}"
+                            CommandParameter="{Binding}"
+                            Background="Transparent" Foreground="#C62828" Padding="6,3" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+
+      <!-- ===================== 右列: 其他设置 (label:505) ===================== -->
+      <StackPanel Grid.Column="1" Spacing="12">
+        <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=505}"
+                   FontSize="16" FontWeight="SemiBold" />
+
+        <!-- 开机自启 + 隐藏矩阵 (顶部常驻开关行) -->
+        <Border Background="White" CornerRadius="12" Padding="16">
+          <StackPanel Spacing="6">
+            <StackPanel Orientation="Horizontal" Spacing="14">
+              <ToggleSwitch IsChecked="{Binding Startup}" />
+              <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=506}"
+                         VerticalAlignment="Center" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="14"
+                        ToolTip.Tip="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=902}">
+              <ToggleSwitch IsChecked="{Binding Options.HideMatrix}" />
+              <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=901}"
+                         VerticalAlignment="Center" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- 🌐 切换语言 (label:781) -->
+        <Border Background="White" CornerRadius="12" Padding="16">
+          <StackPanel Spacing="10">
+            <Button Classes="sectionHeader" Command="{Binding ToggleSectionCommand}" CommandParameter="language">
+              <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=781}"
+                         FontWeight="SemiBold" />
+            </Button>
+            <ComboBox IsVisible="{Binding ShowLanguageOption}"
+                      ItemsSource="{Binding Languages}" SelectedItem="{Binding SelectedLanguage}"
+                      MinWidth="180">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:LanguageOption">
+                  <TextBlock Text="{Binding Title}" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </StackPanel>
+        </Border>
+
+        <!-- 😺 编辑程序分组 (label:601, 复刻 WindowGroupDialog.vue 入口按钮) -->
+        <Border Background="White" CornerRadius="12" Padding="16">
+          <Button Classes="sectionHeader" Click="OnEditWindowGroups">
+            <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=601}"
+                       FontWeight="SemiBold" />
+          </Button>
+        </Border>
+
+        <!-- 🖱️ 修改鼠标参数 (label:701, 含滚轮参数) -->
+        <Border Background="White" CornerRadius="12" Padding="16">
+          <StackPanel Spacing="10">
+            <Button Classes="sectionHeader" Command="{Binding ToggleSectionCommand}" CommandParameter="mouse">
+              <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=701}"
+                         FontWeight="SemiBold" />
+            </Button>
+            <StackPanel IsVisible="{Binding ShowMouseOption}" Spacing="8">
+              <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=702}"
+                         FontWeight="SemiBold" Foreground="#4169E1" />
+              <Grid ColumnDefinitions="260,*">
+                <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=703}" VerticalAlignment="Center" />
+                <TextBox Grid.Column="1" Text="{Binding MouseOpts.Delay1}" />
+              </Grid>
+              <Grid ColumnDefinitions="260,*">
+                <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=704}" VerticalAlignment="Center" />
+                <TextBox Grid.Column="1" Text="{Binding MouseOpts.Delay2}" />
+              </Grid>
+              <Grid ColumnDefinitions="260,*">
+                <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=705}" VerticalAlignment="Center" />
+                <TextBox Grid.Column="1" Text="{Binding MouseOpts.FastSingle}" />
+              </Grid>
+              <Grid ColumnDefinitions="260,*">
+                <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=706}" VerticalAlignment="Center" />
+                <TextBox Grid.Column="1" Text="{Binding MouseOpts.FastRepeat}" />
+              </Grid>
+              <Grid ColumnDefinitions="260,*">
+                <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=707}" VerticalAlignment="Center" />
+                <TextBox Grid.Column="1" Text="{Binding MouseOpts.SlowSingle}" />
+              </Grid>
+              <Grid ColumnDefinitions="260,*">
+                <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=708}" VerticalAlignment="Center" />
+                <TextBox Grid.Column="1" Text="{Binding MouseOpts.SlowRepeat}" />
+              </Grid>
+              <Grid ColumnDefinitions="260,*">
+                <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=709}" VerticalAlignment="Center" />
+                <TextBox Grid.Column="1" Text="{Binding MouseOpts.TipSymbol}" />
+              </Grid>
+              <CheckBox IsChecked="{Binding MouseOpts.ShowTip}"
+                        Content="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=710}" />
+              <CheckBox IsChecked="{Binding MouseOpts.KeepMouseMode}"
+                        Content="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=711}" />
+
+              <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=712}"
+                         FontWeight="SemiBold" Foreground="#4169E1" Margin="0,8,0,0" />
+              <Grid ColumnDefinitions="260,*">
+                <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=713}" VerticalAlignment="Center" />
+                <TextBox Grid.Column="1" Text="{Binding ScrollOpts.Delay1}" />
+              </Grid>
+              <Grid ColumnDefinitions="260,*">
+                <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=714}" VerticalAlignment="Center" />
+                <TextBox Grid.Column="1" Text="{Binding ScrollOpts.Delay2}" />
+              </Grid>
+              <Grid ColumnDefinitions="260,*">
+                <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=715}" VerticalAlignment="Center" />
+                <TextBox Grid.Column="1" Text="{Binding ScrollOpts.OnceLineCount}" />
+              </Grid>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- ⌨️ 修改键盘布局 (label:721) -->
+        <Border Background="White" CornerRadius="12" Padding="16">
+          <StackPanel Spacing="10">
+            <Button Classes="sectionHeader" Command="{Binding ToggleSectionCommand}" CommandParameter="layout">
+              <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=721}"
+                         FontWeight="SemiBold" />
+            </Button>
+            <StackPanel IsVisible="{Binding ShowKeyboardLayout}" Spacing="10">
+              <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=722}" Foreground="#8A8F98" FontSize="12" />
+              <TextBox Text="{Binding Options.KeyboardLayout}" AcceptsReturn="True" AcceptsTab="True"
+                       MinHeight="180" FontFamily="Consolas,Courier New" FontSize="13"
+                       TextWrapping="NoWrap" />
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Command="{Binding ResetKeyboardLayoutCommand}" CommandParameter="0" Padding="10,5">
+                  <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=723}" />
+                </Button>
+                <Button Command="{Binding ResetKeyboardLayoutCommand}" CommandParameter="74" Padding="10,5">
+                  <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=724}" />
+                </Button>
+                <Button Command="{Binding ResetKeyboardLayoutCommand}" CommandParameter="104" Padding="10,5">
+                  <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=725}" />
+                </Button>
+                <Button Command="{Binding ResetKeyboardLayoutCommand}" CommandParameter="1" Padding="10,5">
+                  <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=726}" />
+                </Button>
+              </StackPanel>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- 🕗 设置触发延时 (label:761, 默认展开) -->
+        <Border Background="White" CornerRadius="12" Padding="16">
+          <StackPanel Spacing="10">
+            <Button Classes="sectionHeader" Command="{Binding ToggleSectionCommand}" CommandParameter="delay">
+              <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=761}"
+                         FontWeight="SemiBold" />
+            </Button>
+            <StackPanel IsVisible="{Binding ShowKeymapDelay}" Spacing="8">
+              <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=762}" Foreground="#8A8F98" FontSize="12" />
+              <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=763}" Foreground="#8A8F98" FontSize="12" TextWrapping="Wrap" />
+              <ItemsControl ItemsSource="{Binding CustomKeymaps}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="models:Keymap">
+                    <Grid ColumnDefinitions="260,120" Margin="0,2">
+                      <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                      <TextBox Grid.Column="1" Text="{Binding Delay, Converter={StaticResource IntStr}}"
+                               Padding="6,4" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- ✨ 命令框皮肤 (label:741, 18 字段数据驱动) -->
+        <Border Background="White" CornerRadius="12" Padding="16">
+          <StackPanel Spacing="10">
+            <Button Classes="sectionHeader" Command="{Binding ToggleSectionCommand}" CommandParameter="skin">
+              <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=741}"
+                         FontWeight="SemiBold" />
+            </Button>
+            <ItemsControl IsVisible="{Binding ShowSkin}" ItemsSource="{Binding SkinFields}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:SkinFieldViewModel">
+                  <Grid ColumnDefinitions="260,*" Margin="0,2">
+                    <TextBlock Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    <TextBox Grid.Column="1" Text="{Binding Value}" Padding="6,4" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
+        <!-- 📝 帮助页面 (label:903, Vue 中被注释, 按任务规格补齐) -->
+        <Border Background="White" CornerRadius="12" Padding="16">
+          <StackPanel Spacing="10">
+            <Button Classes="sectionHeader" Command="{Binding ToggleSectionCommand}" CommandParameter="help">
+              <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=903}"
+                         FontWeight="SemiBold" />
+            </Button>
+            <StackPanel IsVisible="{Binding ShowHelpPage}" Spacing="8">
+              <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=904}" Foreground="#8A8F98" FontSize="12" />
+              <TextBox Text="{Binding Config.HelpPageHtml}" AcceptsReturn="True" AcceptsTab="True"
+                       MinHeight="140" FontFamily="Consolas,Courier New" FontSize="13"
+                       Watermark="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=906}" />
+              <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=905}"
+                         Foreground="#8A8F98" FontSize="12" TextWrapping="Wrap" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- 🧩 编辑路径变量 (label:907, Vue 中被注释, 按任务规格补齐) -->
+        <Border Background="White" CornerRadius="12" Padding="16">
+          <StackPanel Spacing="10">
+            <Button Classes="sectionHeader" Command="{Binding ToggleSectionCommand}" CommandParameter="pathvars">
+              <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=907}"
+                         FontWeight="SemiBold" />
+            </Button>
+            <StackPanel IsVisible="{Binding ShowPathVariables}" Spacing="8">
+              <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=911}"
+                         Foreground="#8A8F98" FontSize="12" TextWrapping="Wrap" />
+              <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,0,4">
+                <TextBlock Width="160" Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=909}" Foreground="#8A8F98" FontSize="12" />
+                <TextBlock Width="320" Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=910}" Foreground="#8A8F98" FontSize="12" />
+              </StackPanel>
+              <ItemsControl ItemsSource="{Binding PathVariables}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="models:PathVariable">
+                    <Grid ColumnDefinitions="160,320,*" Margin="0,2">
+                      <TextBox Text="{Binding Name}" Margin="0,0,6,0" Padding="6,4" />
+                      <TextBox Grid.Column="1" Text="{Binding Value}" Padding="6,4" />
+                      <Button Grid.Column="2" Content="✕"
+                              Command="{Binding #Root.((vm:SettingsPageViewModel)DataContext).RemovePathVariableCommand}"
+                              CommandParameter="{Binding}"
+                              ToolTip.Tip="{Binding #Root.((vm:SettingsPageViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=912}"
+                              Background="Transparent" Foreground="#C62828" Padding="6,3" Margin="6,0,0,0" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Button Command="{Binding AddPathVariableCommand}"
+                      Background="Transparent" BorderBrush="#4169E1" BorderThickness="1"
+                      Foreground="#4169E1" Padding="8,5" CornerRadius="8" HorizontalAlignment="Left">
+                <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=933}" />
+              </Button>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+      </StackPanel>
+    </Grid>
+  </ScrollViewer>
+
+</UserControl>

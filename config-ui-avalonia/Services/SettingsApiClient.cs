@@ -1,0 +1,268 @@
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using MyKeymap.Settings.Models;
+
+namespace MyKeymap.Settings.Services;
+
+// ============================================================================
+// settings.exe (Go gin 服务) HTTP 客户端层
+//
+// 端点清单 (权威来源: config-server/cmd/settings/main.go + actionscheme.go):
+//   GET    /config                      完整 Config JSON
+//   PUT    /config                      完整 Config JSON -> 200 {"message":"ok"}
+//                                       校验失败 -> 400 {"message":"保存失败: ..."}
+//   GET    /shortcuts                   [{"path":"shortcuts\\xx.lnk"}] (相对部署根)
+//   POST   /server/command/:id          id=2|3|4, 恒 200 {} (会 exec MyKeymap.exe)
+//   GET    /api/action-schemes          数组 (空时 [])
+//   GET    /api/action-schemes/:id      单方案, 不存在 -> 404 {"message":"scheme not found"}
+//   POST   /api/action-schemes          创建 (无 id, 后端分配 max+1 回写)
+//   PUT    /api/action-schemes/:id      更新, 校验失败 -> 400 {"message":"..."}
+//   DELETE /api/action-schemes/:id      -> 200 {"message":"ok"} 或 404
+//   POST   /api/action-schemes/test     模拟测试 (含编辑中快照语义)
+// ============================================================================
+
+/// <summary>统一响应包装: 强类型结果 + 状态码 + 错误信息 (400/404 时解析 {"message":"..."} 字段)。</summary>
+/// <param name="Success">HTTP 2xx 为 true。</param>
+/// <param name="StatusCode">HTTP 状态码; 传输层异常 (连接失败/超时) 时为 0。</param>
+/// <param name="Value">2xx 且响应体可反序列化时的强类型结果。</param>
+/// <param name="ErrorMessage">非 2xx 时来自响应体 message 字段 (解析失败则为原始响应体); 传输层异常时为异常消息。</param>
+/// <param name="RawBody">原始响应体文本 (便于诊断)。</param>
+public sealed record ApiResponse<T>(
+    bool Success,
+    int StatusCode,
+    T? Value,
+    string? ErrorMessage = null,
+    string RawBody = "");
+
+/// <summary>形如 {"message":"..."} 的响应体 (PUT /config、DELETE /api/action-schemes/:id)。</summary>
+public sealed record MessageBody
+{
+    [JsonPropertyName("message")]
+    public string Message { get; set; } = "";
+}
+
+/// <summary>GET /shortcuts 的列表项。</summary>
+public sealed record ShortcutInfo
+{
+    /// <summary>相对部署根的路径, 如 "shortcuts\\微信.lnk"。</summary>
+    [JsonPropertyName("path")]
+    public string Path { get; set; } = "";
+}
+
+/// <summary>形如 {} 的空对象响应体 (POST /server/command/:id)。</summary>
+public sealed record EmptyJson;
+
+/// <summary>POST /api/action-schemes/test 请求体 (对照 Go actionSchemeTestRequest)。</summary>
+public sealed class ActionSchemeTestRequest
+{
+    /// <summary>scheme 为空时, 按此 id 从磁盘配置回退查找。</summary>
+    [JsonPropertyName("schemeId")]
+    public int SchemeId { get; set; }
+
+    /// <summary>模拟的选中内容 (文本或文件路径列表, 多行用 \n 分隔)。</summary>
+    [JsonPropertyName("content")]
+    public string Content { get; set; } = "";
+
+    /// <summary>true=内容是文件路径; false=内容是文本。</summary>
+    [JsonPropertyName("isFile")]
+    public bool IsFile { get; set; }
+
+    /// <summary>编辑中的方案快照 (未保存的修改也能测试); null 时后端回退读取磁盘配置。</summary>
+    [JsonPropertyName("scheme")]
+    public ActionScheme? Scheme { get; set; }
+}
+
+/// <summary>POST /api/action-schemes/test 响应体。</summary>
+public sealed class ActionSchemeTestResult
+{
+    [JsonPropertyName("matched")]
+    public bool Matched { get; set; }
+
+    /// <summary>matched=true 时命中的规则。</summary>
+    [JsonPropertyName("rule")]
+    public ActionRule? Rule { get; set; }
+
+    /// <summary>matched=true 时的执行预览文本。</summary>
+    [JsonPropertyName("preview")]
+    public string? Preview { get; set; }
+}
+
+/// <summary>
+/// settings.exe API 抽象, 便于 ViewModel 依赖注入与单测替换 (可用假实现替身)。
+/// 所有方法永不抛出网络异常: 传输层错误统一折叠为 StatusCode=0 的失败响应。
+/// </summary>
+public interface ISettingsApi
+{
+    Task<ApiResponse<Config>> GetConfigAsync(CancellationToken ct = default);
+    Task<ApiResponse<MessageBody>> SaveConfigAsync(Config config, CancellationToken ct = default);
+    Task<ApiResponse<List<ShortcutInfo>>> GetShortcutsAsync(CancellationToken ct = default);
+    Task<ApiResponse<EmptyJson>> SendServerCommandAsync(int id, CancellationToken ct = default);
+
+    Task<ApiResponse<List<ActionScheme>>> GetActionSchemesAsync(CancellationToken ct = default);
+    Task<ApiResponse<ActionScheme>> GetActionSchemeAsync(int id, CancellationToken ct = default);
+    Task<ApiResponse<ActionScheme>> CreateActionSchemeAsync(ActionScheme scheme, CancellationToken ct = default);
+    Task<ApiResponse<ActionScheme>> UpdateActionSchemeAsync(int id, ActionScheme scheme, CancellationToken ct = default);
+    Task<ApiResponse<MessageBody>> DeleteActionSchemeAsync(int id, CancellationToken ct = default);
+    Task<ApiResponse<ActionSchemeTestResult>> TestActionSchemeAsync(ActionSchemeTestRequest request, CancellationToken ct = default);
+}
+
+/// <summary>
+/// 基于 HttpClient 的 settings.exe API 客户端。
+/// 构造时接受端口 (headless settings.exe 通过 "MYKEYMAP_PORT=" 行通告实际端口,
+/// 12333 被占用时会退到随机端口, 故基址必须按通告端口构造)。
+/// </summary>
+public sealed class SettingsApiClient : ISettingsApi, IDisposable
+{
+    private readonly HttpClient _http;
+    private readonly bool _ownsHttpClient;
+
+    /// <summary>按端口构造基址: http://localhost:{port}</summary>
+    public SettingsApiClient(int port, TimeSpan? timeout = null)
+    {
+        _http = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
+        _ownsHttpClient = true;
+        // 保存配置会触发 Go 侧写盘 + 生成逻辑, 预留充足超时
+        _http.Timeout = timeout ?? TimeSpan.FromSeconds(10);
+    }
+
+    /// <summary>测试替身用: 注入外部 HttpClient (调用方负责其生命周期)。</summary>
+    public SettingsApiClient(HttpClient httpClient)
+    {
+        _http = httpClient;
+        _ownsHttpClient = false;
+    }
+
+    public Uri BaseAddress => _http.BaseAddress ?? throw new InvalidOperationException("BaseAddress 未设置");
+
+    public Task<ApiResponse<Config>> GetConfigAsync(CancellationToken ct = default)
+        => SendAsync<Config>(HttpMethod.Get, "config", content: null, ct);
+
+    public Task<ApiResponse<MessageBody>> SaveConfigAsync(Config config, CancellationToken ct = default)
+        => SendAsync<MessageBody>(HttpMethod.Put, "config", config, ct);
+
+    public Task<ApiResponse<List<ShortcutInfo>>> GetShortcutsAsync(CancellationToken ct = default)
+        => SendAsync<List<ShortcutInfo>>(HttpMethod.Get, "shortcuts", content: null, ct);
+
+    public Task<ApiResponse<EmptyJson>> SendServerCommandAsync(int id, CancellationToken ct = default)
+        => SendAsync<EmptyJson>(HttpMethod.Post, $"server/command/{id}", new EmptyJson(), ct);
+
+    public Task<ApiResponse<List<ActionScheme>>> GetActionSchemesAsync(CancellationToken ct = default)
+        => SendAsync<List<ActionScheme>>(HttpMethod.Get, "api/action-schemes", content: null, ct);
+
+    public Task<ApiResponse<ActionScheme>> GetActionSchemeAsync(int id, CancellationToken ct = default)
+        => SendAsync<ActionScheme>(HttpMethod.Get, $"api/action-schemes/{id}", content: null, ct);
+
+    public Task<ApiResponse<ActionScheme>> CreateActionSchemeAsync(ActionScheme scheme, CancellationToken ct = default)
+        => SendAsync<ActionScheme>(HttpMethod.Post, "api/action-schemes", scheme, ct);
+
+    public Task<ApiResponse<ActionScheme>> UpdateActionSchemeAsync(int id, ActionScheme scheme, CancellationToken ct = default)
+        => SendAsync<ActionScheme>(HttpMethod.Put, $"api/action-schemes/{id}", scheme, ct);
+
+    public Task<ApiResponse<MessageBody>> DeleteActionSchemeAsync(int id, CancellationToken ct = default)
+        => SendAsync<MessageBody>(HttpMethod.Delete, $"api/action-schemes/{id}", content: null, ct);
+
+    public Task<ApiResponse<ActionSchemeTestResult>> TestActionSchemeAsync(ActionSchemeTestRequest request, CancellationToken ct = default)
+        => SendAsync<ActionSchemeTestResult>(HttpMethod.Post, "api/action-schemes/test", request, ct);
+
+    /// <summary>
+    /// 非契约端点的便捷原始文本 GET (如 Home 页的 /config_doc.html 静态资源)。
+    /// 不属于 12 个契约端点, 故不进 ISettingsApi 接口; 响应体按纯文本处理。
+    /// </summary>
+    public async Task<ApiResponse<string>> GetRawTextAsync(string path, CancellationToken ct = default)
+    {
+        HttpResponseMessage response;
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, path);
+            response = await _http.SendAsync(request, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
+        {
+            return new ApiResponse<string>(false, 0, default, ex.Message);
+        }
+
+        using (response)
+        {
+            var raw = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            var status = (int)response.StatusCode;
+            return response.IsSuccessStatusCode
+                ? new ApiResponse<string>(true, status, raw, RawBody: raw)
+                : new ApiResponse<string>(false, status, default, ExtractErrorMessage(raw), raw);
+        }
+    }
+
+    // ------------------------------------------------------------------ 内部
+
+    private async Task<ApiResponse<T>> SendAsync<T>(
+        HttpMethod method, string path, object? content, CancellationToken ct)
+    {
+        HttpResponseMessage response;
+        try
+        {
+            using var request = new HttpRequestMessage(method, path);
+            if (content is not null)
+            {
+                request.Content = JsonContent.Create(content, options: SettingsJson.Options);
+            }
+            response = await _http.SendAsync(request, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
+        {
+            // TaskCanceledException 含超时; 折叠为 StatusCode=0 的失败响应, ViewModel 无需 try/catch
+            return new ApiResponse<T>(false, 0, default, ex.Message);
+        }
+
+        using (response)
+        {
+            var raw = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            var status = (int)response.StatusCode;
+
+            if (response.IsSuccessStatusCode)
+            {
+                try
+                {
+                    var value = string.IsNullOrWhiteSpace(raw)
+                        ? default
+                        : JsonSerializer.Deserialize<T>(raw, SettingsJson.Options);
+                    return new ApiResponse<T>(true, status, value, RawBody: raw);
+                }
+                catch (JsonException ex)
+                {
+                    return new ApiResponse<T>(false, status, default, $"响应体反序列化失败: {ex.Message}", raw);
+                }
+            }
+
+            return new ApiResponse<T>(false, status, default, ExtractErrorMessage(raw), raw);
+        }
+    }
+
+    /// <summary>非 2xx 时优先取 {"message":"..."}; 解析失败回退原始响应体。</summary>
+    private static string ExtractErrorMessage(string raw)
+    {
+        if (!string.IsNullOrWhiteSpace(raw))
+        {
+            try
+            {
+                var body = JsonSerializer.Deserialize<MessageBody>(raw, SettingsJson.Options);
+                if (!string.IsNullOrEmpty(body?.Message))
+                {
+                    return body.Message;
+                }
+            }
+            catch (JsonException)
+            {
+                // 落入下方回退
+            }
+        }
+        return string.IsNullOrWhiteSpace(raw) ? "(空响应体)" : raw;
+    }
+
+    public void Dispose()
+    {
+        if (_ownsHttpClient)
+        {
+            _http.Dispose();
+        }
+    }
+}

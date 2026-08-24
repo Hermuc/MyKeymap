@@ -1,0 +1,313 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MyKeymap.Settings.ViewModels"
+             xmlns:controls="using:MyKeymap.Settings.Controls"
+             xmlns:services="using:MyKeymap.Settings.Services"
+             x:Class="MyKeymap.Settings.Views.SelectedActionEditView"
+             x:DataType="vm:SelectedActionEditViewModel">
+
+  <!-- 选中动作编辑页 (复刻 views/SelectedActionEdit.vue):
+       顶栏 (返回/保存/导出/导入/删除) + 方案字段 (名称/热键/启用) +
+       规则列表 (优先级排序) + 规则编辑器 + 模拟测试器。 -->
+
+  <ScrollViewer>
+    <StackPanel Margin="20" Spacing="16">
+
+      <!-- ===================== 顶栏 ===================== -->
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="8">
+          <Button Command="{Binding GoBackCommand}" Background="Transparent"
+                  BorderBrush="#C9CDD4" BorderThickness="1" CornerRadius="8" Padding="12,6"
+                  Content="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=986}" />
+        </StackPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8"
+                    HorizontalAlignment="Right">
+          <Button Click="OnExportClick" Background="White" BorderBrush="#C9CDD4"
+                  BorderThickness="1" CornerRadius="8" Padding="12,6"
+                  Content="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=984}" />
+          <Button Click="OnImportClick" Background="White" BorderBrush="#C9CDD4"
+                  BorderThickness="1" CornerRadius="8" Padding="12,6"
+                  Content="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=985}" />
+          <Button Command="{Binding AskDeleteSchemeCommand}" Background="White"
+                  BorderBrush="#D32F2F" BorderThickness="1" CornerRadius="8" Padding="12,6"
+                  Foreground="#D32F2F"
+                  Content="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=968}" />
+          <Button Command="{Binding SaveCommand}" Background="#4169E1" Foreground="White"
+                  CornerRadius="8" Padding="18,6"
+                  Content="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=983}" />
+        </StackPanel>
+      </DockPanel>
+
+      <!-- ===================== 方案字段 (名称 / 热键 / 启用) ===================== -->
+      <Border Background="White" BorderBrush="#E3E6EC" BorderThickness="1"
+              CornerRadius="10" Padding="16">
+        <StackPanel Spacing="12">
+          <Grid ColumnDefinitions="140,*">
+            <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=975}"
+                       VerticalAlignment="Center" Foreground="#5F6368" />
+            <TextBox Grid.Column="1" Text="{Binding Name}" MaxWidth="420"
+                     HorizontalAlignment="Left" MinWidth="320" />
+          </Grid>
+          <Grid ColumnDefinitions="140,*">
+            <TextBlock VerticalAlignment="Top" Foreground="#5F6368" Margin="0,7,0,0"
+                       Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=1063}" />
+            <StackPanel Grid.Column="1" Spacing="6" MaxWidth="420" HorizontalAlignment="Left">
+              <controls:HotkeyCapture Hotkey="{Binding Hotkey}"
+                                      UsedHotkeys="{Binding UsedHotkeys}"
+                                      Width="420" HorizontalAlignment="Left" />
+              <!-- 空热键警示 (复刻 warning alert) -->
+              <Border IsVisible="{Binding NoHotkeyWarning}" Background="#FFF8E1"
+                      CornerRadius="6" Padding="10,6">
+                <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=976}"
+                           Foreground="#B26A00" FontSize="12" TextWrapping="Wrap" />
+              </Border>
+            </StackPanel>
+          </Grid>
+          <Grid ColumnDefinitions="140,*">
+            <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=964}"
+                       VerticalAlignment="Center" Foreground="#5F6368" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding Enable}"
+                          OnContent="{Binding EnableLabel}" OffContent="{Binding EnableLabel}"
+                          MinWidth="10" />
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <!-- ===================== 规则列表 + 规则编辑器 ===================== -->
+      <Border Background="White" BorderBrush="#E3E6EC" BorderThickness="1"
+              CornerRadius="10" Padding="16">
+        <StackPanel Spacing="10">
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Left" FontSize="15" FontWeight="SemiBold"
+                       VerticalAlignment="Center"
+                       Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=977}" />
+            <Button DockPanel.Dock="Right" Command="{Binding AddRuleCommand}"
+                    HorizontalAlignment="Right" Background="White" BorderBrush="#4169E1"
+                    BorderThickness="1" Foreground="#4169E1" CornerRadius="8" Padding="12,5"
+                    Content="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=980}" />
+          </DockPanel>
+          <TextBlock FontSize="11" Foreground="#8A8F98"
+                     Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=978}" />
+          <!-- 兜底规则不在末尾警示 -->
+          <Border IsVisible="{Binding DefaultRuleNotLast}" Background="#FDECEA"
+                  CornerRadius="6" Padding="10,6">
+            <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=979}"
+                       Foreground="#D32F2F" FontSize="12" TextWrapping="Wrap" />
+          </Border>
+
+          <Grid ColumnDefinitions="340,*" MinHeight="200">
+            <!-- 左: 规则列表 (优先级升序, 第一条命中生效) -->
+            <ListBox ItemsSource="{Binding Rules}"
+                     SelectedItem="{Binding SelectedRule, Mode=TwoWay}"
+                     Background="Transparent" BorderBrush="#E3E6EC" BorderThickness="1"
+                     CornerRadius="8" Margin="0,0,12,0">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:RuleItemVm">
+                  <Border Background="{Binding RowBackground}" CornerRadius="6" Padding="2">
+                    <Grid ColumnDefinitions="24,*,Auto">
+                      <Border Width="20" Height="20" CornerRadius="10" Background="#E8F0FE"
+                              VerticalAlignment="Center">
+                        <TextBlock Text="{Binding IndexText}" FontSize="11" Foreground="#4169E1"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Border>
+                      <StackPanel Grid.Column="1" Margin="8,0" Spacing="1">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                          <TextBlock Text="{Binding MatchTypeLabel}" FontWeight="SemiBold" FontSize="12" />
+                          <TextBlock Text="{Binding MatchValueText}" FontSize="12"
+                                     Foreground="#5F6368" TextTrimming="CharacterEllipsis" MaxWidth="160" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding Subtitle}" FontSize="11" Foreground="#8A8F98"
+                                   TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
+                      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2"
+                                  VerticalAlignment="Center">
+                        <Button Command="{Binding MoveUpCommand}" Background="Transparent"
+                                BorderThickness="0" Padding="4" FontSize="11" Content="↑" />
+                        <Button Command="{Binding MoveDownCommand}" Background="Transparent"
+                                BorderThickness="0" Padding="4" FontSize="11" Content="↓" />
+                        <Button Command="{Binding DeleteCommand}" Background="Transparent"
+                                BorderThickness="0" Padding="4" FontSize="11"
+                                Foreground="#D32F2F" Content="✕" />
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+
+            <!-- 右: 规则编辑器 (选中规则为空时展示空状态) -->
+            <Grid Grid.Column="1">
+              <StackPanel IsVisible="{Binding !HasEditor}" Spacing="8"
+                          HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=981}"
+                           FontSize="14" Foreground="#8A8F98" HorizontalAlignment="Center" />
+                <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=982}"
+                           FontSize="12" Foreground="#BDBDBD" HorizontalAlignment="Center" />
+              </StackPanel>
+
+              <ContentControl Content="{Binding Editor}" IsVisible="{Binding HasEditor}">
+                <ContentControl.DataTemplates>
+                  <DataTemplate DataType="vm:RuleEditorVm">
+                    <StackPanel Spacing="10">
+
+                      <!-- 匹配类型 -->
+                      <TextBlock FontSize="12" Foreground="#5F6368"
+                                 Text="{Binding LblMatchType}" />
+                      <ComboBox ItemsSource="{Binding MatchTypeOptions}"
+                                SelectedItem="{Binding SelectedMatchType, Mode=TwoWay}"
+                                HorizontalAlignment="Stretch">
+                        <ComboBox.ItemTemplate>
+                          <DataTemplate x:DataType="services:ComboOption">
+                            <TextBlock Text="{Binding Label}" />
+                          </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                      </ComboBox>
+
+                      <!-- 条件值 (仅文件后缀) -->
+                      <StackPanel Spacing="4" IsVisible="{Binding ShowMatchValueInput}">
+                        <TextBlock FontSize="12" Foreground="#5F6368"
+                                   Text="{Binding LblMatchValue}" />
+                        <TextBox Text="{Binding MatchValue}" />
+                        <TextBlock FontSize="11" Foreground="#8A8F98" Text="{Binding MatchHint}"
+                                   TextWrapping="Wrap" />
+                        <!-- 常用分组快捷填入 -->
+                        <StackPanel Spacing="4" IsVisible="{Binding ShowFileGroupFill}">
+                          <TextBlock FontSize="12" Foreground="#5F6368"
+                                     Text="{Binding LblFileGroup}" />
+                          <ComboBox ItemsSource="{Binding FileGroupOptions}"
+                                    SelectedItem="{Binding FileGroupSelected, Mode=TwoWay}"
+                                    PlaceholderText="{Binding LblFileGroup}"
+                                    HorizontalAlignment="Stretch">
+                            <ComboBox.ItemTemplate>
+                              <DataTemplate x:DataType="services:ComboOption">
+                                <TextBlock Text="{Binding Label}" />
+                              </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                          </ComboBox>
+                          <TextBlock FontSize="11" Foreground="#8A8F98" Text="{Binding FileGroupHint}"
+                                     TextWrapping="Wrap" />
+                        </StackPanel>
+                      </StackPanel>
+
+                      <!-- 文本特征 (仅 textType) -->
+                      <StackPanel Spacing="4" IsVisible="{Binding ShowTextTypeSelect}">
+                        <TextBlock FontSize="12" Foreground="#5F6368"
+                                   Text="{Binding LblTextType}" />
+                        <ComboBox ItemsSource="{Binding TextTypeOptions}"
+                                  SelectedItem="{Binding SelectedTextType, Mode=TwoWay}"
+                                  HorizontalAlignment="Stretch">
+                          <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="services:ComboOption">
+                              <TextBlock Text="{Binding Label}" />
+                            </DataTemplate>
+                          </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <TextBlock FontSize="11" Foreground="#8A8F98" Text="{Binding TextTypeHint}" />
+                      </StackPanel>
+
+                      <!-- 行为类型 -->
+                      <TextBlock FontSize="12" Foreground="#5F6368"
+                                 Text="{Binding LblActionType}" />
+                      <ComboBox ItemsSource="{Binding ActionTypeOptions}"
+                                SelectedItem="{Binding SelectedActionType, Mode=TwoWay}"
+                                HorizontalAlignment="Stretch">
+                        <ComboBox.ItemTemplate>
+                          <DataTemplate x:DataType="services:ComboOption">
+                            <TextBlock Text="{Binding Label}" />
+                          </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                      </ComboBox>
+
+                      <!-- 命令模板 (非无参行为) -->
+                      <StackPanel Spacing="4" IsVisible="{Binding ShowActionValue}">
+                        <TextBlock FontSize="12" Foreground="#5F6368"
+                                   Text="{Binding LblActionValue}" />
+                        <TextBox Text="{Binding ActionValue}" AcceptsReturn="True"
+                                 TextWrapping="NoWrap" MinHeight="54" />
+                        <TextBlock FontSize="11" Foreground="#8A8F98" Text="{Binding ActionHint}"
+                                   TextWrapping="Wrap" />
+                      </StackPanel>
+
+                      <!-- 无参行为提示 -->
+                      <Border IsVisible="{Binding IsTextAction}" Background="#E8F0FE"
+                              CornerRadius="6" Padding="10,6">
+                        <TextBlock Text="{Binding TextActionInfo}" FontSize="12"
+                                   Foreground="#37474F" TextWrapping="Wrap" />
+                      </Border>
+
+                      <!-- 工作目录 (仅 run) -->
+                      <StackPanel Spacing="4" IsVisible="{Binding ShowWorkingDir}">
+                        <TextBlock FontSize="12" Foreground="#5F6368"
+                                   Text="{Binding LblWorkingDir}" />
+                        <TextBox Text="{Binding WorkingDir}" />
+                      </StackPanel>
+
+                      <!-- 三个选项开关 -->
+                      <StackPanel Spacing="6">
+                        <CheckBox IsChecked="{Binding CopyToClipboard}"
+                                  Content="{Binding LblCopy}" />
+                        <CheckBox IsChecked="{Binding ClearSelection}"
+                                  Content="{Binding LblClear}" />
+                        <CheckBox IsChecked="{Binding Confirm}"
+                                  Content="{Binding LblConfirm}" />
+                      </StackPanel>
+
+                    </StackPanel>
+                  </DataTemplate>
+                </ContentControl.DataTemplates>
+              </ContentControl>
+            </Grid>
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <!-- ===================== 模拟测试 (复刻 ActionTester.vue) ===================== -->
+      <Border Background="White" BorderBrush="#E3E6EC" BorderThickness="1"
+              CornerRadius="10" Padding="16">
+        <StackPanel Spacing="10">
+          <TextBlock FontSize="15" FontWeight="SemiBold"
+                     Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=987}" />
+          <TextBlock FontSize="12" Foreground="#5F6368"
+                     Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=988}" />
+          <TextBox Text="{Binding TestContent}" AcceptsReturn="True" MinHeight="54" />
+          <DockPanel>
+            <CheckBox DockPanel.Dock="Left" IsChecked="{Binding TestIsFile}"
+                      Content="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=989}" />
+            <Button DockPanel.Dock="Right" Command="{Binding RunTestCommand}"
+                    IsEnabled="{Binding !Testing}" HorizontalAlignment="Right"
+                    Background="#4169E1" Foreground="White" CornerRadius="8" Padding="18,6"
+                    Content="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=990}" />
+          </DockPanel>
+
+          <!-- 错误 (后端 400 时展示 message) -->
+          <TextBlock IsVisible="{Binding TestError, Converter={StaticResource NotEmpty}}"
+                     Text="{Binding TestError}" Foreground="#D32F2F" FontSize="12"
+                     TextWrapping="Wrap" />
+
+          <!-- 结果 -->
+          <Border IsVisible="{Binding HasResult}" Background="#F7F8FB"
+                  CornerRadius="8" Padding="12">
+            <StackPanel Spacing="6">
+              <TextBlock IsVisible="{Binding !ResultMatched}" FontWeight="SemiBold"
+                         Foreground="#8A8F98"
+                         Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=993}" />
+              <StackPanel IsVisible="{Binding ResultMatched}" Spacing="6">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <TextBlock FontWeight="SemiBold" Foreground="#2E7D32"
+                             Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=994}" />
+                  <TextBlock Text="{Binding MatchedRuleText}" TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <TextBlock Foreground="#5F6368"
+                             Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=996}" />
+                  <TextBlock Text="{Binding PreviewText}" TextWrapping="Wrap" />
+                </StackPanel>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </Border>
+
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

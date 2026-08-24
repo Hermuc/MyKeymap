@@ -1,0 +1,63 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MyKeymap.Settings.ViewModels"
+             xmlns:controls="using:MyKeymap.Settings.Views.Controls"
+             x:Class="MyKeymap.Settings.Views.AbbrPageView"
+             x:Name="Root"
+             x:DataType="vm:AbbrPageViewModel">
+
+  <!-- 缩写命令页 (复刻 views/Abbr.vue): 缩写 chips + 命令框 + 编辑面板 + 备注汇总 -->
+  <ScrollViewer Background="#F0F2F7">
+    <StackPanel Orientation="Horizontal" Margin="24,20,24,28" Spacing="32" VerticalAlignment="Top">
+
+      <StackPanel MinWidth="500" MaxWidth="820">
+
+        <!-- 缩写条目 (WrapPanel chips, 复刻 d-flex flex-wrap 的 Key 列表) -->
+        <ItemsControl ItemsSource="{Binding Chips}" MaxWidth="800">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:KeyCellVm">
+              <Button MinWidth="53" Height="44" Padding="10,0" Margin="0,0,4,4" CornerRadius="6"
+                      Background="{Binding Background}"
+                      IsEnabled="{Binding IsEnabled}"
+                      Foreground="#20242B" BorderBrush="#D5D9E2" BorderThickness="1"
+                      Command="{Binding #Root.((vm:AbbrPageViewModel)DataContext).SelectChipCommand}"
+                      CommandParameter="{Binding}">
+                <TextBlock Text="{Binding Label}" FontSize="17" />
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- 命令框 (label:406; 回车执行 del/rn/选中) -->
+        <TextBox Text="{Binding CmdText}" KeyDown="OnCmdKeyDown"
+                 Watermark="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=406}"
+                 Margin="2,16,0,0" Padding="8,6" />
+
+        <controls:ActionEditorPanel Margin="0,18,0,0" DataContext="{Binding Editor}" />
+      </StackPanel>
+
+      <!-- 右侧备注汇总 (keyText 用 formatSpace 格式化) -->
+      <StackPanel MinWidth="220" MaxWidth="340" Margin="0,4,0,0">
+        <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=305}"
+                   FontSize="15" FontWeight="SemiBold" Margin="0,0,0,10" />
+        <ItemsControl ItemsSource="{Binding CommentEntries}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:CommentEntryVm">
+              <StackPanel Margin="0,0,0,12">
+                <TextBlock Text="{Binding KeyText}" FontWeight="SemiBold" FontSize="13" />
+                <TextBlock Text="{Binding Comment}" FontSize="12" Foreground="#5A5F68"
+                           TextWrapping="Wrap" />
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

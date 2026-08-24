@@ -13,6 +13,13 @@ buildClient:
 	rm -f config-ui/tsconfig.tsbuildinfo
 	cd config-ui/dist/assets; rm -f *.woff *.eot *.ttf
 
+# 发布 Avalonia 原生设置界面到 bin/ui/ (自包含, 免装 .NET 运行时)
+# 注意 PATH 陷阱: C:\Program Files\dotnet 可能只有运行时没有 SDK, 须显式探测
+buildClientAvalonia:
+	@dotnet --list-sdks | grep -q . || (echo "[错误] dotnet --list-sdks 为空: 未找到 .NET SDK (PATH 陷阱: C:\\Program Files\\dotnet 可能只有运行时无 SDK), 请安装 SDK 或将 PATH 指向含 SDK 的 dotnet.exe"; exit 1)
+	rm -f -r bin/ui
+	cd config-ui-avalonia; dotnet publish -c Release -r win-x64 --self-contained true -p:PublishReadyToRun=true -p:SatelliteResourceLanguages="zh-Hans;en" -o ../bin/ui
+
 copyFiles: CopyAHK
 	rm -f -r $(folder)
 	mkdir $(folder)
@@ -33,7 +40,7 @@ CopyAHK:
 	cmd.exe /c CopyAHK.bat
 	rm CopyAHK.bat
 
-build: buildServer buildClient copyFiles
+build: buildServer buildClient buildClientAvalonia copyFiles
 	cd bin; ./settings.exe ChangeVersion $(version)
 	rm -f MyKeymap-*.7z
 	7z.exe a $(zip) $(folder)
@@ -82,4 +89,4 @@ client:
 ahk: buildServer
 	@config-server/settings.exe GenerateAHK ./data/config.json ./config-server/templates/mykeymap.tmpl ./bin/MyKeymap.ahk
 
-.PHONY: server client ahk buildServer buildClient copyFiles upload build
+.PHONY: server client ahk buildServer buildClient buildClientAvalonia copyFiles upload build

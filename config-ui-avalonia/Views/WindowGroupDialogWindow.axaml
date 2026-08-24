@@ -1,0 +1,75 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MyKeymap.Settings.ViewModels"
+        x:Class="MyKeymap.Settings.Views.WindowGroupDialogWindow"
+        x:Name="DlgRoot"
+        x:DataType="vm:WindowGroupDialogViewModel"
+        Title="MyKeymap Setting"
+        Width="920" Height="620"
+        WindowStartupLocation="CenterOwner">
+
+  <!-- 窗口条件组对话框 (复刻 WindowGroupDialog.vue + InputKeyValueDialog.vue) -->
+  <Border Padding="20">
+    <DockPanel>
+
+      <!-- 顶部: 注意事项 (label:612) -->
+      <TextBlock DockPanel.Dock="Top" Text="{Binding Tip}"
+                 FontSize="12" Foreground="#8A8F98" TextWrapping="Wrap" Margin="0,0,0,12" />
+
+      <!-- 底部按钮: 窗口侦探 / 添加一行 / 取消 / 保存 -->
+      <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="10"
+                  HorizontalAlignment="Right" Margin="0,14,0,0">
+        <Button Command="{Binding RunWindowSpyCommand}"
+                Background="Transparent" BorderBrush="#4169E1" BorderThickness="1"
+                Foreground="#4169E1" Padding="12,6" CornerRadius="8">
+          <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=309}" />
+        </Button>
+        <Button Command="{Binding AddRowCommand}"
+                Background="Transparent" BorderBrush="#4169E1" BorderThickness="1"
+                Foreground="#4169E1" Padding="12,6" CornerRadius="8">
+          <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=609}" />
+        </Button>
+        <Button Click="OnCancelClick" Padding="12,6" CornerRadius="8">
+          <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=611}" />
+        </Button>
+        <Button Click="OnSaveClick"
+                Background="#4169E1" Foreground="White" Padding="16,6" CornerRadius="8">
+          <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=610}" />
+        </Button>
+      </StackPanel>
+
+      <!-- 表头: 组名 / 窗口标识符 / 条件 -->
+      <StackPanel>
+        <Grid ColumnDefinitions="200,*,220" Margin="0,0,0,8">
+          <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=602}" Foreground="#8A8F98" FontSize="12" />
+          <TextBlock Grid.Column="1" Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=603}" Foreground="#8A8F98" FontSize="12" />
+          <TextBlock Grid.Column="2" Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=604}" Foreground="#8A8F98" FontSize="12" />
+        </Grid>
+        <ScrollViewer>
+          <ItemsControl ItemsSource="{Binding Rows}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:WindowGroupRowVm">
+                <Grid ColumnDefinitions="200,*,220" Margin="0,3">
+                  <!-- 组名 (内置组 id<=0 不可改) -->
+                  <TextBox Text="{Binding Name}" IsEnabled="{Binding NameEnabled}"
+                           Margin="0,0,8,0" Padding="8,5" VerticalAlignment="Top" />
+                  <!-- 窗口标识符 (id=0 的默认组锁定; 多行) -->
+                  <TextBox Grid.Column="1" Text="{Binding Value}" IsEnabled="{Binding ValueEnabled}"
+                           AcceptsReturn="True" MinHeight="36" Margin="0,0,8,0" Padding="8,5"
+                           VerticalAlignment="Top" />
+                  <!-- 条件类型 (605-608) -->
+                  <ComboBox Grid.Column="2"
+                            ItemsSource="{Binding #DlgRoot.((vm:WindowGroupDialogViewModel)DataContext).ConditionOptionsView}"
+                            SelectedItem="{Binding Condition}"
+                            IsEnabled="{Binding ConditionEnabled}"
+                            HorizontalAlignment="Stretch" VerticalAlignment="Top" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </StackPanel>
+
+    </DockPanel>
+  </Border>
+</Window>

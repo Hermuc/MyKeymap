@@ -1,0 +1,120 @@
+using System;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading;
+using Avalonia;
+
+namespace MyKeymap.Settings;
+
+/// <summary>
+/// 程序入口：单实例守卫 + 初始化并启动 Avalonia 桌面应用。
+/// 单实例约定 (与 AHK 侧 MyKeymapOpenSettings 三分支语义配合):
+///   命名 Mutex "MyKeymap.Settings.SingleInstance"; 第二实例不重复开窗口,
+///   激活已有窗口 (标题 "MyKeymap Setting") 后立即退出。
+/// </summary>
+internal static class Program
+{
+    /// <summary>进程创建时间 (Win32 GetProcessTimes; 托管 Stopwatch 在 Main 入口才初始化, 会漏掉运行时启动耗时)。</summary>
+    public static readonly DateTime ProcessStartTimeUtc = GetProcessCreationTimeUtc();
+
+    private const string SingleInstanceMutexName = "MyKeymap.Settings.SingleInstance";
+    private const string MainWindowTitle = "MyKeymap Setting";
+
+    /// <summary>
+    /// 主入口点，启动经典桌面生命周期。
+    /// </summary>
+    [STAThread]
+    public static void Main(string[] args)
+    {
+        // 单实例: 命名 Mutex 全局协调。createdNew=false 表示已有实例在运行。
+        using var mutex = new Mutex(true, SingleInstanceMutexName, out var createdNew);
+        if (!createdNew)
+        {
+            ActivateExistingWindow();
+            return; // 第二实例直接退出, 不启动 Avalonia
+        }
+
+        try
+        {
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        }
+        finally
+        {
+            // 最末层兜底: 无论何种退出路径, 确保后端子进程整树终止, 绝不留孤儿。
+            // (正常路径已在 MainWindow.Closing / App.Exit 执行, Shutdown 幂等)
+            App.EnsureBackendShutdown();
+        }
+    }
+
+    /// <summary>
+    /// 构建 Avalonia 应用：平台自动检测 + Fluent 主题（见 App.axaml）。
+    /// </summary>
+    public static AppBuilder BuildAvaloniaApp()
+        => AppBuilder.Configure<App>()
+            .UsePlatformDetect()
+            .LogToTrace();
+
+    // ----------------------------------------------------------- 窗口激活 (P/Invoke)
+
+    /// <summary>
+    /// 枚举顶层窗口, 找到标题为 "MyKeymap Setting" 的已有实例窗口:
+    /// 最小化则还原 (SW_RESTORE), 然后置为前台。找到第一个即停。
+    /// </summary>
+    private static void ActivateExistingWindow()
+    {
+        EnumWindows((hWnd, _) =>
+        {
+            var title = GetWindowTitle(hWnd);
+            if (title != MainWindowTitle) return true; // 继续枚举
+
+            if (IsIconic(hWnd)) ShowWindow(hWnd, SW_RESTORE); // 最小化 -> 还原
+            SetForegroundWindow(hWnd);
+            return false; // 已找到, 停止枚举
+        }, IntPtr.Zero);
+    }
+
+    private static string GetWindowTitle(IntPtr hWnd)
+    {
+        var sb = new StringBuilder(512);
+        return GetWindowText(hWnd, sb, sb.Capacity) > 0 ? sb.ToString() : "";
+    }
+
+    private const int SW_RESTORE = 9;
+
+    private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsIconic(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    // ----------------------------------------------------------- 进程创建时间 (启动计时)
+
+    private static DateTime GetProcessCreationTimeUtc()
+    {
+        try
+        {
+            var h = System.Diagnostics.Process.GetCurrentProcess().Handle;
+            if (GetProcessTimes(h, out var creation, out _, out _, out _))
+            {
+                return DateTime.FromFileTimeUtc(creation);
+            }
+        }
+        catch { /* 失败时退化为当前时刻 (耗时略偏小) */ }
+        return DateTime.UtcNow;
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool GetProcessTimes(IntPtr hProcess,
+        out long lpCreationTime, out long lpExitTime, out long lpKernelTime, out long lpUserTime);
+}

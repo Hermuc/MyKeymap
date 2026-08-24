@@ -2,6 +2,7 @@ node_modules
 .pnpm-debug.log
 MyKeymap
 bin/site
+bin/ui/
 bin/html-tools/AlignText.html
 bin/html-tools/tailwind.css
 bin/templates

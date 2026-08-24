@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- 输出为 Windows 可执行程序，最终产物为 MyKeymap.Settings.exe -->
+    <OutputType>WinExe</OutputType>
+    <!-- 目标框架：.NET 10 -->
+    <TargetFramework>net10.0</TargetFramework>
+    <!-- 程序集 / 产品名：主 exe 最终命名 MyKeymap.Settings.exe -->
+    <AssemblyName>MyKeymap.Settings</AssemblyName>
+    <RootNamespace>MyKeymap.Settings</RootNamespace>
+    <Product>MyKeymap.Settings</Product>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- 启用编译绑定（x:CompileBindings），提升绑定性能与编译期检查 -->
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <!-- 保留全球化（界面含中文，不能启用 InvariantGlobalization） -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Avalonia 核心、桌面平台、Fluent 主题、MVVM 工具包 -->
+    <PackageReference Include="Avalonia" Version="11.3.20" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.20" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.20" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+  </ItemGroup>
+
+</Project>

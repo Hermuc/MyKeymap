@@ -31,11 +31,15 @@ func main() {
 	hasError := make(chan struct{})
 	rainDone := make(chan struct{})
 	debug := len(os.Args) == 2 && os.Args[1] == "debug"
+	// headless 模式: 供 Avalonia 壳以子进程方式拉起, 无代码雨/无浏览器/不开 CORS, 通过 stdout 端口通告行告知实际监听端口
+	headless := len(os.Args) == 2 && os.Args[1] == "--headless"
 
 	if !debug {
-		if hideMatrix() {
+		if headless || hideMatrix() {
 			close(rainDone)
-			fmt.Println("MyKeymap config server is running...")
+			if !headless {
+				fmt.Println("MyKeymap config server is running...")
+			}
 		} else {
 			go matrix.DigitalRain(hasError, rainDone)
 		}
@@ -45,10 +49,10 @@ func main() {
 	}
 
 	execCmd("./MyKeymap.exe", "/script", "./bin/MiscTools.ahk", "GenerateShortcuts")
-	server(hasError, rainDone, debug)
+	server(hasError, rainDone, debug, headless)
 }
 
-func server(hasError chan<- struct{}, rainDone <-chan struct{}, debug bool) {
+func server(hasError chan<- struct{}, rainDone <-chan struct{}, debug bool, headless bool) {
 	if !debug {
 		gin.SetMode(gin.ReleaseMode)
 		gin.DefaultWriter = io.Discard
@@ -91,7 +95,12 @@ func server(hasError chan<- struct{}, rainDone <-chan struct{}, debug bool) {
 		}
 	}
 
-	if !debug {
+	if headless {
+		// 端口通告行: 必须为 stdout 第一行输出, 供 Avalonia 壳逐行匹配 "MYKEYMAP_PORT=" 前缀 (不打印任何装饰文本)
+		fmt.Printf("MYKEYMAP_PORT=%d\n", ln.Addr().(*net.TCPAddr).Port)
+	}
+
+	if !debug && !headless {
 		go func() {
 			err := openBrowser(ln.Addr())
 			if err != nil {

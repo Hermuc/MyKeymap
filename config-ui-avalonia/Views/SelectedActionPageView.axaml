@@ -1,0 +1,120 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MyKeymap.Settings.ViewModels"
+             xmlns:views="using:MyKeymap.Settings.Views"
+             x:Class="MyKeymap.Settings.Views.SelectedActionPageView"
+             x:DataType="vm:SelectedActionPageViewModel">
+
+  <UserControl.Styles>
+    <!-- 方案卡片悬停: 边框提亮 + 轻投影 (复刻 .scheme-card:hover) -->
+    <Style Selector="Border.scheme-card:pointerover">
+      <Setter Property="BorderBrush" Value="#4169E1" />
+      <Setter Property="BoxShadow" Value="0 4 12 rgba(0,0,0,0.12)" />
+    </Style>
+    <Style Selector="ListBoxItem">
+      <Setter Property="Padding" Value="8,6" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Margin" Value="0,1" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid>
+
+    <!-- ===================== 列表态 (复刻 SelectedAction.vue) ===================== -->
+    <DockPanel Margin="20" IsVisible="{Binding IsListMode}">
+
+      <!-- 头部: 标题 + 新建方案 -->
+      <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+        <TextBlock DockPanel.Dock="Left" FontSize="20" FontWeight="SemiBold"
+                   VerticalAlignment="Center"
+                   Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=914}" />
+        <Button DockPanel.Dock="Right" Command="{Binding CreateNewCommand}"
+                HorizontalAlignment="Right"
+                Background="#4169E1" Foreground="White" CornerRadius="8" Padding="14,7">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <TextBlock Text="＋" />
+            <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=959}" />
+          </StackPanel>
+        </Button>
+      </DockPanel>
+
+      <!-- 说明条 (复刻 v-alert info tonal) -->
+      <Border DockPanel.Dock="Top" Background="#E8F0FE" CornerRadius="8"
+              Padding="12,9" Margin="0,0,0,16">
+        <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#37474F"
+                   Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=960}" />
+      </Border>
+
+      <!-- 空状态 (复刻 v-empty-state) -->
+      <StackPanel IsVisible="{Binding !HasCards}"
+                  HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+        <TextBlock Text="👆" FontSize="40" HorizontalAlignment="Center" />
+        <TextBlock FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center"
+                   Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=971}" />
+        <TextBlock FontSize="12" Foreground="#8A8F98" HorizontalAlignment="Center"
+                   Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=972}" />
+      </StackPanel>
+
+      <!-- 方案卡片网格 (自适应换行) -->
+      <ScrollViewer>
+        <ItemsControl ItemsSource="{Binding Cards}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:SchemeCardVm">
+              <Border Classes="scheme-card" Width="292" Margin="0,0,14,14"
+                      Background="White" BorderBrush="#E3E6EC" BorderThickness="1"
+                      CornerRadius="10" Padding="14" Cursor="Hand"
+                      Tapped="OnCardTapped">
+                <StackPanel Spacing="8">
+                  <!-- 标题行: 状态点 + 名称 + 启用开关 -->
+                  <Grid ColumnDefinitions="Auto,*,Auto">
+                    <Border Width="9" Height="9" CornerRadius="5"
+                            Background="{Binding EnableDotColor}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Margin="8,0" FontWeight="SemiBold"
+                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                               Text="{Binding NameDisplay}" />
+                    <ToggleSwitch Grid.Column="2" IsChecked="{Binding Enable}"
+                                  OnContent="{Binding EnableLabel}" OffContent="{Binding EnableLabel}"
+                                  MinWidth="10" />
+                  </Grid>
+                  <!-- 热键行 -->
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="⌨" FontSize="13" Foreground="#8A8F98" />
+                    <TextBlock Text="{Binding HotkeyDisplay}" IsVisible="{Binding HasHotkey}" />
+                    <TextBlock Text="{Binding HotkeyDisplay}" IsVisible="{Binding !HasHotkey}"
+                               Foreground="#BDBDBD" />
+                  </StackPanel>
+                  <!-- 规则数摘要 -->
+                  <TextBlock Text="{Binding RuleCountText}" FontSize="11" Foreground="#8A8F98" />
+                  <!-- 操作行 -->
+                  <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
+                    <Button Command="{Binding OpenCommand}" Background="Transparent"
+                            BorderThickness="0" Padding="8,4" Foreground="#4169E1" FontSize="12"
+                            Content="{Binding EditLabel}" />
+                    <Button Command="{Binding AskDeleteCommand}" Background="Transparent"
+                            BorderThickness="0" Padding="8,4" Foreground="#D32F2F" FontSize="12"
+                            Content="{Binding DeleteLabel}" />
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </DockPanel>
+
+    <!-- ===================== 编辑态 (复刻路由 /keymap/action/:id) ===================== -->
+    <ContentControl Content="{Binding EditVm}" IsVisible="{Binding IsEditMode}">
+      <ContentControl.DataTemplates>
+        <DataTemplate DataType="vm:SelectedActionEditViewModel">
+          <views:SelectedActionEditView />
+        </DataTemplate>
+      </ContentControl.DataTemplates>
+    </ContentControl>
+
+  </Grid>
+</UserControl>

@@ -65,23 +65,22 @@ MyKeymapToggleSuspend() {
 }
 
 /**
- * 打开设置
+ * 打开设置 (原生 Avalonia GUI: bin\ui\MyKeymap.Settings.exe, 与 settings.exe 同处 bin\ 体系,
+ * 窗口标题 "MyKeymap Setting"; 不再经 wt.exe 承载, 后端由 GUI 以子进程管理)
  */
 MyKeymapOpenSettings() {
-  ; settings.exe 是控制台程序, 用 Windows Terminal 承载代码雨界面, 替代老式控制台窗口;
-  ; 直接运行 settings.exe (绕过 pwsh 层) 可显著缩短设置入口启动延迟
   launchSettings() {
-    Run('wt.exe -d "' A_ScriptDir '" "' A_ScriptDir '\settings.exe"', A_ScriptDir)
+    Run('"' A_ScriptDir '\ui\MyKeymap.Settings.exe"', A_ScriptDir)
   }
-  if (!ProcessExist("settings.exe")) {
+  if (!ProcessExist("MyKeymap.Settings.exe")) {
     launchSettings()
   } else if (WinExist("MyKeymap Setting")) {
     WinActivate("MyKeymap Setting")
   } else {
-    ; 进程存在但设置窗口不可见, 重启 settings 服务
-    if ProcessExist("settings.exe") {
-      ProcessClose("settings.exe")
-      ProcessWaitClose("settings.exe", 2)
+    ; 进程存在但设置窗口不可见, 重启设置程序 (其会一并重建后端子进程)
+    if ProcessExist("MyKeymap.Settings.exe") {
+      ProcessClose("MyKeymap.Settings.exe")
+      ProcessWaitClose("MyKeymap.Settings.exe", 2)
     }
     launchSettings()
   }
