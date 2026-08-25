@@ -9,6 +9,11 @@ bin/templates
 bin/mykeymap-settings-server
 bin/mykeymap-settings-server.exe
 bin/settings.exe
+# Avalonia 设置界面构建产物 (自包含发布到 bin/ui/, 不入库)
+config-ui-avalonia/bin/
+config-ui-avalonia/obj/
+MyKeymap.Settings.Tests/bin/
+MyKeymap.Settings.Tests/obj/
 *.7z
 todo.md
 .idea
