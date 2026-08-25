@@ -131,7 +131,10 @@ func openBrowser(addr net.Addr) error {
 func indexHandler(c *gin.Context) {
 	data, err := os.ReadFile("./site/index.html")
 	if err != nil {
-		panic(err)
+		// 旧 Vue web UI 已退役 (Avalonia 原生设置界面替代), site/ 不再包含 index.html:
+		// 根路径直接返回 404, 避免 panic 拖垮后端服务
+		c.Status(http.StatusNotFound)
+		return
 	}
 	// 设置 Cache-Control: no-store 禁用缓存
 	c.Header("Cache-Control", "no-store")

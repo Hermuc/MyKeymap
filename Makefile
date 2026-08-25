@@ -8,11 +8,6 @@ buildServer:
 	rm -f -r bin/templates
 	cp -r config-server/templates bin/templates
 
-buildClient:
-	cd config-ui; npm run build
-	rm -f config-ui/tsconfig.tsbuildinfo
-	cd config-ui/dist/assets; rm -f *.woff *.eot *.ttf
-
 # 发布 Avalonia 原生设置界面到 bin/ui/ (自包含, 免装 .NET 运行时)
 # 注意 PATH 陷阱: C:\Program Files\dotnet 可能只有运行时没有 SDK, 须显式探测
 buildClientAvalonia:
@@ -26,7 +21,7 @@ copyFiles: CopyAHK
 	mkdir $(folder)/shortcuts
 
 	rm -f -r bin/site
-	cp -r config-ui/dist bin/site
+	cp -r site-assets bin/site
 
 	cp -r data $(folder)/
 	cp -r bin $(folder)/
@@ -40,7 +35,7 @@ CopyAHK:
 	cmd.exe /c CopyAHK.bat
 	rm CopyAHK.bat
 
-build: buildServer buildClient buildClientAvalonia copyFiles
+build: buildServer buildClientAvalonia copyFiles
 	cd bin; ./settings.exe ChangeVersion $(version)
 	rm -f MyKeymap-*.7z
 	7z.exe a $(zip) $(folder)
@@ -80,13 +75,7 @@ upload: uploadLanZou createRelease
 server: buildServer
 	@cd config-server; ../bin/settings.exe debug
 
-# https://github.com/facebook/create-react-app/issues/10253#issuecomment-747970009
-# 坑啊: WSL2 中的 Chokidar 无法监测 Windows 上的文件修改, 导致 hot reload 不起作用
-# 需要把项目移到 WSL2 里面, 或者使用 Polling 模式
-client:
-	@cd config-ui; CHOKIDAR_USEPOLLING=true npm run dev
-
 ahk: buildServer
 	@config-server/settings.exe GenerateAHK ./data/config.json ./config-server/templates/mykeymap.tmpl ./bin/MyKeymap.ahk
 
-.PHONY: server client ahk buildServer buildClient buildClientAvalonia copyFiles upload build
+.PHONY: server ahk buildServer buildClientAvalonia copyFiles upload build

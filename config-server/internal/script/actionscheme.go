@@ -7,7 +7,7 @@ import (
 )
 
 // 文本特征 -> 可选行为类型 映射 (单一真源, 需同步的副本):
-//   - 前端: config-ui/src/components/action/constants.ts 的 TEXT_TYPE_ACTIONS
+//   - 前端: 由后端 /api/action-schemes 下发 (旧 Vue 前端 config-ui 已退役删除)
 //   - AHK 端: bin/lib/rules/SelectedAction.ahk 的 ExecuteActionRule 分支
 // 规则: 特征与行为必须语义匹配, 禁止出现「链接 + 程序打开」这类错配组合
 var textTypeActions = map[string][]string{
