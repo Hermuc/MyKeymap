@@ -4,6 +4,7 @@ using Avalonia.Controls.Documents;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Media.TextFormatting;
 
 namespace MyKeymap.Settings.Services;
 
@@ -20,6 +21,10 @@ public static class MarkdownRenderer
     private const string LinkColor = "#4169E1";
     private const string CodeColor = "#C7254E";
     private const string CodeFont = "Consolas";
+
+    /// <summary>链接文字基线补偿 (14px 字号实测校准): 段落行高 24 用 15.4, 列表行高 23 用 15.2。</summary>
+    private const double ParagraphLinkOffset = 15.4;
+    private const double ListLinkOffset = 15.2;
 
     /// <summary>标题字号 (按级别): # 24 / ## 22 / ### 18 / #### 16。</summary>
     private static readonly int[] HeadingSizes = [24, 22, 18, 16];
@@ -58,7 +63,7 @@ public static class MarkdownRenderer
             Margin = new Thickness(0, heading.Level == 1 ? 16 : 14, 0, 6),
             TextWrapping = TextWrapping.Wrap,
         };
-        AppendInline(tb, MarkdownParser.ParseInline(heading.Text), size, 0, openLink);
+        AppendInline(tb, MarkdownParser.ParseInline(heading.Text), size, null, openLink);
         return tb;
     }
 
@@ -72,7 +77,7 @@ public static class MarkdownRenderer
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 2, 0, 2),
         };
-        AppendInline(tb, paragraph.Inlines, 14, 24, openLink);
+        AppendInline(tb, paragraph.Inlines, 14, ParagraphLinkOffset, openLink);
         return tb;
     }
 
@@ -95,7 +100,7 @@ public static class MarkdownRenderer
                 Foreground = new SolidColorBrush(Color.Parse(LinkColor)),
                 FontWeight = FontWeight.SemiBold,
             });
-            AppendInline(tb, item.Inlines, 14, 23, openLink);
+            AppendInline(tb, item.Inlines, 14, ListLinkOffset, openLink);
             panel.Children.Add(tb);
         }
         return panel;
@@ -132,7 +137,7 @@ public static class MarkdownRenderer
     }
 
     /// <summary>行内渲染: 按片段种类追加 Run / 代码 Run / 链接控件。</summary>
-    private static void AppendInline(TextBlock tb, IReadOnlyList<MdInline> inlines, int fontSize, int lineHeight, Action<string> openLink)
+    private static void AppendInline(TextBlock tb, IReadOnlyList<MdInline> inlines, int fontSize, double? linkBaselineOffset, Action<string> openLink)
     {
         foreach (var inline in inlines)
         {
@@ -147,10 +152,12 @@ public static class MarkdownRenderer
                     });
                     break;
                 case MdInlineKind.Link:
+                    // 关键: InlineUIContainer 内嵌控件不继承外层 TextBlock 的字体, 必须显式传入,
+                    // 否则不同字体度量 (Ascent) 会导致链接文字比同行普通文字更高。
                     tb.Inlines.Add(new InlineUIContainer
                     {
                         BaselineAlignment = BaselineAlignment.Baseline,
-                        Child = BuildLink(inline.Text, inline.Url, fontSize, lineHeight, openLink),
+                        Child = BuildLink(inline.Text, inline.Url, fontSize, tb.FontFamily, linkBaselineOffset, openLink),
                     });
                     break;
                 default:
@@ -162,21 +169,29 @@ public static class MarkdownRenderer
 
     /// <summary>
     /// 链接控件: 蓝色下划线 + 手型光标, 点击回调 openLink。
-    /// 继承所在行的 LineHeight 并垂直居中, 避免 InlineUIContainer 内嵌控件基线偏移
-    /// (链接文字比同行的普通文字位置更高的问题)。
+    /// 与所在行同字体同字号, 文字度量 (Ascent/基线) 一致, 避免内嵌控件位置偏移。
     /// </summary>
-    private static TextBlock BuildLink(string text, string url, int fontSize, int lineHeight, Action<string> openLink)
+    private static TextBlock BuildLink(string text, string url, int fontSize, FontFamily fontFamily, double? baselineOffset, Action<string> openLink)
     {
         var link = new TextBlock
         {
             Text = text,
             FontSize = fontSize,
-            LineHeight = lineHeight > 0 ? lineHeight : 0, // 0 = 自动, 与所在行一致
-            VerticalAlignment = VerticalAlignment.Center,
+            FontFamily = fontFamily,
+            // LineHeight 是继承属性: 继承外层 24/23 会使控件高度=行盒高度,
+            // EmbeddedControlRun 基线对齐时把控件顶到行顶之上, 链接文字明显偏高。
+            // 取消继承, 让控件按自身文字行高布局, 由 BaselineOffset 精确对齐。
+            LineHeight = double.NaN,
             Foreground = new SolidColorBrush(Color.Parse(LinkColor)),
             TextDecorations = TextDecorations.Underline,
             Cursor = new Cursor(StandardCursorType.Hand),
         };
+        // 关键: BaselineAlignment=Baseline 时 EmbeddedControlRun 按控件 BaselineOffset
+        // 对齐行基线。TextLayout.Baseline 是纯文字基线, 实际渲染还有行盒补偿,
+        // 直接使用会偏低; 段落/列表的补偿值已按 14px 字号肉眼校准 (见上方常量),
+        // 其余字号 (标题) 按字体度量等比折算。
+        using var layout = new TextLayout(text, new Typeface(fontFamily), fontSize, null);
+        link.BaselineOffset = baselineOffset ?? layout.Baseline + 1.5;
         link.PointerPressed += (_, _) => openLink(url);
         return link;
     }
