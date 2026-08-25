@@ -174,6 +174,11 @@ public static class MarkdownRenderer
     /// <summary>
     /// 链接控件: 蓝色下划线 + 手型光标, 点击回调 openLink。
     /// 与所在行同字体同字号, 文字度量 (Ascent/基线) 一致, 避免内嵌控件位置偏移。
+    /// 指针交互: SelectableTextBlock 的 OnPointerPressed 无条件捕获指针 (e.Pointer.Capture(this))
+    /// 且类处理器注册为 handledEventsToo=false —— 内嵌链接收不到 PointerReleased, Tapped 手势
+    /// 永不触发 (此前改 Tapped 导致链接完全点不了)。故链接自行捕获指针并判断:
+    /// 「原地释放 = 点击跳转; 移出链接 = 拖动/误触, 不跳转」; 按下时 Handled=true 阻止
+    /// SelectableTextBlock 接管文本选择 (仅限链接区域, 链接外选词不受影响)。
     /// </summary>
     private static TextBlock BuildLink(string text, string url, int fontSize, FontFamily fontFamily, double? baselineOffset, Action<string> openLink)
     {
@@ -196,8 +201,18 @@ public static class MarkdownRenderer
         // 其余字号 (标题) 按字体度量等比折算。
         using var layout = new TextLayout(text, new Typeface(fontFamily), fontSize, null);
         link.BaselineOffset = baselineOffset ?? layout.Baseline + 1.5;
-        // 用 Tapped (点击完成) 而非 PointerPressed (按下即开): 总览页文字已启用选择,
-        // 按下拖动选词不应误触链接跳转; Tapped 在指针移动超过阈值后不触发。
+
+        // 指针交互: SelectableTextBlock 的 OnPointerPressed 无条件捕获指针 (e.Pointer.Capture(this))
+        // 且类处理器注册为 handledEventsToo=false —— 内嵌链接收不到 PointerReleased, Tapped 手势
+        // 永不触发 (此前改 Tapped 导致链接完全点不了)。故链接按下时自行捕获指针并 Handled,
+        // 阻止 SelectableTextBlock 接管; 链接收到完整按下/释放序列后 Tapped 正常触发:
+        // 「原地释放 = 点击跳转; 拖动超过手势阈值 = Tapped 不触发, 不误跳」。链接外选词不受影响。
+        link.PointerPressed += (_, e) =>
+        {
+            if (!e.GetCurrentPoint(link).Properties.IsLeftButtonPressed) return;
+            e.Pointer.Capture(link);
+            e.Handled = true; // 阻止 SelectableTextBlock 的指针捕获与文本选择接管 (仅链接区域)
+        };
         link.Tapped += (_, _) => openLink(url);
         return link;
     }
