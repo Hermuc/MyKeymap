@@ -58,7 +58,7 @@ public static class MarkdownRenderer
             Margin = new Thickness(0, heading.Level == 1 ? 16 : 14, 0, 6),
             TextWrapping = TextWrapping.Wrap,
         };
-        AppendInline(tb, MarkdownParser.ParseInline(heading.Text), size, openLink);
+        AppendInline(tb, MarkdownParser.ParseInline(heading.Text), size, 0, openLink);
         return tb;
     }
 
@@ -72,7 +72,7 @@ public static class MarkdownRenderer
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 2, 0, 2),
         };
-        AppendInline(tb, paragraph.Inlines, 14, openLink);
+        AppendInline(tb, paragraph.Inlines, 14, 24, openLink);
         return tb;
     }
 
@@ -95,7 +95,7 @@ public static class MarkdownRenderer
                 Foreground = new SolidColorBrush(Color.Parse(LinkColor)),
                 FontWeight = FontWeight.SemiBold,
             });
-            AppendInline(tb, item.Inlines, 14, openLink);
+            AppendInline(tb, item.Inlines, 14, 23, openLink);
             panel.Children.Add(tb);
         }
         return panel;
@@ -132,7 +132,7 @@ public static class MarkdownRenderer
     }
 
     /// <summary>行内渲染: 按片段种类追加 Run / 代码 Run / 链接控件。</summary>
-    private static void AppendInline(TextBlock tb, IReadOnlyList<MdInline> inlines, int fontSize, Action<string> openLink)
+    private static void AppendInline(TextBlock tb, IReadOnlyList<MdInline> inlines, int fontSize, int lineHeight, Action<string> openLink)
     {
         foreach (var inline in inlines)
         {
@@ -147,7 +147,11 @@ public static class MarkdownRenderer
                     });
                     break;
                 case MdInlineKind.Link:
-                    tb.Inlines.Add(new InlineUIContainer { Child = BuildLink(inline.Text, inline.Url, fontSize, openLink) });
+                    tb.Inlines.Add(new InlineUIContainer
+                    {
+                        BaselineAlignment = BaselineAlignment.Baseline,
+                        Child = BuildLink(inline.Text, inline.Url, fontSize, lineHeight, openLink),
+                    });
                     break;
                 default:
                     tb.Inlines.Add(new Run(inline.Text) { FontSize = fontSize });
@@ -156,13 +160,19 @@ public static class MarkdownRenderer
         }
     }
 
-    /// <summary>链接控件: 蓝色下划线 + 手型光标, 点击回调 openLink。</summary>
-    private static TextBlock BuildLink(string text, string url, int fontSize, Action<string> openLink)
+    /// <summary>
+    /// 链接控件: 蓝色下划线 + 手型光标, 点击回调 openLink。
+    /// 继承所在行的 LineHeight 并垂直居中, 避免 InlineUIContainer 内嵌控件基线偏移
+    /// (链接文字比同行的普通文字位置更高的问题)。
+    /// </summary>
+    private static TextBlock BuildLink(string text, string url, int fontSize, int lineHeight, Action<string> openLink)
     {
         var link = new TextBlock
         {
             Text = text,
             FontSize = fontSize,
+            LineHeight = lineHeight > 0 ? lineHeight : 0, // 0 = 自动, 与所在行一致
+            VerticalAlignment = VerticalAlignment.Center,
             Foreground = new SolidColorBrush(Color.Parse(LinkColor)),
             TextDecorations = TextDecorations.Underline,
             Cursor = new Cursor(StandardCursorType.Hand),
