@@ -13,6 +13,8 @@
     <services:IntToStringConverter x:Key="IntStr" />
     <services:BoolNotConverter x:Key="Not" />
     <services:StringNotEmptyConverter x:Key="NotEmpty" />
+    <!-- MDI 图标字体 (导航图标, 复刻 Vue 版 mdi 图标) -->
+    <FontFamily x:Key="MdiFont">avares://MyKeymap.Settings/Assets/Fonts/materialdesignicons.ttf#Material Design Icons</FontFamily>
   </Application.Resources>
 
   <!-- 应用级样式：使用 Fluent 主题 (变体由 Application.RequestedThemeVariant 决定) -->

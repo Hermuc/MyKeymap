@@ -25,4 +25,9 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- 内嵌资源: MDI 图标字体 (导航图标, 复刻 Vue 版 mdi 图标) -->
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+
 </Project>
