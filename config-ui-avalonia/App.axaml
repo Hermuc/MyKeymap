@@ -15,11 +15,19 @@
     <services:StringNotEmptyConverter x:Key="NotEmpty" />
     <!-- MDI 图标字体 (导航图标, 复刻 Vue 版 mdi 图标) -->
     <FontFamily x:Key="MdiFont">avares://MyKeymap.Settings/Assets/Fonts/materialdesignicons.ttf#Material Design Icons</FontFamily>
+    <!-- 滚动条整体宽度: Fluent 主题模板中 ScrollBar 的 MinWidth 与 Thumb 宽度均绑定 ScrollBarSize 资源
+         (默认值下实测展开约 14px, 细条约 3px; 注意窗口为 125% DPI, 物理像素 = 逻辑值 x 1.25),
+         此处覆盖为 10, 展开宽度收窄至约 12-13px, 细条同步变细.
+         注意: 必须放在 Application.Resources (逻辑树根) 而非 Styles.Resources ——
+         主题模板内的 {DynamicResource ScrollBarSize} 沿逻辑树查找资源, 不经过样式集合资源. -->
+    <x:Double x:Key="ScrollBarSize">10</x:Double>
   </Application.Resources>
 
   <!-- 应用级样式：使用 Fluent 主题 (变体由 Application.RequestedThemeVariant 决定) -->
   <Application.Styles>
     <FluentTheme />
+    <!-- 滚动条交互手感与外观优化 (悬停即时加粗/移开即时变细/Thumb 圆角), 详见 Styles/ScrollBarStyles.axaml -->
+    <StyleInclude Source="avares://MyKeymap.Settings/Styles/ScrollBarStyles.axaml" />
   </Application.Styles>
 
 </Application>
