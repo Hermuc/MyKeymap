@@ -46,17 +46,19 @@ public static class MarkdownRenderer
                 MdParagraph p => BuildParagraph(p, openLink),
                 MdList l => BuildList(l, openLink),
                 MdImage img => BuildImage(img, loadImage),
-                _ => new TextBlock { Text = "" },
+                // 兜底分支 (未知块类型): 空文本也保持可选中, 与其余文档块一致
+                _ => new SelectableTextBlock { Text = "" },
             });
         }
         return controls;
     }
 
-    /// <summary>构建标题块: 加粗 + 分级字号 + 段前留白。</summary>
+    /// <summary>构建标题块: 加粗 + 分级字号 + 段前留白。
+    /// 用 SelectableTextBlock (继承 TextBlock, 官方可选中控件) 支持鼠标选词 + Ctrl+C 复制。</summary>
     private static Control BuildHeading(MdHeading heading, Action<string> openLink)
     {
         var size = HeadingSizes[Math.Clamp(heading.Level, 1, 4) - 1];
-        var tb = new TextBlock
+        var tb = new SelectableTextBlock
         {
             FontSize = size,
             FontWeight = FontWeight.Bold,
@@ -67,10 +69,11 @@ public static class MarkdownRenderer
         return tb;
     }
 
-    /// <summary>构建段落: 14px 正文, 1.7 倍行高 (与旧版 config_doc 正文观感一致)。</summary>
+    /// <summary>构建段落: 14px 正文, 1.7 倍行高 (与旧版 config_doc 正文观感一致)。
+    /// SelectableTextBlock 支持选词复制 (同标题块)。</summary>
     private static Control BuildParagraph(MdParagraph paragraph, Action<string> openLink)
     {
-        var tb = new TextBlock
+        var tb = new SelectableTextBlock
         {
             FontSize = 14,
             LineHeight = 24,
@@ -81,13 +84,14 @@ public static class MarkdownRenderer
         return tb;
     }
 
-    /// <summary>构建列表块: 每项按层级缩进, 有序沿用原文编号, 无序用层级符号。</summary>
+    /// <summary>构建列表块: 每项按层级缩进, 有序沿用原文编号, 无序用层级符号。
+    /// 列表项用 SelectableTextBlock 支持选词复制 (同标题块)。</summary>
     private static Control BuildList(MdList list, Action<string> openLink)
     {
         var panel = new StackPanel { Spacing = 3, Margin = new Thickness(0, 4, 0, 4) };
         foreach (var item in list.Items)
         {
-            var tb = new TextBlock
+            var tb = new SelectableTextBlock
             {
                 FontSize = 14,
                 LineHeight = 23,
@@ -192,7 +196,9 @@ public static class MarkdownRenderer
         // 其余字号 (标题) 按字体度量等比折算。
         using var layout = new TextLayout(text, new Typeface(fontFamily), fontSize, null);
         link.BaselineOffset = baselineOffset ?? layout.Baseline + 1.5;
-        link.PointerPressed += (_, _) => openLink(url);
+        // 用 Tapped (点击完成) 而非 PointerPressed (按下即开): 总览页文字已启用选择,
+        // 按下拖动选词不应误触链接跳转; Tapped 在指针移动超过阈值后不触发。
+        link.Tapped += (_, _) => openLink(url);
         return link;
     }
 }
