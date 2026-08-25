@@ -10,7 +10,7 @@ namespace MyKeymap.Settings.ViewModels;
 /// Avalonia 无内嵌浏览器, 等价实现: 渲染 config_doc.md (config_doc.html 的源,
 /// 标题层级/图片/链接全部保留); 用户自定义过总览页 (config.overviewDocMd 非空) 时
 /// 优先渲染自定义内容。拉取失败时回退到内置快速上览引导。
-/// 编辑入口: HomePageView 右上角「编辑总览」按钮 (OverviewEditWindow)。
+/// 编辑入口: HomePageView 底部「编辑区」(EditZoneHint 控件) 打开 OverviewEditWindow。
 /// </summary>
 public sealed partial class HomePageViewModel : ObservableObject
 {
