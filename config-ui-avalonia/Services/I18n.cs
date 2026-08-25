@@ -98,6 +98,12 @@ public static class I18n
         ["2401"] = ("静音当前应用", "Mute active app"),
         ["2402"] = ("打开当前程序所在目录", "Show active process in folder"),
 
+        // ---- 总览页 (Home) 编辑 ----
+        ["2403"] = ("编辑总览", "Edit Overview"),
+        ["2404"] = ("恢复默认", "Restore Default"),
+        ["2405"] = ("支持 Markdown 语法: # 标题、- 列表、[文字](链接)、![图片](地址)、`代码`; 保存后立即生效, 清空内容并保存可恢复默认文档", "Markdown supported: # heading, - list, [text](link), ![image](url), `code`; takes effect after save; clear and save to restore the default document"),
+        ["2406"] = ("编辑总览页", "Edit Overview Page"),
+
         // ---- mouse ----
         ["25"] = ("鼠标上移", "Mouse up"),
         ["26"] = ("鼠标下移", "Mouse down"),
@@ -298,8 +304,8 @@ public static class I18n
         ["928"] = ("已保存", "Saved"),
         ["929"] = ("保存", "Save"),
         ["930"] = ("开机自启开关需要 settings 服务调用系统接口, 失败时开关会还原", "The startup toggle calls a system API via the settings service; it reverts on failure"),
-        ["931"] = ("总览页内容来自 config_doc.html (后端静态站点)", "Overview content comes from config_doc.html (backend static site)"),
-        ["932"] = ("帮助文档暂不可用 (后端未提供 config_doc.html)", "Help document unavailable (backend has no config_doc.html)"),
+        ["931"] = ("总览页内容来自 config_doc.md (后端静态站点); 点击「编辑总览」可自定义", "Overview content comes from config_doc.md (backend static site); use \u201cEdit Overview\u201d to customize"),
+        ["932"] = ("帮助文档暂不可用 (后端未提供 config_doc.md)", "Help document unavailable (backend has no config_doc.md)"),
         ["933"] = ("新增", "Add"),
         ["934"] = ("MyKeymap 是一个按键层工具: 按住触发键进入某个模式, 该模式下普通按键被映射为自定义动作。", "MyKeymap is a key-layer tool: hold a modifier key to enter a layer where plain keys are remapped to custom actions."),
         ["935"] = ("快速上手", "Quick start"),

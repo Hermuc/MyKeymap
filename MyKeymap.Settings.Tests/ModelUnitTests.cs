@@ -22,7 +22,7 @@ public sealed class ModelSerializationTests
         using var doc = JsonDocument.Parse(json);
         var keys = doc.RootElement.EnumerateObject().Select(p => p.Name).ToHashSet();
         Assert.Equal(
-            new HashSet<string> { "keymaps", "options", "actionSchemes", "fileGroups", "helpPageHtml" },
+            new HashSet<string> { "keymaps", "options", "actionSchemes", "fileGroups", "helpPageHtml", "overviewDocMd" },
             keys);
     }
 

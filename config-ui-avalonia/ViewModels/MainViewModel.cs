@@ -112,7 +112,7 @@ public sealed partial class MainViewModel : ObservableObject
         I18n.ApplyConfigLanguage(Config.Options.Language);
         OnPropertyChanged(nameof(Version));
 
-        HomeVm = new HomePageViewModel(Session);
+        HomeVm = new HomePageViewModel(Session, this);
         SettingsVm = new SettingsPageViewModel(this);
         ActionVm = new SelectedActionPageViewModel(this);
         _keymapPages.Clear();

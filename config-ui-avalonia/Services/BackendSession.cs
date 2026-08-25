@@ -152,6 +152,17 @@ public sealed class BackendSession : IAsyncDisposable
     }
 
     /// <summary>
+    /// 便捷原始字节 GET (总览页 markdown 图片等静态资源)。
+    /// 失败时返回 null, 调用方自行降级 (如隐藏图片)。
+    /// </summary>
+    public async Task<byte[]?> GetBytesAsync(string path, CancellationToken ct = default)
+    {
+        if (_client is null) return null;
+        var resp = await _client.GetBytesAsync(path, ct);
+        return resp.Success ? resp.Value : null;
+    }
+
+    /// <summary>
     /// 关停会话: 终止本会话拉起的子进程 (整树)。幂等, 可在多层退出路径重复调用:
     /// MainWindow.Closing -> App.Exit 兜底 -> Program.Main finally 兜底。
     /// </summary>

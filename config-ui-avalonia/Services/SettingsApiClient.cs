@@ -258,6 +258,37 @@ public sealed class SettingsApiClient : ISettingsApi, IDisposable
         return string.IsNullOrWhiteSpace(raw) ? "(空响应体)" : raw;
     }
 
+    /// <summary>
+    /// 非契约端点的便捷原始字节 GET (Home 页 markdown 里的图片静态资源)。
+    /// 响应体按二进制处理, 供 Bitmap 解码。
+    /// </summary>
+    public async Task<ApiResponse<byte[]>> GetBytesAsync(string path, CancellationToken ct = default)
+    {
+        HttpResponseMessage response;
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, path);
+            response = await _http.SendAsync(request, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
+        {
+            return new ApiResponse<byte[]>(false, 0, default, ex.Message);
+        }
+
+        using (response)
+        {
+            var raw = await response.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
+            var status = (int)response.StatusCode;
+            if (!response.IsSuccessStatusCode)
+            {
+                var text = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                var msg = string.IsNullOrWhiteSpace(text) ? $"HTTP {status}" : $"HTTP {status}: {text}";
+                return new ApiResponse<byte[]>(false, status, default, msg);
+            }
+            return new ApiResponse<byte[]>(true, status, raw, "");
+        }
+    }
+
     public void Dispose()
     {
         if (_ownsHttpClient)

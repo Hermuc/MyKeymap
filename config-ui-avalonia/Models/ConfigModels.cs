@@ -36,6 +36,10 @@ public sealed class Config
     // omitempty: 自定义帮助页 HTML, 缺失时为 ""
     [JsonPropertyName("helpPageHtml")]
     public string HelpPageHtml { get; set; } = "";
+
+    // omitempty: 自定义总览页 Markdown, 缺失时为 ""; 非空时总览页优先展示自定义内容
+    [JsonPropertyName("overviewDocMd")]
+    public string OverviewDocMd { get; set; } = "";
 }
 
 /// <summary>对应 Go struct Keymap。单个键盘映射 (一页按键矩阵)。</summary>

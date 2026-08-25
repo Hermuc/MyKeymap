@@ -6,7 +6,8 @@
 
   <!--
     总览页 (复刻 Home.vue): Vue 版为 <iframe src="/config_doc.html">。
-    Avalonia 无内嵌浏览器, 等价实现: 展示从后端拉取的 config_doc.html 正文文本;
+    Avalonia 无内嵌浏览器, 等价实现: 渲染 config_doc.md (config_doc.html 的源),
+    保留标题层级/图片/链接; 用户自定义 (config.overviewDocMd) 时优先展示自定义内容;
     拉取失败时回退到内置快速上览引导 (信息完整性保留)。
   -->
   <Grid>
@@ -19,12 +20,18 @@
                  Foreground="#8A8F98" HorizontalAlignment="Center" />
     </StackPanel>
 
-    <!-- config_doc.html 正文 -->
+    <!-- config_doc.md 渲染 (标题层级/图片/链接, 复刻 Vue 版 iframe 效果) -->
     <ScrollViewer IsVisible="{Binding DocAvailable}">
       <StackPanel Margin="36,28,36,40" Spacing="4">
-        <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=939}"
-                   FontSize="22" FontWeight="Bold" Margin="0,0,0,14" />
-        <TextBlock Text="{Binding DocText}" TextWrapping="Wrap" FontSize="14" LineHeight="24" />
+        <DockPanel Margin="0,0,0,10">
+          <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=939}"
+                     FontSize="22" FontWeight="Bold" VerticalAlignment="Center" />
+          <Button DockPanel.Dock="Right"
+                  Content="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=2403}"
+                  Click="OnEditOverviewClick" Background="#4169E1" Foreground="White"
+                  CornerRadius="8" Padding="18,7" FontSize="13" VerticalAlignment="Center" />
+        </DockPanel>
+        <ItemsControl ItemsSource="{Binding DocBlocks}" />
         <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=931}"
                    Foreground="#B0B4BC" FontSize="12" Margin="0,24,0,0" />
       </StackPanel>
