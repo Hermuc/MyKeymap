@@ -27,12 +27,14 @@ MyKeymap 是一款基于 [AutoHotkey](https://www.autohotkey.com/) 的键盘映�
 本 fork 基于上游 [xianyukang/MyKeymap](https://github.com/xianyukang/MyKeymap)，在原版基础上主要有这些不同：
 
 - **更炫酷的设置窗口**：打开设置时显示「黑客帝国」风格的代码雨动画，并默认用 Windows Terminal（新版终端）承载，不再是老式黑窗口
-- **原生设置窗口（Avalonia GUI）**：设置界面提供独立原生窗口版（源码见 `config-ui-avalonia/`），由托盘/热键入口直接打开，不再依赖浏览器；GUI 以子进程方式拉起 `settings.exe --headless` 并通过 localhost HTTP 通信，配置写盘仍由 Go 后端统一负责；旧浏览器版设置页（settings.exe 内置 site）仍保留可用
+- **原生设置窗口（Avalonia GUI）**：设置界面提供独立原生窗口版（源码见 `config-ui-avalonia/`），由托盘/热键入口直接打开，不再依赖浏览器；GUI 以子进程方式拉起 `settings.exe --headless` 并通过 localhost HTTP 通信，配置写盘仍由 Go 后端统一负责；旧 Vue 浏览器版设置页已整体移除（源码与内置页面 2026-08 清除，文档资产迁移至 `site-assets/`）
 - **新增「选中动作」系统**：选中文字或文件后按快捷键，即可执行预设操作；规则可在设置界面可视化配置，无需改动任何代码。匹配类型 3 类——「文件后缀」（jpg, png, … 支持「常用分组快捷填入」，一键填入图片/文档/代码/压缩包/视频/音频等分组后缀，分组表可在配置文件自定义增改）、「文本特征」（自动识别链接 / 路径 / 磁力链接 / 纯文本）、「任意」；文本特征与可选行为强制联动（如磁力链接只能配「磁力下载」），避免「选中链接却程序打开」的错配；内置 5 类文本专用行为：打开网址、打开路径、打开文件夹、磁力下载（自动唤起默认 BT 工具）、注册表定位（自动跳转到指定注册表项）
 - **自定义帮助页**：在设置界面直接填写 HTML 帮助内容，保存后即可通过动作打开查看
 - **更不容易崩溃**：某个热键配置出错时会自动跳过并提示，不会再导致整个程序退出；收集文本、关机动作等细节行为也更稳定
 - **开机自启 + 一键卸载**：开机自启机制改为注册表 HKCU\Run（比启动文件夹更可靠）；附带全中文「卸载软件.bat」一键卸载（二次确认、结束进程、清理自启与残留，防误删）
-- **细节体验优化**：设置页菜单高亮跟随页面切换、快捷键输入框对齐、保存按钮始终可见；设置窗口启动大幅提速（热场景全链 ~1.5s → ~0.4s）
+- **细节体验优化**：设置页菜单高亮跟随页面切换、快捷键输入框对齐、保存按钮始终可见；设置窗口启动大幅提速（热场景全链 ~1.5s → ~0.4s）；强制浅色主题修复系统深色模式下白底白字；导航图标换回 Vue 版 MDI 图标样式
+- **总览页文档阅读与编辑**：总览页还原 Web UI 版式；正文文字可直接选中复制；编辑入口移至页面底部编辑区（EditZoneHint 控件），一键进入编辑、保存后即时回显，无需再开独立编辑窗口
+- **设置界面滚动条交互优化**：悬停即时加粗（Fluent 默认延迟 0.5s → 0）、移开立即变细（默认 2s → 0，粗细过渡仍由 100ms 渲染动画平滑完成）、Thumb 两端胶囊圆角、整体宽度收窄（约 14px → 13px），视觉贴合 Fluent/WinUI 风格
 - **后台程序托盘一键唤出**：目标程序（如微信/QQ）最小化到托盘后，按快捷键可直接唤出主窗口（亚秒级，不会误触发「登录新账号」重复启动；唤起引擎已切 pwsh 7 进一步提速）
 - **FlClash/资源管理器/AyuGram 唤起修复**：FlClash 关闭后驻留状态栏时按快捷键秒开（直显隐藏窗口），可见时按快捷键可正常最小化/激活切换；资源管理器冷启动失效（桌面壳窗口误匹配）与切换、AyuGram 动态标题切换同步修复（v13）
 - **窗口标识符配置校验引导**：设置界面输入窗口标识符时，裸写 xxx.exe 会即时红字报错并提示正确写法（ahk_exe 前缀）；窗口标题会变化的软件（如聊天软件频道页）不要用标题匹配，应使用 ahk_exe 进程匹配
@@ -66,4 +68,4 @@ MyKeymap 是一款基于 [AutoHotkey](https://www.autohotkey.com/) 的键盘映�
 - **源码位置**：`config-ui-avalonia/`（GUI 壳，.NET 10 / Avalonia 11 / CommunityToolkit.Mvvm）；单元测试位于仓库根目录 `MyKeymap.Settings.Tests/`
 - **构建**：`make buildClientAvalonia`（完整构建 `make build` 已包含），`dotnet publish` 自包含 win-x64 + ReadyToRun 发布到 `bin/ui/`（不入库）；开发环境需 .NET 10 SDK
 - **运行原理**：GUI 拉起 `settings.exe --headless` 子进程（命名 Mutex 单实例、Job Object 兜底回收），经 localhost HTTP 调用既有全部 API；配置写盘仍由 Go 后端统一负责，GUI 不直接写 config.json
-- **入口**：AHK 设置入口（`bin/lib/core/Functions.ahk`）启动 `bin\ui\MyKeymap.Settings.exe`；旧浏览器版设置页（无参运行 settings.exe）保留可用
+- **入口**：AHK 设置入口（`bin/lib/core/Functions.ahk`）启动 `bin\ui\MyKeymap.Settings.exe`；旧浏览器版设置页已随 Vue 源码一并移除（无参运行 settings.exe 现返回 404）
