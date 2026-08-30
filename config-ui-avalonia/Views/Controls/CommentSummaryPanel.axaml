@@ -1,0 +1,33 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MyKeymap.Settings.ViewModels"
+             xmlns:local="using:MyKeymap.Settings.Views.Controls"
+             x:Class="MyKeymap.Settings.Views.Controls.CommentSummaryPanel">
+
+  <!-- 备注汇总控件 (复刻 ActionCommentTable, KeymapPage/AbbrPage 共用):
+       标题 + 独立滚动的条目列表; 使用方设置 ItemsSource / LanguageTick 两个属性。
+       绑定自身属性用 RelativeSource AncestorType 指向具体控件类型 —— 项目启用
+       x:CompileBindings, UserControl 基类无这些属性, 必须用具体类型参与编译检查。 -->
+  <Grid RowDefinitions="Auto,*" MinWidth="220" MaxWidth="340">
+
+    <!-- 标题 (label:305; LanguageTick 变化驱动文案重算) -->
+    <TextBlock Text="{Binding LanguageTick, RelativeSource={RelativeSource AncestorType=local:CommentSummaryPanel}, Converter={StaticResource Tr}, ConverterParameter=305}"
+               FontSize="15" FontWeight="SemiBold" Margin="0,0,0,10" />
+
+    <!-- 条目列表: 独立纵向滚动 (横向禁用, 长备注换行) -->
+    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto">
+      <ItemsControl ItemsSource="{Binding ItemsSource, RelativeSource={RelativeSource AncestorType=local:CommentSummaryPanel}}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:CommentEntryVm">
+            <StackPanel Margin="0,0,0,12">
+              <TextBlock Text="{Binding KeyText}" FontWeight="SemiBold" FontSize="13" />
+              <TextBlock Text="{Binding Comment}" FontSize="12" Foreground="#5A5F68"
+                         TextWrapping="Wrap" />
+            </StackPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

@@ -6,10 +6,13 @@
              x:Name="Root"
              x:DataType="vm:KeymapPageViewModel">
 
-  <!-- 键位图页 (复刻 views/Keymap.vue): 物理键盘网格 + 动作编辑面板 + 右侧备注汇总 -->
-  <ScrollViewer Background="#F0F2F7">
-    <StackPanel Orientation="Horizontal" Margin="24,20,24,28" Spacing="32" VerticalAlignment="Top">
+  <!-- 键位图页 (复刻 views/Keymap.vue): 物理键盘网格 + 动作编辑面板 + 右侧备注汇总
+       布局: 外层 Grid 只承载页面背景 (铺满内容区, 避免 Margin 露白),
+       内层 Grid 带边距与裁剪; 左列 (页头/键盘/编辑面板) 固定不滚动, 右列备注汇总独立滚动 -->
+  <Grid Background="#F0F2F7">
+    <Grid ColumnDefinitions="Auto,Auto" Margin="24,20,24,28" ClipToBounds="True">
 
+      <!-- 左列: 键位功能区 (固定, 无滚动器) -->
       <StackPanel MinWidth="500">
 
         <!-- 页头: 模式名称 + 子模式上层信息 (label:503) -->
@@ -31,7 +34,7 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:KeyCellVm">
-                    <Button Height="50" MinWidth="53" Padding="10,0" CornerRadius="6"
+                    <Button Height="40" MinWidth="53" Padding="10,0" CornerRadius="6"
                             Background="{Binding Background}"
                             IsEnabled="{Binding IsEnabled}"
                             Foreground="#20242B" BorderBrush="#D5D9E2" BorderThickness="1"
@@ -48,26 +51,13 @@
         </ItemsControl>
 
         <!-- 动作编辑面板 -->
-        <controls:ActionEditorPanel Margin="0,18,0,0" DataContext="{Binding Editor}" />
+        <controls:ActionEditorPanel Margin="0,10,0,0" DataContext="{Binding Editor}" />
       </StackPanel>
 
-      <!-- 右侧备注汇总 (复刻 ActionCommentTable) -->
-      <StackPanel MinWidth="220" MaxWidth="340" Margin="0,36,0,0">
-        <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=305}"
-                   FontSize="15" FontWeight="SemiBold" Margin="0,0,0,10" />
-        <ItemsControl ItemsSource="{Binding CommentEntries}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:CommentEntryVm">
-              <StackPanel Margin="0,0,0,12">
-                <TextBlock Text="{Binding KeyText}" FontWeight="SemiBold" FontSize="13" />
-                <TextBlock Text="{Binding Comment}" FontSize="12" Foreground="#5A5F68"
-                           TextWrapping="Wrap" />
-              </StackPanel>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </StackPanel>
-
-    </StackPanel>
-  </ScrollViewer>
+      <!-- 右列: 备注汇总 (复刻 ActionCommentTable, 独立滚动) -->
+      <controls:CommentSummaryPanel Grid.Column="1" Margin="32,36,0,0"
+                                    ItemsSource="{Binding CommentEntries}"
+                                    LanguageTick="{Binding LanguageTick}" />
+    </Grid>
+  </Grid>
 </UserControl>

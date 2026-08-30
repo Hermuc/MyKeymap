@@ -6,10 +6,13 @@
              x:Name="Root"
              x:DataType="vm:AbbrPageViewModel">
 
-  <!-- 缩写命令页 (复刻 views/Abbr.vue): 缩写 chips + 命令框 + 编辑面板 + 备注汇总 -->
-  <ScrollViewer Background="#F0F2F7">
-    <StackPanel Orientation="Horizontal" Margin="24,20,24,28" Spacing="32" VerticalAlignment="Top">
+  <!-- 缩写命令页 (复刻 views/Abbr.vue): 缩写 chips + 命令框 + 编辑面板 + 备注汇总
+       布局: 外层 Grid 只承载页面背景 (铺满内容区, 避免 Margin 露白),
+       内层 Grid 带边距与裁剪; 左列 (chips/命令框/编辑面板) 固定不滚动, 右列备注汇总独立滚动 -->
+  <Grid Background="#F0F2F7">
+    <Grid ColumnDefinitions="Auto,Auto" Margin="24,20,24,28" ClipToBounds="True">
 
+      <!-- 左列: 缩写功能区 (固定, 无滚动器) -->
       <StackPanel MinWidth="500" MaxWidth="820">
 
         <!-- 缩写条目 (WrapPanel chips, 复刻 d-flex flex-wrap 的 Key 列表) -->
@@ -41,23 +44,10 @@
         <controls:ActionEditorPanel Margin="0,18,0,0" DataContext="{Binding Editor}" />
       </StackPanel>
 
-      <!-- 右侧备注汇总 (keyText 用 formatSpace 格式化) -->
-      <StackPanel MinWidth="220" MaxWidth="340" Margin="0,4,0,0">
-        <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=305}"
-                   FontSize="15" FontWeight="SemiBold" Margin="0,0,0,10" />
-        <ItemsControl ItemsSource="{Binding CommentEntries}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:CommentEntryVm">
-              <StackPanel Margin="0,0,0,12">
-                <TextBlock Text="{Binding KeyText}" FontWeight="SemiBold" FontSize="13" />
-                <TextBlock Text="{Binding Comment}" FontSize="12" Foreground="#5A5F68"
-                           TextWrapping="Wrap" />
-              </StackPanel>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-      </StackPanel>
-
-    </StackPanel>
-  </ScrollViewer>
+      <!-- 右列: 备注汇总 (keyText 用 formatSpace 格式化, 独立滚动) -->
+      <controls:CommentSummaryPanel Grid.Column="1" Margin="32,4,0,0"
+                                    ItemsSource="{Binding CommentEntries}"
+                                    LanguageTick="{Binding LanguageTick}" />
+    </Grid>
+  </Grid>
 </UserControl>

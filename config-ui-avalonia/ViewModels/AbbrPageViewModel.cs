@@ -88,12 +88,22 @@ public sealed partial class AbbrPageViewModel : ObservableObject, ILanguageRefre
         CmdText = "";
     }
 
+    /// <summary>上次备注快照 (KeyText, Comment), 与目标一致时跳过重建 (防备注列滚动跳变)。</summary>
+    private List<(string, string)> _lastCommentSnapshot = [];
+
     private void RefreshComments()
     {
+        // 先构建目标快照: 与上次逐项一致则直接返回, 避免集合重建导致 ItemsControl 重置滚动位置
+        var snapshot = Core.BuildCommentEntries()
+            .Select(e => (FormatSpace(e.Hotkey), e.Comment))
+            .ToList();
+        if (snapshot.SequenceEqual(_lastCommentSnapshot)) return;
+
+        _lastCommentSnapshot = snapshot;
         CommentEntries.Clear();
-        foreach (var (hotkey, comment) in Core.BuildCommentEntries())
+        foreach (var (keyText, comment) in snapshot)
         {
-            CommentEntries.Add(new CommentEntryVm(FormatSpace(hotkey), comment));
+            CommentEntries.Add(new CommentEntryVm(keyText, comment));
         }
     }
 

@@ -7,11 +7,11 @@
 
   <!-- 动作编辑面板 (复刻 actions/Action.vue 卡片: 分组下拉 + 类型下拉 + 按类型分发编辑器) -->
   <Border Background="White" CornerRadius="12" BorderBrush="#E3E6EC" BorderThickness="1"
-          Width="800" MinHeight="530" Padding="18,14" HorizontalAlignment="Left">
+          Width="800" MinHeight="380" Padding="16,12" HorizontalAlignment="Left">
     <DockPanel>
 
       <!-- 头部: 窗口分组 (5/12) + 动作类型 (7/12) -->
-      <Grid DockPanel.Dock="Top" ColumnDefinitions="5*,7*" Margin="0,0,0,14">
+      <Grid DockPanel.Dock="Top" ColumnDefinitions="5*,7*" Margin="0,0,0,10">
         <ComboBox ItemsSource="{Binding GroupOptions}"
                   SelectedItem="{Binding SelectedGroup}"
                   HorizontalAlignment="Stretch" Margin="0,0,10,0" />
@@ -28,20 +28,23 @@
 
           <!-- ===================== 类型 1: 启动程序或激活窗口 ===================== -->
           <DataTemplate DataType="vm:ActivateOrRunEditorVm" x:DataType="vm:ActivateOrRunEditorVm">
-            <StackPanel Spacing="8">
-              <TextBlock Text="{Binding #PanelRoot.((vm:ActionEditorViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=301}"
-                         Foreground="#8A8F98" FontSize="12" />
-              <TextBox Text="{Binding WinTitle}" Padding="8,6" />
+            <StackPanel Spacing="6">
+              <Grid ColumnDefinitions="140,*" Margin="0,6,0,0">
+                <TextBlock Text="{Binding #PanelRoot.((vm:ActionEditorViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=301}"
+                           Foreground="#8A8F98" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" />
+                <TextBox Grid.Column="1" Text="{Binding WinTitle}" Padding="8,6" />
+              </Grid>
               <TextBlock Text="{Binding WinTitleError}" Foreground="#C62828" FontSize="12" TextWrapping="Wrap"
                          IsVisible="{Binding WinTitleError, Converter={StaticResource NotEmpty}}" />
               <TextBlock Text="{Binding #PanelRoot.((vm:ActionEditorViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=301hint}"
                          Foreground="#8A8F98" FontSize="12" TextWrapping="Wrap" />
-
-              <TextBlock Text="{Binding #PanelRoot.((vm:ActionEditorViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=302}"
-                         Foreground="#8A8F98" FontSize="12" Margin="0,6,0,0" />
-              <AutoCompleteBox Text="{Binding Target, Mode=TwoWay}"
-                               ItemsSource="{Binding Shortcuts}"
-                               Padding="8,6" />
+              <Grid ColumnDefinitions="140,*" Margin="0,6,0,0">
+                <TextBlock Text="{Binding #PanelRoot.((vm:ActionEditorViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=302}"
+                           Foreground="#8A8F98" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" />
+                <AutoCompleteBox Grid.Column="1" Text="{Binding Target, Mode=TwoWay}"
+                                 ItemsSource="{Binding Shortcuts}"
+                                 Padding="8,6" />
+              </Grid>
 
               <Grid ColumnDefinitions="140,*" Margin="0,6,0,0">
                 <TextBlock Text="{Binding #PanelRoot.((vm:ActionEditorViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=303}"
@@ -129,7 +132,7 @@
             <StackPanel Spacing="8">
               <TextBlock Text="{Binding #PanelRoot.((vm:ActionEditorViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=402}"
                          Foreground="#8A8F98" FontSize="12" />
-              <TextBox Text="{Binding KeysToSend}" AcceptsReturn="True" MinHeight="120"
+              <TextBox Text="{Binding KeysToSend}" AcceptsReturn="True" MinHeight="80"
                        FontFamily="Consolas,Courier New" FontSize="13" Padding="8,6" />
               <TextBlock Text="{Binding #PanelRoot.((vm:ActionEditorViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=305}"
                          Foreground="#8A8F98" FontSize="12" />
@@ -144,7 +147,7 @@
                          Foreground="#8A8F98" FontSize="12" />
               <ComboBox ItemsSource="{Binding Examples}" SelectionChanged="OnAhkExampleSelected"
                         MinWidth="420" />
-              <TextBox Text="{Binding AhkCode}" AcceptsReturn="True" AcceptsTab="True" MinHeight="140"
+              <TextBox Text="{Binding AhkCode}" AcceptsReturn="True" AcceptsTab="True" MinHeight="100"
                        FontFamily="Consolas,Courier New" FontSize="13" Padding="8,6" />
               <TextBlock Text="{Binding #PanelRoot.((vm:ActionEditorViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=305}"
                          Foreground="#8A8F98" FontSize="12" />
