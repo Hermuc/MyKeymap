@@ -21,7 +21,11 @@
     </Style>
   </UserControl.Styles>
 
+  <!-- 整页内容包 Viewbox Uniform 等比缩放 (背景留在 ScrollViewer 上, 左右两列均属内容区一同缩放):
+       缩放由可用尺寸驱动 (默认内容区 936 / 测量宽 1024 -> 约 0.91, 窗口宽到 1288 时回到 1);
+       纵向默认 Auto -> Viewbox 纵向不放大, 内容超高时滚动仍可用 -->
   <ScrollViewer Background="#F0F2F7">
+    <Viewbox Stretch="Uniform">
     <Grid ColumnDefinitions="500,*" Margin="24,20,24,28">
 
       <!-- ===================== 左列: 快捷键方案 (label:915, 复刻 Settings.vue 表格) ===================== -->
@@ -91,7 +95,12 @@
       </Border>
 
       <!-- ===================== 右列: 其他设置 (label:505) ===================== -->
-      <StackPanel Grid.Column="1" Spacing="12">
+      <!-- Width=460 锁定测量宽 (必要): Viewbox 以 Infinity 测量子内容, * 列会塌缩为卡片自然宽
+           (路径变量行 140,240,* 与卡内 220,* 的 * 列塌缩到空 TextBox 宽), 且长文本
+           (键盘布局/帮助, 均已加 TextWrapping=Wrap 换行显示) 期望宽随内容变化导致缩放比例跳动;
+           锁宽后测量全程有界、比例稳定。460 = 逐卡盘点后的最宽卡: 路径变量行 140+240+✕按钮≈30
+           = 410 + 卡 Padding 32 = 442, 留 18px 余量; 渲染时卡片仍按 460 槽宽正常分配 * 列 -->
+      <StackPanel Grid.Column="1" Spacing="12" Width="460">
         <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=505}"
                    FontSize="16" FontWeight="SemiBold" />
 
@@ -149,31 +158,31 @@
             <StackPanel IsVisible="{Binding ShowMouseOption}" Spacing="8">
               <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=702}"
                          FontWeight="SemiBold" Foreground="#4169E1" />
-              <Grid ColumnDefinitions="260,*">
+              <Grid ColumnDefinitions="220,*">
                 <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=703}" VerticalAlignment="Center" />
                 <TextBox Grid.Column="1" Text="{Binding MouseOpts.Delay1}" />
               </Grid>
-              <Grid ColumnDefinitions="260,*">
+              <Grid ColumnDefinitions="220,*">
                 <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=704}" VerticalAlignment="Center" />
                 <TextBox Grid.Column="1" Text="{Binding MouseOpts.Delay2}" />
               </Grid>
-              <Grid ColumnDefinitions="260,*">
+              <Grid ColumnDefinitions="220,*">
                 <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=705}" VerticalAlignment="Center" />
                 <TextBox Grid.Column="1" Text="{Binding MouseOpts.FastSingle}" />
               </Grid>
-              <Grid ColumnDefinitions="260,*">
+              <Grid ColumnDefinitions="220,*">
                 <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=706}" VerticalAlignment="Center" />
                 <TextBox Grid.Column="1" Text="{Binding MouseOpts.FastRepeat}" />
               </Grid>
-              <Grid ColumnDefinitions="260,*">
+              <Grid ColumnDefinitions="220,*">
                 <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=707}" VerticalAlignment="Center" />
                 <TextBox Grid.Column="1" Text="{Binding MouseOpts.SlowSingle}" />
               </Grid>
-              <Grid ColumnDefinitions="260,*">
+              <Grid ColumnDefinitions="220,*">
                 <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=708}" VerticalAlignment="Center" />
                 <TextBox Grid.Column="1" Text="{Binding MouseOpts.SlowRepeat}" />
               </Grid>
-              <Grid ColumnDefinitions="260,*">
+              <Grid ColumnDefinitions="220,*">
                 <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=709}" VerticalAlignment="Center" />
                 <TextBox Grid.Column="1" Text="{Binding MouseOpts.TipSymbol}" />
               </Grid>
@@ -184,15 +193,16 @@
 
               <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=712}"
                          FontWeight="SemiBold" Foreground="#4169E1" Margin="0,8,0,0" />
-              <Grid ColumnDefinitions="260,*">
+              <Grid ColumnDefinitions="220,*">
                 <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=713}" VerticalAlignment="Center" />
                 <TextBox Grid.Column="1" Text="{Binding ScrollOpts.Delay1}" />
               </Grid>
-              <Grid ColumnDefinitions="260,*">
-                <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=714}" VerticalAlignment="Center" />
+              <Grid ColumnDefinitions="220,*">
+                <!-- 714 文案约 230px 超 220 列宽, 加 Wrap 换行显示防溢出 -->
+                <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=714}" VerticalAlignment="Center" TextWrapping="Wrap" />
                 <TextBox Grid.Column="1" Text="{Binding ScrollOpts.Delay2}" />
               </Grid>
-              <Grid ColumnDefinitions="260,*">
+              <Grid ColumnDefinitions="220,*">
                 <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=715}" VerticalAlignment="Center" />
                 <TextBox Grid.Column="1" Text="{Binding ScrollOpts.OnceLineCount}" />
               </Grid>
@@ -211,7 +221,7 @@
               <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=722}" Foreground="#8A8F98" FontSize="12" />
               <TextBox Text="{Binding Options.KeyboardLayout}" AcceptsReturn="True" AcceptsTab="True"
                        MinHeight="180" FontFamily="Consolas,Courier New" FontSize="13"
-                       TextWrapping="NoWrap" />
+                       TextWrapping="Wrap" /><!-- Wrap: NoWrap 时右列锁宽下只能横向滚动查看, 换行后窄卡内完整可读且测量宽被钳制稳定 -->
               <StackPanel Orientation="Horizontal" Spacing="8">
                 <Button Command="{Binding ResetKeyboardLayoutCommand}" CommandParameter="0" Padding="10,5">
                   <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=723}" />
@@ -243,7 +253,7 @@
               <ItemsControl ItemsSource="{Binding CustomKeymaps}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="models:Keymap">
-                    <Grid ColumnDefinitions="260,120" Margin="0,2">
+                    <Grid ColumnDefinitions="220,120" Margin="0,2">
                       <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                       <TextBox Grid.Column="1" Text="{Binding Delay, Converter={StaticResource IntStr}}"
                                Padding="6,4" />
@@ -265,7 +275,7 @@
             <ItemsControl IsVisible="{Binding ShowSkin}" ItemsSource="{Binding SkinFields}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:SkinFieldViewModel">
-                  <Grid ColumnDefinitions="260,*" Margin="0,2">
+                  <Grid ColumnDefinitions="220,*" Margin="0,2">
                     <TextBlock Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                     <TextBox Grid.Column="1" Text="{Binding Value}" Padding="6,4" />
                   </Grid>
@@ -284,8 +294,10 @@
             </Button>
             <StackPanel IsVisible="{Binding ShowHelpPage}" Spacing="8">
               <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=904}" Foreground="#8A8F98" FontSize="12" />
+              <!-- Wrap: 同键盘布局框, NoWrap 长文本会抬高测量宽 -->
               <TextBox Text="{Binding Config.HelpPageHtml}" AcceptsReturn="True" AcceptsTab="True"
                        MinHeight="140" FontFamily="Consolas,Courier New" FontSize="13"
+                       TextWrapping="Wrap"
                        Watermark="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=906}" />
               <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=905}"
                          Foreground="#8A8F98" FontSize="12" TextWrapping="Wrap" />
@@ -304,13 +316,13 @@
               <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=911}"
                          Foreground="#8A8F98" FontSize="12" TextWrapping="Wrap" />
               <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,0,4">
-                <TextBlock Width="160" Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=909}" Foreground="#8A8F98" FontSize="12" />
-                <TextBlock Width="320" Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=910}" Foreground="#8A8F98" FontSize="12" />
+                <TextBlock Width="140" Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=909}" Foreground="#8A8F98" FontSize="12" />
+                <TextBlock Width="240" Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=910}" Foreground="#8A8F98" FontSize="12" />
               </StackPanel>
               <ItemsControl ItemsSource="{Binding PathVariables}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="models:PathVariable">
-                    <Grid ColumnDefinitions="160,320,*" Margin="0,2">
+                    <Grid ColumnDefinitions="140,240,*" Margin="0,2">
                       <TextBox Text="{Binding Name}" Margin="0,0,6,0" Padding="6,4" />
                       <TextBox Grid.Column="1" Text="{Binding Value}" Padding="6,4" />
                       <Button Grid.Column="2" Content="✕"
@@ -333,6 +345,7 @@
 
       </StackPanel>
     </Grid>
+    </Viewbox>
   </ScrollViewer>
 
 </UserControl>
