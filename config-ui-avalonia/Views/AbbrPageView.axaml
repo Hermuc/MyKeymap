@@ -12,14 +12,19 @@
   <Grid Background="#F0F2F7">
     <Grid ColumnDefinitions="Auto,*" Margin="24,20,24,28" ClipToBounds="True">
 
-      <!-- 左列: 缩写功能区 (固定, 无滚动器) -->
-      <StackPanel MinWidth="500" MaxWidth="820">
+      <!-- 左列: 缩写功能区 (固定, 无滚动器); Viewbox Uniform 等比缩放:
+           窗口变小时整体缩小不裁剪, 变大时适度放大; 右列备注不缩放 -->
+      <Viewbox Stretch="Uniform">
+        <StackPanel MinWidth="500" MaxWidth="740">
 
-        <!-- 缩写条目 (WrapPanel chips, 复刻 d-flex flex-wrap 的 Key 列表) -->
-        <ItemsControl ItemsSource="{Binding Chips}" MaxWidth="800">
+        <!-- 缩写条目 (WrapPanel chips, 复刻 d-flex flex-wrap 的 Key 列表);
+             MaxWidth=570 必须保留: 左列在 Viewbox 内, Auto 列测量给 Infinity 宽, 无上限时 WrapPanel 会单行铺开;
+             项占位 = 53 (MinWidth) + 4 (右 Margin 间距) = 57, 570 限每行最多 10 格 (第 11 格需 627 > 570 自动换行);
+             WrapPanel Left 对齐后收缩为实际最宽行宽, 经 SizeChanged 同步给编辑框 -->
+        <ItemsControl ItemsSource="{Binding Chips}" MaxWidth="570">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
-              <WrapPanel />
+              <WrapPanel HorizontalAlignment="Left" SizeChanged="OnChipsPanelSizeChanged" />
             </ItemsPanelTemplate>
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
@@ -30,7 +35,8 @@
                       Foreground="#20242B" BorderBrush="#D5D9E2" BorderThickness="1"
                       Command="{Binding #Root.((vm:AbbrPageViewModel)DataContext).SelectChipCommand}"
                       CommandParameter="{Binding}">
-                <TextBlock Text="{Binding Label}" FontSize="17" />
+                <TextBlock Text="{Binding Label}" FontSize="17"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" />
               </Button>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
@@ -41,8 +47,9 @@
                  Watermark="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=406}"
                  Margin="2,16,0,0" Padding="8,6" />
 
-        <controls:ActionEditorPanel Margin="0,18,0,0" DataContext="{Binding Editor}" />
-      </StackPanel>
+        <controls:ActionEditorPanel x:Name="EditorPanel" Width="570" Margin="0,18,0,0" DataContext="{Binding Editor}" />
+        </StackPanel>
+      </Viewbox>
 
       <!-- 右列: 备注汇总 (keyText 用 formatSpace 格式化, 独立滚动) -->
       <controls:CommentSummaryPanel Grid.Column="1" Margin="32,4,0,0"

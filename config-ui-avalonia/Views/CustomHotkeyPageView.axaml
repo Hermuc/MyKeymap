@@ -90,7 +90,7 @@
           </Border>
         </StackPanel>
 
-        <controls:ActionEditorPanel DataContext="{Binding Editor}" />
+        <controls:ActionEditorPanel Width="720" DataContext="{Binding Editor}" />
       </StackPanel>
 
     </StackPanel>

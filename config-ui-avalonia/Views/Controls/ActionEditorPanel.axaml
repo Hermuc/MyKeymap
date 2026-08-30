@@ -5,9 +5,11 @@
              x:Name="PanelRoot"
              x:DataType="vm:ActionEditorViewModel">
 
-  <!-- 动作编辑面板 (复刻 actions/Action.vue 卡片: 分组下拉 + 类型下拉 + 按类型分发编辑器) -->
+  <!-- 动作编辑面板 (复刻 actions/Action.vue 卡片: 分组下拉 + 类型下拉 + 按类型分发编辑器);
+       宽度由使用处指定 (KeymapPage/CustomHotkey 720, AbbrPage 动态同步 chips 最宽行), 控件内不设 Width;
+       Border 必须 Stretch 铺满使用处给定宽度 —— Left 会使白卡片收缩为内容最小期望宽 (动态方案下窄于 W) -->
   <Border Background="White" CornerRadius="12" BorderBrush="#E3E6EC" BorderThickness="1"
-          Width="800" MinHeight="380" Padding="16,12" HorizontalAlignment="Left">
+          MinHeight="380" Padding="16,12" HorizontalAlignment="Stretch">
     <DockPanel>
 
       <!-- 头部: 窗口分组 (5/12) + 动作类型 (7/12) -->
@@ -145,8 +147,9 @@
             <StackPanel Spacing="8">
               <TextBlock Text="{Binding #PanelRoot.((vm:ActionEditorViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=403}"
                          Foreground="#8A8F98" FontSize="12" />
+              <!-- 跟随面板宽度铺满 (原先 MinWidth=420 在动态窄面板下强制溢出, 已移除; 720 页本就满宽无副作用) -->
               <ComboBox ItemsSource="{Binding Examples}" SelectionChanged="OnAhkExampleSelected"
-                        MinWidth="420" />
+                        HorizontalAlignment="Stretch" />
               <TextBox Text="{Binding AhkCode}" AcceptsReturn="True" AcceptsTab="True" MinHeight="100"
                        FontFamily="Consolas,Courier New" FontSize="13" Padding="8,6" />
               <TextBlock Text="{Binding #PanelRoot.((vm:ActionEditorViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=305}"

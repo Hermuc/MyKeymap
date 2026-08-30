@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using MyKeymap.Settings.ViewModels;
@@ -8,6 +9,15 @@ namespace MyKeymap.Settings.Views;
 public partial class AbbrPageView : UserControl
 {
     public AbbrPageView() => InitializeComponent();
+
+    /// <summary>
+    /// chips 面板尺寸变化 -> 编辑框宽度同步: chips 行为自然宽度换行,
+    /// WrapPanel Left 对齐后 ActualWidth 即实际最宽行宽, 编辑框与其严格一致且不拉伸格子。
+    /// WrapPanel 位于 ItemsPanelTemplate 内 (模板级 NameScope, 页面 code-behind 无法以 x:Name 引用),
+    /// 故在 XAML 中直接挂事件, sender 即面板实例; Width=570 仅作首帧初始值。
+    /// </summary>
+    private void OnChipsPanelSizeChanged(object? sender, SizeChangedEventArgs e)
+        => EditorPanel.Width = e.NewSize.Width;
 
     /// <summary>命令框回车 (复刻 @keydown.enter=runCmd)。</summary>
     private void OnCmdKeyDown(object? sender, KeyEventArgs e)
