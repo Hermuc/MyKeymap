@@ -10,7 +10,7 @@
        布局: 外层 Grid 只承载页面背景 (铺满内容区, 避免 Margin 露白),
        内层 Grid 带边距与裁剪; 左列 (chips/命令框/编辑面板) 固定不滚动, 右列备注汇总独立滚动 -->
   <Grid Background="#F0F2F7">
-    <Grid ColumnDefinitions="Auto,Auto" Margin="24,20,24,28" ClipToBounds="True">
+    <Grid ColumnDefinitions="Auto,*" Margin="24,20,24,28" ClipToBounds="True">
 
       <!-- 左列: 缩写功能区 (固定, 无滚动器) -->
       <StackPanel MinWidth="500" MaxWidth="820">

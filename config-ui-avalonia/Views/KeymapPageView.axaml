@@ -10,7 +10,7 @@
        布局: 外层 Grid 只承载页面背景 (铺满内容区, 避免 Margin 露白),
        内层 Grid 带边距与裁剪; 左列 (页头/键盘/编辑面板) 固定不滚动, 右列备注汇总独立滚动 -->
   <Grid Background="#F0F2F7">
-    <Grid ColumnDefinitions="Auto,Auto" Margin="24,20,24,28" ClipToBounds="True">
+    <Grid ColumnDefinitions="Auto,*" Margin="24,20,24,28" ClipToBounds="True">
 
       <!-- 左列: 键位功能区 (固定, 无滚动器) -->
       <StackPanel MinWidth="500">
@@ -22,7 +22,8 @@
                      VerticalAlignment="Center" />
         </StackPanel>
 
-        <!-- 键盘网格: 行 -> 键格 (选中蓝 / 禁用灰 / 已绑定绿 / 空键白) -->
+        <!-- 键盘网格: 行 -> 键格 (选中蓝 / 禁用灰 / 已绑定绿 / 空键白);
+             键格放大后保持自然宽度左对齐 (10 键行 = 10*76 + 9*4 = 796px, 与编辑面板 800 基本对齐) -->
         <ItemsControl ItemsSource="{Binding Rows}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:KeyboardRowVm">
@@ -34,14 +35,15 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:KeyCellVm">
-                    <Button Height="40" MinWidth="53" Padding="10,0" CornerRadius="6"
+                    <Button Height="50" MinWidth="76" Padding="10,0" CornerRadius="6"
                             Background="{Binding Background}"
                             IsEnabled="{Binding IsEnabled}"
                             Foreground="#20242B" BorderBrush="#D5D9E2" BorderThickness="1"
                             Command="{Binding #Root.((vm:KeymapPageViewModel)DataContext).SelectKeyCommand}"
                             CommandParameter="{Binding}">
                       <TextBlock Text="{Binding Label}"
-                                 FontSize="{Binding #Root.((vm:KeymapPageViewModel)DataContext).KeyFontSize}" />
+                                 FontSize="{Binding #Root.((vm:KeymapPageViewModel)DataContext).KeyFontSize}"
+                                 HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" />
                     </Button>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>

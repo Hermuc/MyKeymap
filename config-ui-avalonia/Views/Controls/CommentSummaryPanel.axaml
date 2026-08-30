@@ -8,7 +8,7 @@
        标题 + 独立滚动的条目列表; 使用方设置 ItemsSource / LanguageTick 两个属性。
        绑定自身属性用 RelativeSource AncestorType 指向具体控件类型 —— 项目启用
        x:CompileBindings, UserControl 基类无这些属性, 必须用具体类型参与编译检查。 -->
-  <Grid RowDefinitions="Auto,*" MinWidth="220" MaxWidth="340">
+  <Grid RowDefinitions="Auto,*">
 
     <!-- 标题 (label:305; LanguageTick 变化驱动文案重算) -->
     <TextBlock Text="{Binding LanguageTick, RelativeSource={RelativeSource AncestorType=local:CommentSummaryPanel}, Converter={StaticResource Tr}, ConverterParameter=305}"
@@ -21,9 +21,12 @@
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:CommentEntryVm">
             <StackPanel Margin="0,0,0,12">
-              <TextBlock Text="{Binding KeyText}" FontWeight="SemiBold" FontSize="13" />
-              <TextBlock Text="{Binding Comment}" FontSize="12" Foreground="#5A5F68"
-                         TextWrapping="Wrap" />
+              <!-- 单行条目: 加粗按键 - 灰色备注, 长备注自动换行 -->
+              <TextBlock TextWrapping="Wrap" FontSize="13">
+                <Run Text="{Binding KeyText}" FontWeight="SemiBold" Foreground="#20242B" />
+                <Run Text=" - " Foreground="#5A5F68" />
+                <Run Text="{Binding Comment}" Foreground="#5A5F68" />
+              </TextBlock>
             </StackPanel>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
