@@ -220,7 +220,7 @@ InitTrayMenu() {
   A_TrayMenu.Default := Translation().menu_pause
   A_TrayMenu.ClickCount := 1
 
-  A_IconTip := "MyKeymap 2.0-beta33 created by 咸鱼阿康"
+  A_IconTip := "mykeymapX"
   TraySetIcon("./bin/icons/logo.ico", , true)
 }
 
