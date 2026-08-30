@@ -18,11 +18,11 @@ public sealed class ModelSerializationTests
     [Fact]
     public void Config_TopLevel_JsonNames_MatchGoTags()
     {
-        var json = Serialize(new Config { HelpPageHtml = "<b>x</b>" });
+        var json = Serialize(new Config());
         using var doc = JsonDocument.Parse(json);
         var keys = doc.RootElement.EnumerateObject().Select(p => p.Name).ToHashSet();
         Assert.Equal(
-            new HashSet<string> { "keymaps", "options", "actionSchemes", "fileGroups", "helpPageHtml", "overviewDocMd" },
+            new HashSet<string> { "keymaps", "options", "actionSchemes", "fileGroups", "overviewDocMd" },
             keys);
     }
 
@@ -167,7 +167,7 @@ public sealed class ModelSerializationTests
     [Fact]
     public void Deserialize_ToleratesMissingOmitemptyFields()
     {
-        // 模拟旧版 config.json: 缺 actionSchemes / fileGroups / helpPageHtml, Action 仅带必需字段
+        // 模拟旧版 config.json: 缺 actionSchemes / fileGroups, Action 仅带必需字段
         const string minimal = """
         {
           "keymaps": [
@@ -185,7 +185,6 @@ public sealed class ModelSerializationTests
         Assert.NotNull(config);
         Assert.Empty(config!.ActionSchemes);
         Assert.Empty(config.FileGroups);
-        Assert.Equal("", config.HelpPageHtml);
         Assert.Single(config.Keymaps);
         var action = config.Keymaps[0].Hotkeys["a"][0];
         Assert.Equal(5, action.TypeId);

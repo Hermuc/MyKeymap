@@ -119,7 +119,7 @@ public sealed partial class KeymapRowViewModel : ObservableObject
 /// Settings 选项页 (逐项复刻 Settings.vue):
 /// 左列 = 快捷键方案表 (名称/触发键/上层/开关/删除 + 新增);
 /// 右列 = 其他设置 (开机自启、隐藏矩阵、语言、鼠标/滚轮参数、键盘布局、
-/// 命令框皮肤、触发延时、帮助页、路径变量), 分区互斥展开 (复刻 resetOtherToFalse)。
+/// 命令框皮肤、触发延时、路径变量), 分区互斥展开 (复刻 resetOtherToFalse)。
 /// </summary>
 public sealed partial class SettingsPageViewModel : ObservableObject
 {
@@ -157,7 +157,6 @@ public sealed partial class SettingsPageViewModel : ObservableObject
     [ObservableProperty] private bool _showKeyboardLayout;
     [ObservableProperty] private bool _showKeymapDelay = true;
     [ObservableProperty] private bool _showSkin;
-    [ObservableProperty] private bool _showHelpPage;
     [ObservableProperty] private bool _showPathVariables;
 
     [RelayCommand]
@@ -170,12 +169,11 @@ public sealed partial class SettingsPageViewModel : ObservableObject
             "layout" => ShowKeyboardLayout,
             "delay" => ShowKeymapDelay,
             "skin" => ShowSkin,
-            "help" => ShowHelpPage,
             "pathvars" => ShowPathVariables,
             _ => false,
         };
         ShowMouseOption = ShowLanguageOption = ShowKeyboardLayout = false;
-        ShowKeymapDelay = ShowSkin = ShowHelpPage = ShowPathVariables = false;
+        ShowKeymapDelay = ShowSkin = ShowPathVariables = false;
         if (wasOpen) return;
         switch (which)
         {
@@ -184,7 +182,6 @@ public sealed partial class SettingsPageViewModel : ObservableObject
             case "layout": ShowKeyboardLayout = true; break;
             case "delay": ShowKeymapDelay = true; break;
             case "skin": ShowSkin = true; break;
-            case "help": ShowHelpPage = true; break;
             case "pathvars": ShowPathVariables = true; break;
         }
     }

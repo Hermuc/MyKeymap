@@ -276,10 +276,6 @@ public static class I18n
         // ====================================================================
         ["901"] = ("隐藏按键矩阵", "Hide key matrix"),
         ["902"] = ("隐藏悬浮按键矩阵窗口 (headless 场景/低打扰需求)", "Hide the floating key-matrix window"),
-        ["903"] = ("📝 帮助页面", "📝 Help Page"),
-        ["904"] = ("帮助页面 (HTML)", "Help Page (HTML)"),
-        ["905"] = ("填写自定义 HTML 帮助页, 保存后生成 bin/site/help.html, 可通过 MyKeymap 动作 openHelpHtml 打开; 清空后删除生成的文件", "Custom HTML help page. On save it generates bin/site/help.html, opened by the openHelpHtml action. Clearing it deletes the file."),
-        ["906"] = ("<h1>我的使用说明</h1>", "<h1>My usage notes</h1>"),
         ["907"] = ("🧩 编辑路径变量", "🧩 Path Variables"),
         ["908"] = ("编辑路径变量", "Path Variables"),
         ["909"] = ("变量名", "Name"),

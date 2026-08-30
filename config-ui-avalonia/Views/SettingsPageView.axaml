@@ -285,26 +285,6 @@
           </StackPanel>
         </Border>
 
-        <!-- 📝 帮助页面 (label:903, Vue 中被注释, 按任务规格补齐) -->
-        <Border Background="White" CornerRadius="12" Padding="16">
-          <StackPanel Spacing="10">
-            <Button Classes="sectionHeader" Command="{Binding ToggleSectionCommand}" CommandParameter="help">
-              <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=903}"
-                         FontWeight="SemiBold" />
-            </Button>
-            <StackPanel IsVisible="{Binding ShowHelpPage}" Spacing="8">
-              <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=904}" Foreground="#8A8F98" FontSize="12" />
-              <!-- Wrap: 同键盘布局框, NoWrap 长文本会抬高测量宽 -->
-              <TextBox Text="{Binding Config.HelpPageHtml}" AcceptsReturn="True" AcceptsTab="True"
-                       MinHeight="140" FontFamily="Consolas,Courier New" FontSize="13"
-                       TextWrapping="Wrap"
-                       Watermark="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=906}" />
-              <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=905}"
-                         Foreground="#8A8F98" FontSize="12" TextWrapping="Wrap" />
-            </StackPanel>
-          </StackPanel>
-        </Border>
-
         <!-- 🧩 编辑路径变量 (label:907, Vue 中被注释, 按任务规格补齐) -->
         <Border Background="White" CornerRadius="12" Padding="16">
           <StackPanel Spacing="10">

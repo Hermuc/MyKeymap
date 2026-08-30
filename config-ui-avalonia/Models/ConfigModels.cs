@@ -11,7 +11,7 @@ namespace MyKeymap.Settings.Models;
 //   2. [JsonPropertyName] 与 Go json tag 逐字对齐 (含大小写);
 //   3. Go 侧 `json:"-"` 的字段 (Config.KeyMapping / Action.RemapInHotIf)
 //      不参与 JSON 序列化, 故本模型不定义;
-//   4. Go 侧带 omitempty 的字段 (如 actionSchemes / fileGroups / helpPageHtml
+//   4. Go 侧带 omitempty 的字段 (如 actionSchemes / fileGroups
 //      以及 Action 的大部分字段) 在 JSON 中可能缺失, 反序列化时落回
 //      C# 属性默认值 (空集合 / 空串 / 0 / false), 模型一律以非空类型容忍缺失。
 // ============================================================================
@@ -32,10 +32,6 @@ public sealed class Config
     // omitempty: 文件分组快捷填充数据, 缺失时为空列表
     [JsonPropertyName("fileGroups")]
     public List<FileGroup> FileGroups { get; set; } = [];
-
-    // omitempty: 自定义帮助页 HTML, 缺失时为 ""
-    [JsonPropertyName("helpPageHtml")]
-    public string HelpPageHtml { get; set; } = "";
 
     // omitempty: 自定义总览页 Markdown, 缺失时为 ""; 非空时总览页优先展示自定义内容
     [JsonPropertyName("overviewDocMd")]

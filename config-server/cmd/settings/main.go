@@ -14,10 +14,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+
 	"settings/internal/command"
 	"settings/internal/matrix"
 	"settings/internal/script"
-	"text/template"
 )
 
 func main() {
@@ -253,13 +253,6 @@ func SaveConfigHandler(debug bool) gin.HandlerFunc {
 			return
 		}
 
-		// 生成帮助文件: 有自定义内容才生成, 内容被清空时删除旧文件避免残留
-		if config.HelpPageHtml != "" {
-			saveHelpPageHtml(config.HelpPageHtml)
-		} else {
-			_ = os.Remove("../bin/site/help.html")
-		}
-
 		script.SaveConfigFile(&config) // 保存配置文件
 
 		if debug {
@@ -271,30 +264,6 @@ func SaveConfigHandler(debug bool) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"message": "ok"})
-	}
-}
-
-func saveHelpPageHtml(html string) {
-
-	f, err := os.Create("../bin/site/help.html")
-	if err != nil {
-		panic(err)
-	}
-	defer func(f *os.File) {
-		_ = f.Close()
-	}(f)
-
-	files := []string{
-		"./templates/help.html",
-	}
-
-	ts, err := template.ParseFiles(files...)
-	if err != nil {
-		panic(err)
-	}
-	err = ts.Execute(f, map[string]string{"helpPageHtml": html})
-	if err != nil {
-		panic(err)
 	}
 }
 

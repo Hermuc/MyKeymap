@@ -10,7 +10,6 @@ type Config struct {
 	Options       Options        `json:"options,omitempty"`
 	ActionSchemes []ActionScheme `json:"actionSchemes,omitempty"`
 	FileGroups    []FileGroup    `json:"fileGroups,omitempty"` // 文件分组: 前端「文件后缀」条件值的快捷填充数据, 非独立匹配类型
-	HelpPageHtml  string         `json:"helpPageHtml,omitempty"` // 自定义帮助页 HTML, 保存时生成 bin/site/help.html
 	OverviewDocMd string         `json:"overviewDocMd,omitempty"` // 自定义总览页 Markdown, 设置界面优先展示; 为空时展示默认 config_doc.md
 	KeyMapping    string         `json:"-"`
 }

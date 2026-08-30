@@ -66,7 +66,7 @@ public sealed class SettingsTestServer : IAsyncLifetime
         // headless 二进制
         File.Copy(HeadlessExeSource, Path.Combine(BinDir, "settings.exe"));
 
-        // templates (saveHelpPageHtml 等依赖)
+        // templates (GenerateAHK 等脚本生成依赖)
         CopyDirectory(Path.Combine(RepoRoot, "config-server", "templates"), Path.Combine(BinDir, "templates"));
 
         // 最小站点占位 (NoRoute 静态服务指向 ./site)
