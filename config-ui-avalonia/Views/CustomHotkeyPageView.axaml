@@ -9,12 +9,10 @@
   <!-- 全局自定义热键页 (复刻 views/CustomHotkey.vue): 左侧热键表 + 右侧示例与编辑面板
        整页内容包 Viewbox Uniform 等比缩放 (背景留在 ScrollViewer 上, 不随缩放):
        内容全固定宽 (420/640/640 + 间距边距 = 1132px), Viewbox 以 Infinity 测量, DesiredSize 稳定;
-       显示宽度由 Viewbox MaxWidth=900 封顶 (缩放约 0.80): 内容区可用宽 936 > 900, Uniform 不再铺满,
-       窗口加宽时右侧留白, 卡片在屏幕上的实际宽度恒为 900 —— 要继续收窄/放宽卡片改 MaxWidth,
-       而非内容宽 (内容宽收窄会被缩放补涨, 屏幕上看不出区别);
+       ScrollViewer 横向默认 Disabled -> 宽度有界, 缩放由可用尺寸驱动 (默认内容区 936 -> 约 0.83, 窗口宽到 1396 时回到 1);
        纵向默认 Auto -> Viewbox 纵向不放大, 内容超高时滚动仍可用 -->
   <ScrollViewer Background="#F0F2F7">
-    <Viewbox Stretch="Uniform" MaxWidth="900" HorizontalAlignment="Left">
+    <Viewbox Stretch="Uniform">
     <StackPanel Orientation="Horizontal" Margin="24,20,24,28" Spacing="24" VerticalAlignment="Top">
 
       <!-- 左: 热键表格 (热键 / 备注 / 删除) -->
