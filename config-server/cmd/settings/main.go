@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"syscall"
 
 	"settings/internal/command"
 	"settings/internal/matrix"
@@ -226,7 +227,35 @@ func execCmd(exe string, args ...string) {
 
 	var c = exec.Command(exe, args...)
 	c.Dir = dir
-	// 不调用 Wait: 目标是常驻进程 (如 MyKeymap.exe), 等待会阻塞请求
+	// CREATE_BREAKAWAY_FROM_JOB: 设置界面 (Avalonia) 会将本进程置于 KILL_ON_JOB_CLOSE
+	// 的 Job 中以防孤儿; 保存设置时重启的 MyKeymap 若留在 Job 内, 会在设置窗口关闭
+	// (或界面进程异常退出) 时被连带终止, 表现为「保存设置后 MyKeymap 退出」。
+	// 此处让拉起的进程脱离 Job; 失败时 (如外层 Job 未开放 BREAKAWAY_OK) 按场景回退。
+	c.SysProcAttr = &syscall.SysProcAttr{CreationFlags: 0x01000000} // CREATE_BREAKAWAY_FROM_JOB
+	if err := c.Start(); err != nil {
+		log.Println("execCmd: breakaway 启动", exe, "失败:", err)
+		fallbackExecCmd(dir, exe, args)
+	}
+}
+
+// fallbackExecCmd: breakaway 失败后的降级启动。
+// 无参数调用 (保存设置后的托盘重启) 改经 explorer.exe 中转: explorer 不在本进程的
+// Job 层级内, 由它拉起的进程彻底脱离任何 Job, 保证托盘不被设置窗口关闭连带终止;
+// 代价是目标不继承本进程的提权状态 (由 MyKeymap 启动器自行 RunAs 提权)。
+// 带参数调用 (WindowSpy/GenerateShortcuts 等短暂工具进程) 保持普通启动。
+func fallbackExecCmd(dir, exe string, args []string) {
+	if len(args) == 0 {
+		absExe, err := filepath.Abs(filepath.Join(dir, exe))
+		if err == nil {
+			c := exec.Command("explorer.exe", absExe)
+			if err := c.Start(); err == nil {
+				return
+			}
+			log.Println("execCmd: explorer 中转启动", exe, "失败:", err)
+		}
+	}
+	c := exec.Command(exe, args...)
+	c.Dir = dir
 	if err := c.Start(); err != nil {
 		log.Println("execCmd: 启动", exe, "失败:", err)
 	}

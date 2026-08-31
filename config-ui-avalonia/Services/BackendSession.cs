@@ -15,9 +15,11 @@ namespace MyKeymap.Settings.Services;
 //   2. 直连模式 (--port <N>): 直接连接一个已运行的后端, 便于开发调试
 //      与冒烟测试 (模拟部署目录由外部构造)。
 //
-// 生命周期 (任务 #6 已完善):
-//   - Shutdown() 终止本会话拉起的子进程 (整树 Kill + 超时兜底, 幂等),
-//     窗口 Closing / Dispatcher 退出 / 主入口 finally 三层兜底, 绝不留孤儿;
+// 生命周期 (任务 #6 已完善, 修复保存重启连带击杀):
+//   - Shutdown() 终止本会话拉起的子进程 settings.exe 本体 (不整树, 超时保底, 幂等),
+//     窗口 Closing / Dispatcher 退出 / 主入口 finally 三层保底, 绝不留孤儿;
+//   - Job 额外开放 BREAKAWAY_OK: settings.exe 保存时用 CREATE_BREAKAWAY_FROM_JOB
+//     重启的 MyKeymap 脱离本 Job, 关闭设置窗口不会连带终止托盘程序;
 //   - 子进程意外退出: EnableRaisingEvents + Exited 事件 -> ChildProcessExited,
 //     上层 (MainViewModel) 切错误态并提供「重试/重启后端」按钮, 不自动重启防风暴;
 //   - 后端定位: --settings-exe/--backend-dir 优先, 缺省从 AppContext.BaseDirectory
@@ -163,8 +165,10 @@ public sealed class BackendSession : IAsyncDisposable
     }
 
     /// <summary>
-    /// 关停会话: 终止本会话拉起的子进程 (整树)。幂等, 可在多层退出路径重复调用:
-    /// MainWindow.Closing -> App.Exit 兜底 -> Program.Main finally 兜底。
+    /// 关停会话: 终止本会话拉起的子进程 (仅 settings.exe 本体, 不整树)。幂等, 可在多层退出路径重复调用:
+    /// MainWindow.Closing -> App.Exit 保底 -> Program.Main finally 保底。
+    /// 不整树原因: 保存设置时 settings.exe 会以 breakaway 方式重启 MyKeymap (常驻托盘),
+    /// 其启动链仍短暂挂在 settings.exe 下, 整树 Kill 会把刚重启的托盘一并终止。
     /// </summary>
     public void Shutdown()
     {
@@ -177,8 +181,9 @@ public sealed class BackendSession : IAsyncDisposable
             {
                 if (!_child.HasExited)
                 {
-                    _child.Kill(entireProcessTree: true);
-                    // 超时兜底: WaitForExit 限时, 绝不无限阻塞退出时序; 整树 Kill 后残留由 OS 回收
+                    // 仅终止 settings.exe 本体; MyKeymap 已通过 breakaway 脱离本进程树, 不得连带终止
+                    _child.Kill(entireProcessTree: false);
+                                        // 超时保底: WaitForExit 限时, 绝不无限阻塞退出时序
                     _child.WaitForExit(3000);
                 }
             }
@@ -255,8 +260,10 @@ public sealed class BackendSession : IAsyncDisposable
         }
         OwnsChildProcess = true;
 
-        // Job Object 兜底: 即使 GUI 被强杀 (AHK ProcessClose/任务管理器), 来不及走 Shutdown,
-        // 进程退出时句柄关闭也会触发 KILL_ON_JOB_CLOSE, 连带终止 settings.exe 及其子进程树, 绝不留孤儿。
+                // Job Object 保底: 即使 GUI 被强杀 (AHK ProcessClose/任务管理器), 来不及走 Shutdown,
+        // 进程退出时句柄关闭也会触发 KILL_ON_JOB_CLOSE 终止 settings.exe, 绝不留孤儿。
+        // 同时开放 BREAKAWAY_OK: 允许 settings.exe 保存时以 CREATE_BREAKAWAY_FROM_JOB
+        // 重启 MyKeymap, 使其脱离本 Job, 关闭设置窗口不会连带终止托盘程序。
         AttachToJobObject(_child);
 
         // 意外退出监测: 子进程崩溃 (被任务管理器结束/自身异常) 时通知上层切错误态。
@@ -337,7 +344,7 @@ public sealed class BackendSession : IAsyncDisposable
             {
                 BasicLimitInformation = new JOBOBJECT_BASIC_LIMIT_INFORMATION
                 {
-                    LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+                    LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE | JOB_OBJECT_LIMIT_BREAKAWAY_OK,
                 },
             };
             SetInformationJobObject(_jobHandle, JobObjectExtendedLimitInformation,
@@ -355,6 +362,7 @@ public sealed class BackendSession : IAsyncDisposable
     }
 
     private const uint JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x2000;
+    private const uint JOB_OBJECT_LIMIT_BREAKAWAY_OK = 0x0400;
     private const int JobObjectExtendedLimitInformation = 9;
 
     [StructLayout(LayoutKind.Sequential)]
