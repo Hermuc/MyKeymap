@@ -8,23 +8,21 @@
 
   <!-- 全局自定义热键页 (复刻 views/CustomHotkey.vue): 左侧热键表 + 右侧示例与编辑面板
        整页内容包 Viewbox Uniform 等比缩放 (背景留在 ScrollViewer 上, 不随缩放):
-       内容全固定宽 (360/580/580 + 间距边距 = 1012px), Viewbox 以 Infinity 测量, DesiredSize 稳定;
-       显示宽度由 Viewbox MaxWidth=850 封顶 (缩放约 0.84): 内容区可用宽 936 > 850, Uniform 不再铺满,
-       窗口加宽时右侧留白, 卡片在屏幕上的实际宽度恒为 850 —— 要继续收窄卡片改 MaxWidth, 而非内容宽
-       (内容宽收窄会被缩放补涨, 屏幕上看不出区别);
+       内容全固定宽 (420/640/640 + 间距边距 = 1132px), Viewbox 以 Infinity 测量, DesiredSize 稳定;
+       ScrollViewer 横向默认 Disabled -> 宽度有界, 缩放由可用尺寸驱动 (默认内容区 936 -> 约 0.83, 窗口宽到 1396 时回到 1);
        纵向默认 Auto -> Viewbox 纵向不放大, 内容超高时滚动仍可用 -->
   <ScrollViewer Background="#F0F2F7">
-    <Viewbox Stretch="Uniform" MaxWidth="850" HorizontalAlignment="Left">
+    <Viewbox Stretch="Uniform">
     <StackPanel Orientation="Horizontal" Margin="24,20,24,28" Spacing="24" VerticalAlignment="Top">
 
       <!-- 左: 热键表格 (热键 / 备注 / 删除) -->
-      <Border Width="360" Background="White" CornerRadius="12" Padding="16"
+      <Border Width="420" Background="White" CornerRadius="12" Padding="16"
               VerticalAlignment="Top">
         <DockPanel>
           <!-- 表头 -->
           <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="6" Margin="0,0,0,8">
             <TextBlock Width="110" Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=404}" Foreground="#8A8F98" FontSize="12" />
-            <TextBlock Width="140" Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=305}" Foreground="#8A8F98" FontSize="12" />
+            <TextBlock Width="190" Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=305}" Foreground="#8A8F98" FontSize="12" />
             <TextBlock Width="40" />
           </StackPanel>
 
@@ -40,7 +38,7 @@
           <ItemsControl ItemsSource="{Binding Rows}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:CustomHotkeyRowVm">
-                <Grid ColumnDefinitions="110,140,*" Margin="0,1"
+                <Grid ColumnDefinitions="110,190,*" Margin="0,1"
                       Background="{Binding RowBackground}"
                       PointerPressed="OnRowPressed">
                   <!-- 热键编辑框 (失焦提交, 复刻 @change=changeCustomHotkey) -->
@@ -67,7 +65,7 @@
            符号规则以 site-assets/config_doc.md 核实为准: ^ ! + # 四个修饰符 (左右修饰 < > 文档未提及, 不列);
            热键中键名直接写 (模板 slow.Map("*space",...) 与原 Example 2 印证), 区别于 KeysToSend 的 {键} 语法 -->
       <StackPanel Spacing="14">
-        <Border Width="580" Background="White" CornerRadius="12" Padding="16"
+        <Border Width="640" Background="White" CornerRadius="12" Padding="16"
                 VerticalAlignment="Top">
           <StackPanel Spacing="8">
 
@@ -150,7 +148,7 @@
           </StackPanel>
         </Border>
 
-        <controls:ActionEditorPanel Width="580" DataContext="{Binding Editor}" />
+        <controls:ActionEditorPanel Width="640" DataContext="{Binding Editor}" />
       </StackPanel>
 
     </StackPanel>
