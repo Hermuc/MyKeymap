@@ -429,6 +429,20 @@ public static class I18n
         ["1061"] = ("磁力链接", "Magnet Link"),
         ["1062"] = ("纯文本", "Plain Text"),
         ["1063"] = ("快捷键", "Hotkey"),
+
+        // ---- 按键写法说明卡 (CustomHotkeyPageView, 合并原 Example 1/2; 1066 组合示例已随 XAML 删除) ----
+        ["1064"] = ("按键写法说明", "Key Notation"),
+        ["1065"] = ("修饰符", "Modifiers"),
+        ["1067"] = ("常用按键名 (直接写)", "Common Key Names (as-is)"),
+        ["1068"] = ("空格", "Space"),
+        ["1069"] = ("回车", "Enter"),
+        ["1070"] = ("Tab 键", "Tab"),
+        ["1071"] = ("Esc 键", "Esc"),
+        ["1072"] = ("大写锁定", "Caps Lock"),
+        ["1073"] = ("鼠标左键", "Left Mouse Button"),
+        ["1074"] = ("鼠标右键", "Right Mouse Button"),
+        ["1075"] = ("功能键", "Function Keys"),
+        ["1076"] = ("字母与数字", "Letters & Digits"),
     };
 }
 
