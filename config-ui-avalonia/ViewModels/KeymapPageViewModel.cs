@@ -81,8 +81,8 @@ public sealed partial class KeymapPageViewModel : ObservableObject, ILanguageRef
     /// <summary>复刻 .small 类: 首行超过 10 键 (如 104 键布局) 时整体缩小字号。</summary>
     public bool SmallFont { get; }
 
-    /// <summary>键格字号: 复刻 font-size 1.5rem 与 .small 的 1.23rem。</summary>
-    public double KeyFontSize => SmallFont ? 19.7 : 24;
+    /// <summary>键格字号: 复刻 font-size 1.5rem 与 .small 的 1.23rem; 整体缩小 4 号 (24→20, 19.7→15.7)。</summary>
+    public double KeyFontSize => SmallFont ? 15.7 : 20;
 
     /// <summary>语言切换计数 (页内 ConverterParameter 文案重算)。</summary>
     [ObservableProperty]

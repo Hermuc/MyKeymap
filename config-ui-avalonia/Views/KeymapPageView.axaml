@@ -28,14 +28,20 @@
 
         <!-- 键盘网格: 行 -> 键格 (选中蓝 / 禁用灰 / 已绑定绿 / 空键白);
              单字符键格 (Label 恰 1 字符, 如 A/,) 为 43×43 正方形, 圆角与其余键格一致 (6);
-             多字符键保持自然宽度左对齐 (10 键行基准 10*58 + 9*4 = 616px, 与编辑面板 620 基本对齐) -->
-        <ItemsControl ItemsSource="{Binding Rows}">
+             多字符键保持自然宽度左对齐 (10 键行基准 10*58 + 9*4 = 616px);
+             行面板 Left 对齐后 Bounds.Width 即该行自然宽度, SizeChanged 汇总各行取最大值,
+             动态同步给编辑面板 (借鉴 AbbrPageView chips 最宽行对齐机制), 不写死数值 -->
+        <ItemsControl x:Name="KeyboardGrid" ItemsSource="{Binding Rows}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:KeyboardRowVm">
               <ItemsControl ItemsSource="{Binding Keys}" Margin="0,0,0,4">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>
-                    <StackPanel Orientation="Horizontal" Spacing="4" />
+                    <!-- HorizontalAlignment=Left: 面板收缩为该行自然宽度 (实测各键宽 + 间距),
+                         否则被外层纵向 StackPanel 拉伸为占位宽, ActualWidth 失真;
+                         模板级 NameScope 无法 x:Name, 直挂 SizeChanged 由页面汇总最宽行 -->
+                    <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Left"
+                                SizeChanged="OnKeyboardRowSizeChanged" />
                   </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
@@ -58,10 +64,14 @@
           </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <!-- 动作编辑面板: 720→620 收窄; 右 Margin 50→33 (备注列与键盘网格间距再减 1/5: 86→69),
-             左列占位 670→653, 右列备注 (* 列) 再向左靠拢 17;
-             top Margin 10→20, 拉开键盘网格与面板的垂直呼吸感 -->
-        <controls:ActionEditorPanel Width="620" Margin="0,20,33,0" DataContext="{Binding Editor}" />
+        <!-- 动作编辑面板: 外框 (EditorFrame) 宽度不再固定 620, 由行面板 SizeChanged 同步为
+             键盘网格最宽行实际宽度 (Width=620 仅首帧占位); 外框横向 Padding=2 使内部白卡片
+             左右各内缩 2, 不贴按钮 (仅模式页生效, 不改共享的 ActionEditorPanel);
+             左列占位固定 653 (改前 620+33): 右补偿由 code-behind 按 653-W 动态计算,
+             备注列位置与间距观感与改前完全一致; top Margin 20→12 适度收窄网格↔面板垂直间距 -->
+        <Border x:Name="EditorFrame" Width="620" Padding="2,0" Margin="0,12,37,0">
+          <controls:ActionEditorPanel x:Name="EditorPanel" DataContext="{Binding Editor}" />
+        </Border>
         </StackPanel>
       </Viewbox>
 
