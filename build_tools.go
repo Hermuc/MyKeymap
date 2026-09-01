@@ -10,7 +10,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"strings"
 	"time"
 )
@@ -65,21 +64,19 @@ func updateShareLink(args []string) {
 	}
 
 	format = "- 下载地址: [MyKeymap %s](%s) ( 提取码 %s )"
-	_ = ReplaceInFile("/mnt/d/project/my_site/docs/MyKeymap.md", replacer)
-}
-
-func execCmd(exe string, args ...string) {
-	var c = exec.Command(exe, args...)
-	c.Stdout = os.Stdout
-	c.Stderr = os.Stderr
-	fmt.Printf("\n%s %s\n", exe, strings.Join(args, " "))
-	err := c.Start()
-	if err != nil {
-		panic(err)
+	// 站点文档路径参数化: 第 2 个命令行参数或 MYKEYMAP_SITE_DOC 环境变量,
+	// 缺省时跳过该步骤 (原为硬编码 WSL 路径, 仅原作者环境可用)
+	siteDoc := ""
+	if len(args) > 1 {
+		siteDoc = args[1]
 	}
-	err = c.Wait()
-	if err != nil {
-		panic(err)
+	if siteDoc == "" {
+		siteDoc = os.Getenv("MYKEYMAP_SITE_DOC")
+	}
+	if siteDoc == "" {
+		log.Println("skip site doc update: pass the doc path as 2nd arg or set MYKEYMAP_SITE_DOC")
+	} else if err = ReplaceInFile(siteDoc, replacer); err != nil {
+		log.Println("update site doc failed:", err)
 	}
 }
 

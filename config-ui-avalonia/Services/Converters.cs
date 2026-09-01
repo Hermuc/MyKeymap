@@ -16,16 +16,6 @@ public sealed class IntToStringConverter : IValueConverter
             : AvaloniaProperty.UnsetValue;
 }
 
-/// <summary>bool 取反 (如 HasSubKeymap -> 上层下拉禁用)。</summary>
-public sealed class BoolNotConverter : IValueConverter
-{
-    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
-        => value is bool b ? !b : value;
-
-    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
-        => value is bool b ? !b : value;
-}
-
 /// <summary>字符串非空判定 (SaveNotice 等短暂提示的显隐)。</summary>
 public sealed class StringNotEmptyConverter : IValueConverter
 {

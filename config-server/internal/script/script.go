@@ -17,9 +17,6 @@ func GenerateScripts(config *Config) {
 	if err := SaveAHK(config, "./templates/CommandInputSkin.tmpl", "../bin/CommandInputSkin.txt"); err != nil {
 		panic(err)
 	}
-	// if err := SaveAHK(config, "./templates/CustomShellMenu.ahk", "../bin/CustomShellMenu.ahk"); err != nil {
-	// 	panic(err)
-	// }
 }
 
 // Preprocess 对配置做生成前的预处理。

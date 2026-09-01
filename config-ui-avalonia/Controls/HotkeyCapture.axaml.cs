@@ -76,9 +76,6 @@ public partial class HotkeyCapture : UserControl
         set => SetValue(UsedHotkeysProperty, value);
     }
 
-    /// <summary>是否处于捕获态 (供外部断言/测试)。</summary>
-    public bool Capturing => _core.Capturing;
-
     // ------------------------------------------------------------- 呈现属性
 
     private string _displayText = "";
@@ -170,7 +167,7 @@ public partial class HotkeyCapture : UserControl
         }
         DisplayText = text;
         TextBrush = brush;
-        IconText = capturing ? "⌨" : "⌨"; // 保留图标位, 捕获态以边框色区分
+        IconText = "⌨"; // 保留图标位, 捕获态以边框色区分
         ShowClearButton = !capturing && !string.IsNullOrEmpty(Hotkey);
 
         // 冲突检测 (复刻 conflict 计算): 归一化后与已占用集合比较, 保守策略

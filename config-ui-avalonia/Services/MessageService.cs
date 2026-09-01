@@ -8,19 +8,11 @@ namespace MyKeymap.Settings.Services;
 /// <summary>
 /// 消息提示抽象: 保存 400 时弹出后端 message 等。
 /// 界面运行时用 <see cref="DialogMessageService"/> (模态对话框);
-/// 无界面场景 (冒烟/单测) 注入 <see cref="RecordingMessageService"/>。
+/// 无界面场景 (冒烟/单测) 注入自定义测试替身实现。
 /// </summary>
 public interface IMessageService
 {
     void Show(string title, string message);
-}
-
-/// <summary>把消息记录到内存列表 (测试替身)。</summary>
-public sealed class RecordingMessageService : IMessageService
-{
-    public List<(string Title, string Message)> Messages { get; } = [];
-
-    public void Show(string title, string message) => Messages.Add((title, message));
 }
 
 /// <summary>

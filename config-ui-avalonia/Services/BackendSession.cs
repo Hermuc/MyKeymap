@@ -94,20 +94,11 @@ public sealed class BackendSession : IAsyncDisposable
     /// <summary>连接成功后可用的 API 客户端 (12 个契约端点)。</summary>
     public ISettingsApi? Api => _client;
 
-    /// <summary>连接成功后可用的具体客户端 (含非契约的 GetRawTextAsync)。</summary>
-    public SettingsApiClient? ConcreteApi => _client;
-
     /// <summary>后端实际监听端口。</summary>
     public int Port { get; private set; }
 
-    /// <summary>true = 本会话拉起了子进程 (Shutdown 时需要终止它)。</summary>
-    public bool OwnsChildProcess { get; private set; }
-
     /// <summary>启动失败时的人类可读原因 (展示在友好错误页)。</summary>
     public string? FailureReason { get; private set; }
-
-    /// <summary>诊断行 (子进程 stdout/stderr 摘要), 错误页可展示。</summary>
-    public IReadOnlyList<string> Diagnostics => _diagnostics;
 
     /// <summary>
     /// 子进程意外退出事件 (参数为人类可读原因)。主动 Shutdown 不触发。
@@ -193,7 +184,6 @@ public sealed class BackendSession : IAsyncDisposable
             }
             _child.Dispose();
             _child = null;
-            OwnsChildProcess = false;
         }
 
         if (_jobHandle != IntPtr.Zero)
@@ -258,7 +248,6 @@ public sealed class BackendSession : IAsyncDisposable
             FailureReason = "启动 settings.exe 失败 (Process.Start 返回 null)";
             return false;
         }
-        OwnsChildProcess = true;
 
                 // Job Object 保底: 即使 GUI 被强杀 (AHK ProcessClose/任务管理器), 来不及走 Shutdown,
         // 进程退出时句柄关闭也会触发 KILL_ON_JOB_CLOSE 终止 settings.exe, 绝不留孤儿。

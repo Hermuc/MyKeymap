@@ -312,13 +312,6 @@ public sealed partial class SettingsPageViewModel : ObservableObject
 
     public ObservableCollection<KeymapRowViewModel> KeymapRows { get; } = [];
 
-    public Keymap? FindParentById(int id)
-    {
-        if (id == 0) return ParentSentinel;
-        return KeymapRows.FirstOrDefault(r => r.Model.Id == id)?.Model
-               ?? Config.Keymaps.FirstOrDefault(k => k.Id == id);
-    }
-
     /// <summary>重建表行/候选上层/自定义列表, 并通知主窗口刷新导航。</summary>
     public void RefreshKeymapSection()
     {

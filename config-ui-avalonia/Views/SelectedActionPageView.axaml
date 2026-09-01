@@ -11,11 +11,6 @@
       <Setter Property="BorderBrush" Value="#4169E1" />
       <Setter Property="BoxShadow" Value="0 4 12 rgba(0,0,0,0.12)" />
     </Style>
-    <Style Selector="ListBoxItem">
-      <Setter Property="Padding" Value="8,6" />
-      <Setter Property="CornerRadius" Value="8" />
-      <Setter Property="Margin" Value="0,1" />
-    </Style>
   </UserControl.Styles>
 
   <Grid>

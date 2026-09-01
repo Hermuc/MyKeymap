@@ -602,13 +602,6 @@ class MouseKeymap extends Keymap {
     return handler
   }
 
-  ExitMouseKeyMap() {
-    handler(thisHotkey) {
-      this.clearOrUnlock(false)
-    }
-    return handler
-  }
-
   ExitAndSendThisKey() {
     handler(thisHotkey) {
       this.clearOrUnlock(false)
@@ -646,9 +639,6 @@ class TaskSwitchKeymap extends Keymap {
       KeymapManager.Unlock()
     }
   }
-}
-
-NoOperation(thisHotkey) {
 }
 
 ExtractWaitKey(hotkey) {

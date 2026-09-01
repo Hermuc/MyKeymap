@@ -20,22 +20,15 @@ public sealed partial class NavItem : ObservableObject
     /// <summary>MDI 图标渲染字符 (由 <see cref="IconName"/> 查表得出, 供 XAML 绑定)。</summary>
     public string IconChar => string.IsNullOrEmpty(IconName) ? "" : MdiIcon.CharFor(IconName);
 
-    /// <summary>徽标文字 (旧字符徽标, 已由 MDI 图标取代, 保留兼容)。</summary>
-    public string Badge { get; init; } = "";
-
     /// <summary>图标颜色 (十六进制, 按 Vue getColor 哈希算法计算)。</summary>
     public string BadgeColorHex { get; init; } = "#8E8E93";
 
     /// <summary>点击后展示的内容区页面对象 (各页面 ViewModel)。</summary>
     public required object Page { get; init; }
-
-    /// <summary>是否当前选中 (由 MainViewModel 维护, 驱动高亮样式)。</summary>
-    [ObservableProperty]
-    private bool _isSelected;
 }
 
 /// <summary>
-/// 徽标配色逻辑, 复刻 NavigationDrawer.vue 的 getColor 语义 (文字/图标配色哈希)。
+/// 徽标配色逻辑, 复刻 NavigationDrawer.vue 的 getColor 语义 (图标配色哈希)。
 /// </summary>
 public static class NavBadge
 {
@@ -73,37 +66,6 @@ public static class NavBadge
             if (parent is not null) return parent.Hotkey;
         }
         return keymap.Hotkey;
-    }
-
-    /// <summary>
-    /// 徽标文字, 复刻 getIcon 的语义分支 (无 MDI 图标, 用字符徽标表达同一含义):
-    /// settings=⚙, customHotkeys=⌨, capslockAbbr=🚀, semicolonAbbr=✎, 鼠标=🖱,
-    /// 数字/字母取首字符。
-    /// </summary>
-    public static string BadgeFor(string hotkey)
-    {
-        switch (hotkey)
-        {
-            case "settings": return "⚙";
-            case "customHotkeys": return "⌨";
-            case "capslockAbbr": return "🚀";
-            case "semicolonAbbr": return "✎";
-        }
-        if (hotkey.Contains("button", StringComparison.OrdinalIgnoreCase)) return "🖱";
-
-        // 去除开头的修饰符 (复刻 hotkey.replace(/^[^!#^+\w]/, ''))
-        var h = hotkey.Length > 0 && "!#^+".IndexOf(hotkey[0]) < 0 && !char.IsLetterOrDigit(hotkey[0]) && hotkey[0] != '_'
-            ? hotkey[1..]
-            : hotkey;
-
-        // 首字母 (L/R 前缀的按键取第二个字符, 复刻 getIcon)
-        var key = h.Length > 0 ? h[..1] : "";
-        if (key.Length > 0 && "LRlr".Contains(key) && h.Length > 1)
-        {
-            key = h[1..2];
-        }
-        key = key.ToLowerInvariant();
-        return key.Length > 0 ? key.ToUpperInvariant() : "◆";
     }
 }
 

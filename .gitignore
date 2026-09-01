@@ -3,8 +3,7 @@ node_modules
 MyKeymap
 bin/site
 bin/ui/
-bin/html-tools/AlignText.html
-bin/html-tools/tailwind.css
+bin/MyKeymap.ahk
 bin/templates
 bin/mykeymap-settings-server
 bin/mykeymap-settings-server.exe

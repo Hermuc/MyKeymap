@@ -75,10 +75,9 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private object? _currentPage;
 
-    /// <summary>导航选中变化 (ListBox.SelectedItem 双向绑定驱动): 高亮跟随 + 切换内容页。</summary>
+    /// <summary>导航选中变化 (ListBox.SelectedItem 双向绑定驱动): 切换内容页。</summary>
     partial void OnCurrentNavItemChanged(NavItem? value)
     {
-        foreach (var item in NavItems) item.IsSelected = ReferenceEquals(item, value);
         CurrentPage = value?.Page;
     }
 
@@ -180,7 +179,6 @@ public sealed partial class MainViewModel : ObservableObject
                 Id = "home",
                 Title = I18n.T("913"),
                 IconName = "home-outline",
-                Badge = "🏠",
                 BadgeColorHex = "#4169E1",
                 Page = HomeVm,
             },
@@ -189,7 +187,6 @@ public sealed partial class MainViewModel : ObservableObject
                 Id = "action",
                 Title = I18n.T("914"),
                 IconName = "gesture-tap",
-                Badge = "👆",
                 BadgeColorHex = "#4169E1",
                 Page = ActionVm!,
             },
@@ -203,7 +200,6 @@ public sealed partial class MainViewModel : ObservableObject
                 Id = $"keymap-{km.Id}",
                 Title = string.IsNullOrEmpty(km.Name) ? hotkey : km.Name,
                 IconName = MdiIcon.IconFor(hotkey),
-                Badge = NavBadge.BadgeFor(hotkey),
                 BadgeColorHex = NavBadge.ColorFor(hotkey),
                 Page = PageForKeymap(km),
             });

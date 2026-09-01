@@ -11,7 +11,6 @@
     <!-- 双语文案转换器: Binding 源为各 VM 的 LanguageTick, ConverterParameter 为文案键 -->
     <services:I18nConverter x:Key="Tr" />
     <services:IntToStringConverter x:Key="IntStr" />
-    <services:BoolNotConverter x:Key="Not" />
     <services:StringNotEmptyConverter x:Key="NotEmpty" />
     <!-- MDI 图标字体 (导航图标, 复刻 Vue 版 mdi 图标) -->
     <FontFamily x:Key="MdiFont">avares://MyKeymap.Settings/Assets/Fonts/materialdesignicons.ttf#Material Design Icons</FontFamily>

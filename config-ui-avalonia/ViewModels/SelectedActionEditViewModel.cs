@@ -370,16 +370,6 @@ public sealed partial class RuleEditorVm : ObservableObject
         OnPropertyChanged(nameof(ShowWorkingDir));
         OnPropertyChanged(nameof(WorkingDir));
     }
-
-    /// <summary>语言切换: 选项标签为预翻译副本, 由宿主重建编辑器实例, 此处仅刷新提示。</summary>
-    public void RefreshLanguage()
-    {
-        OnPropertyChanged(nameof(MatchHint));
-        OnPropertyChanged(nameof(TextTypeHint));
-        OnPropertyChanged(nameof(FileGroupHint));
-        OnPropertyChanged(nameof(TextActionInfo));
-        OnPropertyChanged(nameof(ActionHint));
-    }
 }
 
 /// <summary>
