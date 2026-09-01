@@ -259,7 +259,16 @@ public sealed partial class MainViewModel : ObservableObject
 
             if (resp.Success)
             {
-                SaveNotice = I18n.T("928");
+                if (resp.Value?.RestartFailed == true)
+                {
+                    // 保存已落盘但 MyKeymap 重启失败: 明确提示手动重载,
+                    // 避免「UI 显示保存成功但新热键/配置不生效」的困惑
+                    _messages.Show(I18n.T("1078"), I18n.T("1079"));
+                }
+                else
+                {
+                    SaveNotice = I18n.T("928");
+                }
                 BuildNav(); // 启用状态可能变化
                 _ = ClearNoticeAsync();
                 return true;

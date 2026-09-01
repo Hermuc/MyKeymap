@@ -61,6 +61,12 @@
                 <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=976}"
                            Foreground="#B26A00" FontSize="12" TextWrapping="Wrap" />
               </Border>
+              <!-- 热键未保存提示: 修改触发键后未点保存时轻量提醒 (保存成功后复位) -->
+              <Border IsVisible="{Binding HotkeyPendingSave}" Background="#FFF8E1"
+                      CornerRadius="6" Padding="10,6">
+                <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=1077}"
+                           Foreground="#B26A00" FontSize="12" TextWrapping="Wrap" />
+              </Border>
             </StackPanel>
           </Grid>
           <Grid ColumnDefinitions="140,*">

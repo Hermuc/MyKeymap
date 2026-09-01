@@ -40,6 +40,13 @@ public sealed record MessageBody
 {
     [JsonPropertyName("message")]
     public string Message { get; set; } = "";
+
+    /// <summary>
+    /// 保存后 MyKeymap 进程重启失败时为 true (保存已落盘, 需经托盘「重载」手动生效);
+    /// 旧后端无此字段 -&gt; 反序列化为 null, 视同成功, 保持向后兼容。
+    /// </summary>
+    [JsonPropertyName("restartFailed")]
+    public bool? RestartFailed { get; set; }
 }
 
 /// <summary>GET /shortcuts 的列表项。</summary>

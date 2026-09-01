@@ -34,6 +34,10 @@ type ActionScheme struct {
 	Hotkey string       `json:"hotkey"`
 	Enable bool         `json:"enable"`
 	Rules  []ActionRule `json:"rules"`
+
+	// 传输层字段 (不落盘): 保存/新建方案后重启 MyKeymap 失败时由 handler 置 true 随响应返回;
+	// omitempty 保证 false 时不序列化, config.json 落盘与导入导出均不受影响
+	RestartFailed bool `json:"restartFailed,omitempty"`
 }
 
 // 文件分组: 供前端「文件后缀」条件值快捷填充 (选择分组 -> 展开为逗号分隔后缀列表), 非独立匹配类型

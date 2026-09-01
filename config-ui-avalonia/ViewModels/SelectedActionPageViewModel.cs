@@ -158,6 +158,11 @@ public sealed partial class SelectedActionPageViewModel : ObservableObject, ILan
             return;
         }
         Config.ActionSchemes.Add(resp.Value);
+        if (resp.Value.RestartFailed == true)
+        {
+            // 新建方案已落盘但 MyKeymap 重启失败: 与保存链路一致地提示手动重载
+            _main.ShowMessage(I18n.T("1078"), I18n.T("1079"));
+        }
         OpenEdit(resp.Value);
     }
 

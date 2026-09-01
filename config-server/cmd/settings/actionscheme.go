@@ -23,14 +23,16 @@ func loadActionSchemes() []script.ActionScheme {
 	return config.ActionSchemes
 }
 
-func saveActionSchemes(schemes []script.ActionScheme) {
+// saveActionSchemes 持久化方案到 config.json 并重启 MyKeymap;
+// 返回重启是否成功 (false 时由 handler 在响应中置 restartFailed 告知前端)。
+func saveActionSchemes(schemes []script.ActionScheme) bool {
 	config, err := script.ParseConfig("../data/config.json")
 	if err != nil {
 		panic(err)
 	}
 	config.ActionSchemes = schemes
 	script.SaveConfigFile(config)
-	execCmd("./MyKeymap.exe")
+	return execCmd("./MyKeymap.exe")
 }
 
 func parseSchemeID(c *gin.Context) int {
@@ -74,7 +76,10 @@ func CreateActionSchemeHandler(c *gin.Context) {
 	}
 	scheme.ID = maxID + 1
 	schemes = append(schemes, scheme)
-	saveActionSchemes(schemes)
+	restartOK := saveActionSchemes(schemes)
+	if !restartOK {
+		scheme.RestartFailed = true // 仅影响响应 JSON, 不回写已落盘数据
+	}
 	c.JSON(http.StatusOK, scheme)
 }
 
@@ -93,7 +98,10 @@ func UpdateActionSchemeHandler(c *gin.Context) {
 		if s.ID == id {
 			scheme.ID = id
 			schemes[i] = scheme
-			saveActionSchemes(schemes)
+			restartOK := saveActionSchemes(schemes)
+			if !restartOK {
+				scheme.RestartFailed = true // 仅影响响应 JSON, 不回写已落盘数据
+			}
 			c.JSON(http.StatusOK, scheme)
 			return
 		}
@@ -107,8 +115,8 @@ func DeleteActionSchemeHandler(c *gin.Context) {
 	for i, s := range schemes {
 		if s.ID == id {
 			schemes = append(schemes[:i], schemes[i+1:]...)
-			saveActionSchemes(schemes)
-			c.JSON(http.StatusOK, gin.H{"message": "ok"})
+			restartOK := saveActionSchemes(schemes)
+			c.JSON(http.StatusOK, gin.H{"message": "ok", "restartFailed": !restartOK})
 			return
 		}
 	}

@@ -440,6 +440,7 @@ public sealed partial class SelectedActionEditViewModel : ObservableObject
             OnPropertyChanged(nameof(Hotkey));
             OnPropertyChanged(nameof(NoHotkeyWarning));
             UsedHotkeys = BuildUsedHotkeys();
+            HotkeyPendingSave = true; // 未保存提示条 (保存成功后复位)
         }
     }
 
@@ -459,6 +460,14 @@ public sealed partial class SelectedActionEditViewModel : ObservableObject
 
     /// <summary>空热键警示 (复刻 !scheme.hotkey 的 warning alert)。</summary>
     public bool NoHotkeyWarning => string.IsNullOrEmpty(Scheme.Hotkey);
+
+    /// <summary>
+    /// 热键已修改但尚未保存 (轻量提示「保存后才生效」, 保存成功后复位):
+    /// 触发键改完不点保存会被误认为「修改不生效」, 与全局配置共存的方案字段改动
+    /// 只有经 PUT /config + 引擎重启才会真正写入热键。
+    /// </summary>
+    [ObservableProperty]
+    private bool _hotkeyPendingSave;
 
     /// <summary>
     /// 已占用热键 (复刻 usedHotkeys 计算): 启用的 keymaps 全部热键 (归一化)
@@ -665,9 +674,13 @@ public sealed partial class SelectedActionEditViewModel : ObservableObject
 
     // ------------------------------------------------------------- 保存 / 删除 / 导入导出
 
-    /// <summary>保存 (复刻「保存」按钮 -> store.saveConfig() -> PUT /config)。</summary>
+    /// <summary>保存 (复刻「保存」按钮 -> store.saveConfig() -> PUT /config); 成功后复位热键未保存提示。</summary>
     [RelayCommand]
-    private Task SaveAsync() => _page.SaveConfigAsync();
+    private async Task SaveAsync()
+    {
+        var ok = await _page.SaveConfigAsync();
+        if (ok) HotkeyPendingSave = false;
+    }
 
     [RelayCommand]
     private void GoBack() => _page.ShowList();

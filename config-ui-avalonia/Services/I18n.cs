@@ -443,6 +443,11 @@ public static class I18n
         ["1074"] = ("鼠标右键", "Right Mouse Button"),
         ["1075"] = ("功能键", "Function Keys"),
         ["1076"] = ("字母与数字", "Letters & Digits"),
+
+        // ---- 保存链路修复: 热键未保存提示 (1077) / 保存后重启失败提示 (1078-1079) ----
+        ["1077"] = ("热键已修改, 点击「保存」后才会生效", "Hotkey changed; click \"Save\" to apply"),
+        ["1078"] = ("已保存, 但 MyKeymap 重启失败", "Saved, but MyKeymap failed to restart"),
+        ["1079"] = ("改动已写入配置, 但 MyKeymap 进程重启失败, 新热键暂不生效。请通过托盘菜单「重载」手动生效。", "Changes were written to config, but MyKeymap failed to restart, so the new hotkey is not active yet. Use the tray menu \"Reload\" to apply it."),
     };
 }
 

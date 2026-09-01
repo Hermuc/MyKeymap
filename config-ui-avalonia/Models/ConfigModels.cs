@@ -94,6 +94,13 @@ public sealed class ActionScheme
 
     [JsonPropertyName("rules")]
     public List<ActionRule> Rules { get; set; } = [];
+
+    /// <summary>
+    /// 传输层字段 (不落盘): 保存/新建方案后 Go 侧重启 MyKeymap 失败时随响应置 true。
+    /// C# 侧可空: null 时序列化省略 (WhenWritingNull), 不会写入 PUT /config 载荷与导出 JSON。
+    /// </summary>
+    [JsonPropertyName("restartFailed")]
+    public bool? RestartFailed { get; set; }
 }
 
 /// <summary>

@@ -127,6 +127,35 @@ public static class HotkeyLogic
         return string.Concat(ordered) + mainKey;
     }
 
+    /// <summary>
+    /// 侧别归一化: 把左右侧别前缀 (&lt;^/&gt;^/&lt;!/&gt;!/&lt;+/&gt;+/&lt;#/&gt;#)
+    /// 映射为通配两侧的单字符前缀 (^/!/+/#), 如 "&gt;^p" -&gt; "^p"、"&lt;^&gt;+k" -&gt; "^+k"。
+    /// 背景: AHK 中带侧别前缀的热键只响应对应物理侧 —— 设置界面录制 "RCtrl+P" 后,
+    /// 用户合理期望左 Ctrl+P 也能触发; 捕获提交时统一通配两侧, 与侧别无关的冲突
+    /// 检测 (<see cref="NormalizeHotkey"/>) 语义保持一致。确需区分左右侧的进阶场景
+    /// 可后续手改 config.json (AHK 语法 &lt;^/&gt;^ 依然合法)。
+    /// </summary>
+    public static string NormalizeSidePrefixes(string ahk)
+    {
+        if (string.IsNullOrEmpty(ahk) || ahk.Length < 2) return ahk ?? "";
+        var sb = new System.Text.StringBuilder(ahk.Length);
+        for (var i = 0; i < ahk.Length;)
+        {
+            // 两字符侧别前缀 (按 ModOrder 识别): 丢弃侧别标记, 保留修饰符本体
+            if (i + 1 < ahk.Length && Array.IndexOf(ModOrder, ahk.Substring(i, 2)) >= 0)
+            {
+                sb.Append(ahk[i + 1]);
+                i += 2;
+            }
+            else
+            {
+                sb.Append(ahk[i]);
+                i++;
+            }
+        }
+        return sb.ToString();
+    }
+
     /// <summary>AHK 格式热键 -> 可读格式 (复刻 ahkToDisplay): ^+q -> Ctrl+Shift+Q, &lt;^q -> LCtrl+Q。</summary>
     public static string AhkToDisplay(string? ahk)
     {
@@ -261,7 +290,8 @@ public sealed class HotkeyCaptureCore
         var name = HotkeyLogic.KeyToAhkName(key);
         if (name is null) return;
 
-        var ahk = HotkeyLogic.BuildAhk(_pendingPrefixes, name);
+        // 提交前侧别归一化: 左右修饰键统一为通配两侧的 ^/!/+/# (见 NormalizeSidePrefixes)
+        var ahk = HotkeyLogic.NormalizeSidePrefixes(HotkeyLogic.BuildAhk(_pendingPrefixes, name));
         Capturing = false;
         _pendingPrefixes.Clear();
         HotkeyCommitted?.Invoke(ahk);

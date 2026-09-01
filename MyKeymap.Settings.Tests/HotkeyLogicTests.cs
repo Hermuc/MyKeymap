@@ -41,17 +41,18 @@ public sealed class HotkeyLogicTests
         Assert.Null(HotkeyLogic.ModifierFor(Key.Space));
     }
 
-    /// <summary>8 个左右修饰前缀 × 主键抽样 (字母/功能键): 捕获提交生成正确的左右前缀热键。</summary>
+    /// <summary>8 个左右修饰前缀 × 主键抽样 (字母/功能键): 捕获提交统一侧别归一化,
+    /// 左右修饰键通配两侧 (复刻诉求: 录制 "RCtrl+P" 后左 Ctrl+P 也能触发)。</summary>
     [Theory]
-    [InlineData(Key.LeftCtrl, Key.A, "<^a")]
-    [InlineData(Key.RightCtrl, Key.A, ">^a")]
-    [InlineData(Key.LeftAlt, Key.F5, "<!F5")]
-    [InlineData(Key.RightAlt, Key.F5, ">!F5")]
-    [InlineData(Key.LeftShift, Key.D7, "<+7")]
-    [InlineData(Key.RightShift, Key.D7, ">+7")]
-    [InlineData(Key.LWin, Key.Q, "<#q")]
-    [InlineData(Key.RWin, Key.Q, ">#q")]
-    public void Capture_LeftRightModifiers_ProduceDistinctAhkHotkeys(Key modifier, Key main, string expected)
+    [InlineData(Key.LeftCtrl, Key.A, "^a")]
+    [InlineData(Key.RightCtrl, Key.A, "^a")]
+    [InlineData(Key.LeftAlt, Key.F5, "!F5")]
+    [InlineData(Key.RightAlt, Key.F5, "!F5")]
+    [InlineData(Key.LeftShift, Key.D7, "+7")]
+    [InlineData(Key.RightShift, Key.D7, "+7")]
+    [InlineData(Key.LWin, Key.Q, "#q")]
+    [InlineData(Key.RWin, Key.Q, "#q")]
+    public void Capture_LeftRightModifiers_AreNormalizedToSideAgnosticHotkeys(Key modifier, Key main, string expected)
     {
         var core = new HotkeyCaptureCore();
         string? committed = null;
@@ -89,8 +90,22 @@ public sealed class HotkeyLogicTests
         core.HandleKeyDown(Key.RightShift, anyModifierHeld: true); // 先按右 Shift
         core.HandleKeyDown(Key.LeftCtrl, anyModifierHeld: true);  // 后按左 Ctrl
         core.HandleKeyDown(Key.K, anyModifierHeld: true);
-        Assert.Equal("<^>+k", committed); // 输出按 MOD_ORDER (<^ 在前, >+ 在后) 而非按下顺序
+        Assert.Equal("^+k", committed); // 输出通配两侧 (^+k), 归一化保留 MOD_ORDER 归并后的顺序
     }
+
+    // ------------------------------------------------------------- 侧别归一化 (NormalizeSidePrefixes)
+
+    [Theory]
+    [InlineData(">^p", "^p")]
+    [InlineData("<^p", "^p")]
+    [InlineData("^p", "^p")]           // 已是通配形式, 原样保留
+    [InlineData("<^>!x", "^!x")]        // 多前缀逐个映射, 顺序不变
+    [InlineData("<+7", "+7")]
+    [InlineData(">#q", "#q")]
+    [InlineData("p", "p")]              // 无前缀
+    [InlineData("", "")]
+    public void NormalizeSidePrefixes_MapsSidePrefixedModifiersToAgnosticOnes(string input, string expected)
+        => Assert.Equal(expected, HotkeyLogic.NormalizeSidePrefixes(input));
 
     // ------------------------------------------------------------- normalizeHotkey
 
@@ -144,7 +159,7 @@ public sealed class HotkeyLogicTests
         core.StartCapture();
         core.HandleKeyDown(Key.LeftCtrl, anyModifierHeld: true);
         core.HandleKeyDown(Key.Escape, anyModifierHeld: true);
-        Assert.Equal("<^esc", committed);
+        Assert.Equal("^esc", committed);
     }
 
     [Fact]
