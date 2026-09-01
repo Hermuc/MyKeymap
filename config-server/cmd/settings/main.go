@@ -16,6 +16,8 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"golang.org/x/sys/windows/registry"
+
 	"settings/internal/command"
 	"settings/internal/matrix"
 	"settings/internal/script"
@@ -147,7 +149,36 @@ func GetConfigHandler(c *gin.Context) {
 	if err != nil {
 		panic(err)
 	}
+	// 以注册表真实生效态回填开机自启显示态 (详见 syncStartupFromRegistry)
+	syncStartupFromRegistry(&config.Options.Startup)
 	c.JSON(http.StatusOK, config)
+}
+
+// syncStartupFromRegistry 用注册表 Run 键的真实状态回填 options.startup。
+// 注册表是开机自启的真实生效态 (bin/MiscTools.ahk RunAtStartup 写/删
+// HKCU\...\CurrentVersion\Run 下的 MyKeymap 值), config.json 的 options.startup
+// 仅是 UI 显示态且无同步机制, 外部删除注册表项后 UI 会显示失真, 故 GET /config
+// 时以注册表为准回填。
+// 特意不放进 ParseConfig: 它还服务于 GenerateAHK/DumpPlan 等验证路径, 需保持
+// 确定性, 回填只应作用于对外 HTTP 响应。
+// 值不存在 (Run 键或 MyKeymap 值缺失) → false; 其他读失败 (如权限) → 保持
+// config 原值不动, 不报错。
+func syncStartupFromRegistry(startup *bool) {
+	key, err := registry.OpenKey(registry.CURRENT_USER, `Software\Microsoft\Windows\CurrentVersion\Run`, registry.QUERY_VALUE)
+	if err != nil {
+		if errors.Is(err, syscall.ERROR_FILE_NOT_FOUND) {
+			*startup = false // Run 键不存在视为未自启
+		}
+		return
+	}
+	defer key.Close()
+	if _, _, err := key.GetStringValue("MyKeymap"); err != nil {
+		if errors.Is(err, syscall.ERROR_FILE_NOT_FOUND) {
+			*startup = false // MyKeymap 值不存在视为未自启
+		}
+		return
+	}
+	*startup = true
 }
 
 func GetShortcutsHandler(c *gin.Context) {

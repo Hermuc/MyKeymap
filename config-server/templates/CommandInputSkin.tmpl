@@ -1,3 +1,4 @@
+{{/* 本模板头部 else 兜底字面量必须与 config-server/internal/script/config.go 的 DefaultCommandInputSkin() 保持一致, 有单测守护 (internal/script/skin_defaults_test.go 逐字段比对), 改动任一处须同步另一处。 */}}
 backgroundColor         = {{ if .Options.CommandInputSkin.BackgroundColor       }}{{ .Options.CommandInputSkin.BackgroundColor       }}{{ else }}#FFFFFF{{ end }}
 backgroundOpacity       = {{ if .Options.CommandInputSkin.BackgroundOpacity     }}{{ .Options.CommandInputSkin.BackgroundOpacity     }}{{ else }}0.9{{ end }}
 borderWidth             = {{ if .Options.CommandInputSkin.BorderWidth           }}{{ .Options.CommandInputSkin.BorderWidth           }}{{ else }}3{{ end }}

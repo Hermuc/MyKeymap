@@ -48,30 +48,39 @@ func ParseConfig(file string) (*Config, error) {
 	if config.Options.Mouse.TipSymbol == "" {
 		config.Options.Mouse.TipSymbol = "🐶"
 	}
+	// 皮肤字段全空 (旧配置缺失该段) 时整体填充默认值; 单字段为空则由模板 else 兜底,
+	// 两机制互补。默认值真源见 DefaultCommandInputSkin。
 	if config.Options.CommandInputSkin == (CommandInputSkin{}) {
-		config.Options.CommandInputSkin = CommandInputSkin{
-			BackgroundColor:       "#FFFFFF",
-			BackgroundOpacity:     "0.9",
-			BorderWidth:           "3",
-			BorderColor:           "#FFFFFF",
-			BorderOpacity:         "1.0",
-			BorderRadius:          "10",
-			CornerColor:           "#000000",
-			CornerOpacity:         "0.0",
-			GridlineColor:         "#2843AD",
-			GridlineOpacity:       "0.04",
-			KeyColor:              "#000000",
-			KeyOpacity:            "1.0",
-			HideAnimationDuration: "0.34",
-			WindowYPos:            "0.25",
-			WindowWidth:           "700",
-			WindowShadowColor:     "#000000",
-			WindowShadowOpacity:   "0.5",
-			WindowShadowSize:      "3.0",
-		}
+		config.Options.CommandInputSkin = DefaultCommandInputSkin()
 	}
 
 	return &config, nil
+}
+
+// DefaultCommandInputSkin 返回命令输入窗口皮肤的全部 18 个字段默认值。
+// 字面量必须与 templates/CommandInputSkin.tmpl 头部 else 兜底保持一致, 有单测守护:
+// internal/script/skin_defaults_test.go 逐字段比对两处, 不一致即 fail。
+func DefaultCommandInputSkin() CommandInputSkin {
+	return CommandInputSkin{
+		BackgroundColor:       "#FFFFFF",
+		BackgroundOpacity:     "0.9",
+		BorderWidth:           "3",
+		BorderColor:           "#FFFFFF",
+		BorderOpacity:         "1.0",
+		BorderRadius:          "10",
+		CornerColor:           "#000000",
+		CornerOpacity:         "0.0",
+		GridlineColor:         "#2843AD",
+		GridlineOpacity:       "0.04",
+		KeyColor:              "#000000",
+		KeyOpacity:            "1.0",
+		HideAnimationDuration: "0.34",
+		WindowYPos:            "0.25",
+		WindowWidth:           "700",
+		WindowShadowColor:     "#000000",
+		WindowShadowOpacity:   "0.5",
+		WindowShadowSize:      "3.0",
+	}
 }
 
 func SaveConfigFile(config *Config) {

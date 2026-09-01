@@ -26,6 +26,7 @@ copyFiles: CopyAHK
 	cp -r data $(folder)/
 	cp -r bin $(folder)/
 	cp -r tools $(folder)/
+	rm -f $(folder)/tools/oracle.ps1
 	cp MyKeymap.exe $(folder)/
 	cp 误报病毒时执行这个.bat $(folder)/
 
@@ -76,6 +77,6 @@ server: buildServer
 	@cd config-server; ../bin/settings.exe debug
 
 ahk: buildServer
-	@config-server/settings.exe GenerateAHK ./data/config.json ./config-server/templates/mykeymap.tmpl ./bin/MyKeymap.ahk
+	@bin/settings.exe GenerateAHK ./data/config.json ./config-server/templates/mykeymap.tmpl ./bin/MyKeymap.ahk
 
 .PHONY: server ahk buildServer buildClientAvalonia copyFiles upload build
