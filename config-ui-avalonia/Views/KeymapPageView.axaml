@@ -64,12 +64,11 @@
           </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <!-- 动作编辑面板: 外框 (EditorFrame) 宽度不再固定 620, 由行面板 SizeChanged 同步为
+        <!-- 动作编辑面板: 外框 (EditorFrame) 宽度由行面板 SizeChanged 同步为
              键盘网格最宽行实际宽度 (Width=620 仅首帧占位); 外框横向 Padding=2 使内部白卡片
              左右各内缩 2, 不贴按钮 (仅模式页生效, 不改共享的 ActionEditorPanel);
-             左列占位固定 616 (原 653→630→616, 与最宽行等宽, 右补偿恒 0):
-             备注列左 Margin 对齐 Command 页 (AbbrPageView) 的 32, 视觉间距 = 32 = D;
-             top Margin 12 保持网格↔面板垂直间距 -->
+             左列占位 = 最宽行实际宽度 (不再右补偿: 实测 UIA 补偿 Margin 经 Viewbox 缩放
+             在网格↔备注列间放大成百余物理像素空白); top Margin 12 保持网格↔面板垂直间距 -->
         <Border x:Name="EditorFrame" Width="620" Padding="2,0" Margin="0,12,0,0">
           <controls:ActionEditorPanel x:Name="EditorPanel" DataContext="{Binding Editor}" />
         </Border>
@@ -77,7 +76,8 @@
       </Viewbox>
 
       <!-- 右列: 备注汇总 (复刻 ActionCommentTable, 独立滚动);
-           左 Margin 32 与 Command/缩写页 (AbbrPageView) 一致, 备注列↔键盘网格间距 = 32 -->
+           左 Margin 32 与 Command/缩写页 (AbbrPageView) 一致; 两页左列均为 Viewbox 内容等宽,
+           实测渲染间距一致 (改前模式页因右补偿多余 ~112px, 已移除) -->
       <controls:CommentSummaryPanel Grid.Column="1" Margin="32,36,0,0"
                                     ItemsSource="{Binding CommentEntries}"
                                     LanguageTick="{Binding LanguageTick}" />
