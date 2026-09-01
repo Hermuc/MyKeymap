@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MyKeymap.Settings.Models;
@@ -98,23 +97,6 @@ public sealed partial class CustomHotkeyPageViewModel : ObservableObject, ILangu
     /// <summary>新增一个 (复刻 addHotKey, Vue 不自动选中)。</summary>
     [RelayCommand]
     private void AddRow() => Core.AddHotKey();
-
-    /// <summary>打开 AHK 按键列表文档 (复刻 Example 2 卡片里的 reference 链接)。</summary>
-    [RelayCommand]
-    private void OpenKeyListDoc()
-    {
-        try
-        {
-            Process.Start(new ProcessStartInfo("https://wyagd001.github.io/v2/docs/KeyList.htm#keyboard")
-            {
-                UseShellExecute = true,
-            });
-        }
-        catch
-        {
-            // 无浏览器环境时静默忽略 (Vue 侧为纯链接)
-        }
-    }
 
     public void OnLanguageChanged()
     {
