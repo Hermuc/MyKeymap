@@ -24,6 +24,22 @@ public sealed partial class KeyCellVm : ObservableObject
     /// <summary>禁用键不可点 (触发键自身, 复刻 v-card :disabled)。</summary>
     [ObservableProperty]
     private bool _isEnabled = true;
+
+    // ------------------------------------------------------------- 单字符键格正方形 (仅模式页键盘网格模板使用)
+    // Label 由 KeyText 生成 (去 "*" 前缀 + 首字母大写): 恰好 1 字符即为单字符键 (A/, 等),
+    // 多字符键 (F1/Space/Enter...) 保持自然宽度不受影响。
+
+    /// <summary>是否单字符键格 (Label 长度 == 1)。</summary>
+    public bool IsSingleChar => Label.Length == 1;
+
+    /// <summary>键格宽度: 单字符 43 (与高度 43 成正方形); 其余 NaN 保持自然宽度。</summary>
+    public double CellWidth => IsSingleChar ? 43 : double.NaN;
+
+    /// <summary>最小宽度: 单字符与宽度同为 43 (避免被模板默认 MinWidth 58 撑宽); 其余 58。</summary>
+    public double CellMinWidth => IsSingleChar ? 43 : 58;
+
+    /// <summary>内边距: 正方形格清零, 保证大字号单字符在 43×43 内居中不裁切; 其余保持 10,0。</summary>
+    public Avalonia.Thickness CellPadding => IsSingleChar ? new Avalonia.Thickness(0) : new Avalonia.Thickness(10, 0);
 }
 
 /// <summary>键盘一行 (包装键格列表, 便于 AXAML DataTemplate 声明类型)。</summary>
