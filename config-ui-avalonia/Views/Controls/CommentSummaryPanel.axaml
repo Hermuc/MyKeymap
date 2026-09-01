@@ -14,10 +14,14 @@
     <TextBlock Text="{Binding LanguageTick, RelativeSource={RelativeSource AncestorType=local:CommentSummaryPanel}, Converter={StaticResource Tr}, ConverterParameter=305}"
                FontSize="15" FontWeight="SemiBold" Margin="0,0,0,10" />
 
-    <!-- 条目列表: 独立纵向滚动 (横向禁用, 长备注换行) -->
+    <!-- 条目列表: 独立纵向滚动 (横向禁用, 长备注换行);
+         文字与滚动条的空隙全部来自「滚动条右移」而非压缩文字:
+         宿主页面内层 Grid 右边距 24→4, 滚动视口向右扩 20, 滚动条随之右移;
+         此处内容右 Margin 20 恰好抵消扩量, 文字换行边界与原 24 边距时完全一致
+         (文字占满原有宽度; Fluent 滚动条浮层宽 = ScrollBarSize 10, 若只留 10 边距会被浮层吃掉) -->
     <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
                   VerticalScrollBarVisibility="Auto">
-      <ItemsControl ItemsSource="{Binding ItemsSource, RelativeSource={RelativeSource AncestorType=local:CommentSummaryPanel}}">
+      <ItemsControl Margin="0,0,20,0" ItemsSource="{Binding ItemsSource, RelativeSource={RelativeSource AncestorType=local:CommentSummaryPanel}}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:CommentEntryVm">
             <StackPanel Margin="0,0,0,12">
