@@ -25,8 +25,8 @@
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:CommentEntryVm">
             <StackPanel Margin="0,0,0,12">
-              <!-- 单行条目: 加粗按键 - 灰色备注, 长备注自动换行 -->
-              <TextBlock TextWrapping="Wrap" FontSize="13">
+              <!-- 单行条目: 加粗按键 - 灰色备注, 长备注自动换行; 字号 13→14 (适当增大, 与标题 15 协调) -->
+              <TextBlock TextWrapping="Wrap" FontSize="14">
                 <Run Text="{Binding KeyText}" FontWeight="SemiBold" Foreground="#20242B" />
                 <Run Text=" - " Foreground="#5A5F68" />
                 <Run Text="{Binding Comment}" Foreground="#5A5F68" />

@@ -27,7 +27,7 @@
         </StackPanel>
 
         <!-- 键盘网格: 行 -> 键格 (选中蓝 / 禁用灰 / 已绑定绿 / 空键白);
-             键格保持自然宽度左对齐 (10 键行 = 10*68 + 9*4 = 716px, 与编辑面板 720 基本对齐) -->
+             键格保持自然宽度左对齐 (10 键行 = 10*58 + 9*4 = 616px, 与编辑面板 620 基本对齐) -->
         <ItemsControl ItemsSource="{Binding Rows}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:KeyboardRowVm">
@@ -39,7 +39,7 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:KeyCellVm">
-                    <Button Height="50" MinWidth="68" Padding="10,0" CornerRadius="6"
+                    <Button Height="43" MinWidth="58" Padding="10,0" CornerRadius="6"
                             Background="{Binding Background}"
                             IsEnabled="{Binding IsEnabled}"
                             Foreground="#20242B" BorderBrush="#D5D9E2" BorderThickness="1"
@@ -56,8 +56,10 @@
           </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <!-- 动作编辑面板 -->
-        <controls:ActionEditorPanel Width="720" Margin="0,10,0,0" DataContext="{Binding Editor}" />
+        <!-- 动作编辑面板: 720→620 收窄; 右 Margin 100→50 (用户要求备注列与键盘网格间距减半),
+             左列占位 720→670, 右列备注 (* 列) 向左靠拢 50;
+             top Margin 10→20, 拉开键盘网格与面板的垂直呼吸感 -->
+        <controls:ActionEditorPanel Width="620" Margin="0,20,50,0" DataContext="{Binding Editor}" />
         </StackPanel>
       </Viewbox>
 
