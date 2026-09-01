@@ -35,7 +35,7 @@ public sealed partial class KeyCellVm : ObservableObject
     /// <summary>键格宽度: 单字符 43 (与高度 43 成正方形); 其余 NaN 保持自然宽度。</summary>
     public double CellWidth => IsSingleChar ? 43 : double.NaN;
 
-    /// <summary>最小宽度: 单字符与宽度同为 43 (避免被模板默认 MinWidth 58 撑宽); 其余 58。</summary>
+    /// <summary>最小宽度: 单字符与宽度同为 43 (与 CellWidth 一致, 防止 MinWidth 大于 Width 产生歧义); 其余 58。</summary>
     public double CellMinWidth => IsSingleChar ? 43 : 58;
 
     /// <summary>内边距: 正方形格清零, 保证大字号单字符在 43×43 内居中不裁切; 其余保持 10,0。</summary>

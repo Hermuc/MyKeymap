@@ -28,7 +28,7 @@
 
         <!-- 键盘网格: 行 -> 键格 (选中蓝 / 禁用灰 / 已绑定绿 / 空键白);
              单字符键格 (Label 恰 1 字符, 如 A/,) 为 43×43 正方形, 圆角与其余键格一致 (6);
-             多字符键保持自然宽度左对齐 (10 键行基准 10*58 + 9*4 = 616px);
+             多字符键保持自然宽度左对齐 (10*58 + 9*4 = 616px 仅为全多字符键行的理论上限, 实际最宽行由 SizeChanged 动态实测);
              行面板 Left 对齐后 Bounds.Width 即该行自然宽度, SizeChanged 汇总各行取最大值,
              动态同步给编辑面板 (借鉴 AbbrPageView chips 最宽行对齐机制), 不写死数值 -->
         <ItemsControl x:Name="KeyboardGrid" ItemsSource="{Binding Rows}">

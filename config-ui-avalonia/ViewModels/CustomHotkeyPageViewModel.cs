@@ -41,7 +41,7 @@ public sealed partial class CustomHotkeyRowVm : ObservableObject
 
 /// <summary>
 /// 全局自定义热键页 (keymap/1, 复刻 views/CustomHotkey.vue):
-/// 左侧热键表格 (热键/备注/删除) + 新增按钮, 右侧示例卡片 + 动作编辑面板。
+/// 左侧热键表格 (热键/备注/删除) + 新增按钮, 右侧动作编辑面板。
 /// </summary>
 public sealed partial class CustomHotkeyPageViewModel : ObservableObject, ILanguageRefresh
 {

@@ -303,7 +303,6 @@ public static class I18n
         ["955"] = ("(1) 自定义函数可放到 data\\custom_functions.ahk，然后在此处调用", "(1) Put custom functions in data\\custom_functions.ahk, then call them here."),
         ["956"] = ("(2) 复杂的脚本推荐做成独立的 ahk 文件，然后用 MyKeymap 启动那个 ahk 文件", "(2) For complex scripts, make a standalone .ahk file and let MyKeymap launch it."),
         ["957"] = ("此处修改", "Edit here"),
-        ["958"] = ("更多特殊按键参考:", "More special keys:"),
 
         // ====================================================================
         // 959+: 选中动作模块移植新增 (对应 Vue SelectedAction.vue / SelectedActionEdit.vue
@@ -414,7 +413,7 @@ public static class I18n
         ["1063"] = ("快捷键", "Hotkey"),
 
         // 注: 1064/1065/1067~1076 (按键写法说明卡) 已随卡片移除而删除, 内容迁入 config_doc.md「 ⌨️ 按键写法说明 」小节 ----
-        // 1066 组合示例早前已随 XAML 删除; 958 (更多特殊按键参考) 为共享标签保留 ----
+        // 1066 组合示例早前已随 XAML 删除; 958 曾用于按键写法说明卡的『更多特殊按键参考』链接, 随卡片移除一并删除 (功能由 config_doc.md 外链承接) ----
 
         // ---- 保存链路修复: 热键未保存提示 (1077) / 保存后重启失败提示 (1078-1079) ----
         ["1077"] = ("热键已修改, 点击「保存」后才会生效", "Hotkey changed; click \"Save\" to apply"),
