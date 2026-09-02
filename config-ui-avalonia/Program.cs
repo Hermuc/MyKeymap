@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using Avalonia;
+using MyKeymap.Settings.Services;
 
 namespace MyKeymap.Settings;
 
@@ -33,6 +34,12 @@ internal static class Program
             ActivateExistingWindow();
             return; // 第二实例直接退出, 不启动 Avalonia
         }
+
+        // M-2: 系统光标启动自愈 + 崩溃兜底。窗口拾取准星用 SetSystemCursor 改的是系统全局光标表,
+        // 不随进程退出回滚; 若上次会话硬崩溃 (FailFast/StackOverflow/外部 TerminateProcess/断电) 绕过 finally,
+        // 桌面箭头会滞留准星。此处: ① 无条件幂等重载用户既有光标方案 (自愈上次残留, 不覆盖自定义);
+        // ② 注册 AppDomain.UnhandledException + ProcessExit 兜底 (覆盖托管崩溃/正常退出路径)。
+        WindowPickerService.InstallStartupCursorGuard();
 
         try
         {

@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:MyKeymap.Settings.ViewModels"
+             xmlns:controls="using:MyKeymap.Settings.Controls"
              x:Class="MyKeymap.Settings.Views.Controls.ActionEditorPanel"
              x:Name="PanelRoot"
              x:DataType="vm:ActionEditorViewModel">
@@ -31,10 +32,12 @@
           <!-- ===================== 类型 1: 启动程序或激活窗口 ===================== -->
           <DataTemplate DataType="vm:ActivateOrRunEditorVm" x:DataType="vm:ActivateOrRunEditorVm">
             <StackPanel Spacing="6">
-              <Grid ColumnDefinitions="140,*" Margin="0,6,0,0">
+              <Grid ColumnDefinitions="140,*,Auto" Margin="0,6,0,0">
                 <TextBlock Text="{Binding #PanelRoot.((vm:ActionEditorViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=301}"
                            Foreground="#8A8F98" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" />
                 <TextBox Grid.Column="1" Text="{Binding WinTitle}" Padding="8,6" />
+                <controls:WindowPickButton Grid.Column="2" Text="{Binding WinTitle}" Kind="TitleAndExe"
+                                           Margin="6,0,0,0" VerticalAlignment="Center" />
               </Grid>
               <TextBlock Text="{Binding WinTitleError}" Foreground="#C62828" FontSize="12" TextWrapping="Wrap"
                          IsVisible="{Binding WinTitleError, Converter={StaticResource NotEmpty}}" />

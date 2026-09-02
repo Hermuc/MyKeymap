@@ -17,6 +17,15 @@ func TestSortActions(t *testing.T) {
 	assertEqual(t, ss[2], c)
 }
 
+func TestWinTitleWarning(t *testing.T) {
+	// 组合串 "标题 ahk_exe 名.exe" 含 ahk_ 条件, 不应告警
+	assertEqual(t, winTitleWarning("记事本 ahk_exe notepad.exe"), "")
+	// 裸 xxx.exe (不含任何 ahk_ 条件) 仍应告警
+	if winTitleWarning("notepad.exe") == "" {
+		t.Error(`winTitleWarning("notepad.exe") == "", want non-empty warning`)
+	}
+}
+
 func assertEqual[T comparable](t *testing.T, a, b T) {
 	t.Helper()
 	if a != b {

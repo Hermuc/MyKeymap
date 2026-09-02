@@ -228,17 +228,16 @@ public sealed partial class ActivateOrRunEditorVm : ObservableObject
         }
     }
 
-    /// <summary>复刻 winTitleRules: 裸写 xxx.exe 永远匹配失败, 提示用 ahk_exe。</summary>
-    public string? WinTitleError
+    /// <summary>纯函数校验 (供单测): 空 / 以 ahk_ 或 ahk-expression: 开头 / 含 " ahk_" 组合串 → 放行; 否则裸 xxx.exe 结尾 → 301err。</summary>
+    public static string? EvaluateWinTitleError(string? winTitle)
     {
-        get
-        {
-            var v = _a.WinTitle;
-            if (string.IsNullOrEmpty(v)) return null;
-            if (v.StartsWith("ahk_") || v.StartsWith("ahk-expression:")) return null;
-            return v.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? I18n.T("301err") : null;
-        }
+        if (string.IsNullOrEmpty(winTitle)) return null;
+        if (winTitle.StartsWith("ahk_") || winTitle.StartsWith("ahk-expression:") || winTitle.Contains(" ahk_")) return null;
+        return winTitle.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? I18n.T("301err") : null;
     }
+
+    /// <summary>复刻 winTitleRules: 裸写 xxx.exe 永远匹配失败, 提示用 ahk_exe; 组合串 "标题 ahk_exe 名.exe" 放行。</summary>
+    public string? WinTitleError => EvaluateWinTitleError(_a.WinTitle);
 
     public string Target
     {

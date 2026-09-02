@@ -12,6 +12,10 @@ func winTitleWarning(winTitle string) string {
 	if winTitle == "" || strings.HasPrefix(winTitle, "ahk_") || strings.HasPrefix(winTitle, "ahk-expression:") {
 		return ""
 	}
+	// 组合串 "标题 ahk_exe 名.exe" 含 ahk_ 条件, 放行
+	if strings.Contains(winTitle, " ahk_") {
+		return ""
+	}
 	if strings.HasSuffix(strings.ToLower(winTitle), ".exe") {
 		return `; [配置警告] winTitle "` + winTitle + `" 以 .exe 结尾, 会被当作窗口标题匹配而永远失败, 应写 "ahk_exe ` + winTitle + `"`
 	}

@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:MyKeymap.Settings.ViewModels"
+        xmlns:controls="using:MyKeymap.Settings.Controls"
         x:Class="MyKeymap.Settings.Views.WindowGroupDialogWindow"
         x:Name="DlgRoot"
         x:DataType="vm:WindowGroupDialogViewModel"
@@ -40,16 +41,18 @@
 
       <!-- 表头: 组名 / 窗口标识符 / 条件 -->
       <StackPanel>
-        <Grid ColumnDefinitions="200,*,220" Margin="0,0,0,8">
+        <Grid ColumnDefinitions="200,*,Auto,220" Margin="0,0,0,8">
           <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=602}" Foreground="#8A8F98" FontSize="12" />
           <TextBlock Grid.Column="1" Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=603}" Foreground="#8A8F98" FontSize="12" />
-          <TextBlock Grid.Column="2" Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=604}" Foreground="#8A8F98" FontSize="12" />
+          <!-- 占位: 与数据行准星按钮列 (控件 Width=30 + 右 Margin 8) 等宽, 使表头与数据行列几何严格一致 -->
+          <Border Grid.Column="2" Width="30" Margin="0,0,8,0" />
+          <TextBlock Grid.Column="3" Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=604}" Foreground="#8A8F98" FontSize="12" />
         </Grid>
         <ScrollViewer>
           <ItemsControl ItemsSource="{Binding Rows}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:WindowGroupRowVm">
-                <Grid ColumnDefinitions="200,*,220" Margin="0,3">
+                <Grid ColumnDefinitions="200,*,Auto,220" Margin="0,3">
                   <!-- 组名 (内置组 id<=0 不可改) -->
                   <TextBox Text="{Binding Name}" IsEnabled="{Binding NameEnabled}"
                            Margin="0,0,8,0" Padding="8,5" VerticalAlignment="Top" />
@@ -57,8 +60,12 @@
                   <TextBox Grid.Column="1" Text="{Binding Value}" IsEnabled="{Binding ValueEnabled}"
                            AcceptsReturn="True" MinHeight="36" Margin="0,0,8,0" Padding="8,5"
                            VerticalAlignment="Top" />
+                  <!-- 准星拾取: 追加语义 (AppendMode), 尊重 id=0 默认组锁定 -->
+                  <controls:WindowPickButton Grid.Column="2" Text="{Binding Value}" AppendMode="True"
+                                             IsEnabled="{Binding ValueEnabled}" Margin="0,0,8,0"
+                                             VerticalAlignment="Top" />
                   <!-- 条件类型 (605-608) -->
-                  <ComboBox Grid.Column="2"
+                  <ComboBox Grid.Column="3"
                             ItemsSource="{Binding #DlgRoot.((vm:WindowGroupDialogViewModel)DataContext).ConditionOptionsView}"
                             SelectedItem="{Binding Condition}"
                             IsEnabled="{Binding ConditionEnabled}"

@@ -419,6 +419,10 @@ public static class I18n
         ["1077"] = ("热键已修改, 点击「保存」后才会生效", "Hotkey changed; click \"Save\" to apply"),
         ["1078"] = ("已保存, 但 MyKeymap 重启失败", "Saved, but MyKeymap failed to restart"),
         ["1079"] = ("改动已写入配置, 但 MyKeymap 进程重启失败, 新热键暂不生效。请通过托盘菜单「重载」手动生效。", "Changes were written to config, but MyKeymap failed to restart, so the new hotkey is not active yet. Use the tray menu \"Reload\" to apply it."),
+
+        // ---- 窗口拾取准星 (WindowPickButton): 按钮提示 (1080) / 非提权识别失败提示 (1081) ----
+        ["1080"] = ("拾取窗口：点击后移动准星到目标窗口并单击填入；Esc 或右键取消", "Pick window: click, then move the crosshair onto the target window and click to fill it in; Esc or right-click cancels"),
+        ["1081"] = ("无法识别该窗口，请以管理员身份运行设置界面后重试", "Cannot identify this window. Run the Settings UI as administrator and try again."),
     };
 }
 
