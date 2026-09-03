@@ -15,6 +15,11 @@
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <!-- 保留全球化（界面含中文，不能启用 InvariantGlobalization） -->
     <InvariantGlobalization>false</InvariantGlobalization>
+    <!-- exe 文件图标（多尺寸 16/32/48/256 的 ICO，由 tb.png 生成）。
+         它只作用于 apphost(MyKeymap.Settings.exe) 的 Win32 图标资源，与窗体/标题栏用的
+         avares 资源是两条路径；下方 <AvaloniaResource Include="Assets\**" /> 会顺带把它也
+         打进资源包(+44KB)，不影响运行。 -->
+    <ApplicationIcon>Assets\logo.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>

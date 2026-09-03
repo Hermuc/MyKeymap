@@ -5,6 +5,7 @@
         x:Class="MyKeymap.Settings.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Title="MyKeymap Setting"
+        Icon="avares://MyKeymap.Settings/Assets/logo.png"
         Width="1200" Height="760"
         MinWidth="960" MinHeight="600"
         WindowStartupLocation="CenterScreen">
@@ -32,10 +33,11 @@
         <!-- 头部: Logo + 名称 + 版本号 -->
         <StackPanel DockPanel.Dock="Top" Margin="20,18,20,14" Spacing="10">
           <StackPanel Orientation="Horizontal" Spacing="10">
-            <Border Width="42" Height="42" CornerRadius="11" Background="#4169E1">
-              <TextBlock Text="M" FontSize="21" FontWeight="Bold" Foreground="White"
-                         HorizontalAlignment="Center" VerticalAlignment="Center" />
-            </Border>
+            <!-- 品牌 logo (tb.png 裁剪透明边距后降采样 256x256, 内容占画布 ~93%):
+                 尺寸取 52: 52*0.93≈48px 实际图形, 头部 StackPanel 高度从旧 42→52(+10px),
+                 不影响 DockPanel Top 布局; 右侧 "MyKeymap" 标题 VerticalAlignment=Center 自动居中。 -->
+            <Image Source="avares://MyKeymap.Settings/Assets/logo.png"
+                   Width="52" Height="52" />
             <StackPanel VerticalAlignment="Center" Spacing="1">
               <TextBlock Text="MyKeymap" FontSize="18" FontWeight="SemiBold" />
               <TextBlock Text="{Binding Version}" FontSize="12" Foreground="#8A8F98" />
