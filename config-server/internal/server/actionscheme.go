@@ -1,10 +1,11 @@
-package main
+package server
 
 import (
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"settings/internal/proc"
 	"settings/internal/script"
 )
 
@@ -32,7 +33,7 @@ func saveActionSchemes(schemes []script.ActionScheme) bool {
 	}
 	config.ActionSchemes = schemes
 	script.SaveConfigFile(config)
-	return execCmd("./MyKeymap.exe")
+	return proc.ExecCmd("./MyKeymap.exe")
 }
 
 func parseSchemeID(c *gin.Context) int {
@@ -124,11 +125,11 @@ func DeleteActionSchemeHandler(c *gin.Context) {
 }
 
 type actionSchemeTestRequest struct {
-	SchemeID int                   `json:"schemeId"`
-	Content  string                `json:"content"`
-	IsFile   bool                  `json:"isFile"`
+	SchemeID int                    `json:"schemeId"`
+	Content  string                 `json:"content"`
+	IsFile   bool                   `json:"isFile"`
 	// 前端编辑中的方案快照 (未保存的修改也能测试); 为空时回退读取磁盘配置
-	Scheme   *script.ActionScheme `json:"scheme"`
+	Scheme   *script.ActionScheme   `json:"scheme"`
 }
 
 // TestActionSchemeHandler 模拟测试: 输入选中内容, 返回第一个匹配的规则与执行预览

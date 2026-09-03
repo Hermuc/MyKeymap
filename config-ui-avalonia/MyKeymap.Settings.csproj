@@ -28,6 +28,18 @@
   <ItemGroup>
     <!-- 内嵌资源: MDI 图标字体 (导航图标, 复刻 Vue 版 mdi 图标) -->
     <AvaloniaResource Include="Assets\**" />
+    <!-- 双语文案表: 刻意做成「松散文件复制到输出目录」而非 avares 内嵌资源 ——
+         Avalonia 的 AssetLoader 每次现取 AvaloniaLocator 服务, 纯 xunit 宿主下读不到,
+         守卫测试 I18nResourceTests 会直接抛 (详见 Services/I18n.cs 头部)。
+         不放 Assets\ 是因为上一行已整目录 AvaloniaResource 收录, 会被双重打包。
+         两项元数据都必须写: CopyToOutputDirectory 管 dotnet build / 测试宿主,
+         CopyToPublishDirectory 管 dotnet publish; 只写前者会导致 bin\Debug 有、bin\ui 没有。 -->
+    <Content Include="Resources\i18n.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 守卫测试需读取 I18n 的内部成员 (KeyCount), 用于文案表键数与键覆盖对账 -->
+    <InternalsVisibleTo Include="MyKeymap.Settings.Tests" />
   </ItemGroup>
 
 </Project>

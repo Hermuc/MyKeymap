@@ -52,7 +52,26 @@ bin/lib/
 data/
 ├── config.json / plugins/<id>/ / plugin-settings.json
 config-server/internal/script/generators/   (actionMap 按类型拆分)
+config-server/internal/server/              (HTTP handler + 路由注册 + DTO 层)
+├── server.go      gin 引擎装配、11 条路由注册、端口监听回退、headless 端口通告、openBrowser、PanicHandler
+├── handlers.go    GetConfigHandler / SaveConfigHandler / GetShortcutsHandler / ServerCommandHandler / syncStartupFromRegistry
+├── actionscheme.go  选中动作方案 REST API (6 handler + loadActionSchemes / saveActionSchemes / parseSchemeID)
+└── dto.go         Config 及全部嵌套结构的 DTO 类型 + 双向映射 (model→dto 供 GET, dto→model 供 PUT)
+config-server/internal/proc/                (共享子进程启动工具)
+└── proc.go        ExecCmd / FallbackExecCmd (CREATE_BREAKAWAY_FROM_JOB + explorer 中转降级)
+config-server/cmd/settings/                 (仅保留入口与模式判断)
+└── main.go        main() CLI 分发 + debug/headless 判断 + 代码雨编排 + hideMatrix + server.Run() 调用
+config-ui-avalonia/Resources/i18n.json      (双语文案真源, 308 键, UTF-8 无 BOM; 构建产物请勿手改)
+bin/ui/Resources/i18n.json                  (松散部署物, 由 csproj Content 项产出, 随 robocopy /MIR 同步到部署目录)
+scripts/                                    (维护者脚本, 不随发布包出货, 与出货的 tools/ 区分)
+├── build_tools.go     发布前 AHK 版本闸 (checkForAHKUpdate) + 回写分享链接 (updateShareLink)
+└── lanzou_client.py   蓝奏云上传 (make uploadLanZou 调用)
 ```
+
+**i18n.json 契约**：该文件属构建产物, 请勿手改 `bin/ui/Resources/i18n.json` (真源在 `config-ui-avalonia/Resources/i18n.json`)。
+缺失/损坏时 UI 降级为回显裸键号 (不崩溃、不损坏 config.json、不影响热键运行时);
+恢复 = 重跑 `make buildClientAvalonia` + `make deploy`。
+Makefile 已内置 SHA256 断言: publish 后自动校验产出与源一致, 不一致即 exit 1。
 
 ## 3. 核心接口
 
@@ -310,9 +329,42 @@ class ConfigProvider {
 - **不变项**:全部 HTTP 路由与响应格式、配置写盘(仍由 Go 后端唯一负责, 写盘格式不变)、
   无参 / `debug` / CLI 子命令(如 `DumpPlan`/`GenerateAHK`)行为完全不受影响。
 - **进程生命周期**:由 GUI 壳管理(命名 Mutex 单实例、Job Object 强杀兜底),后端自身无感知。
-- 实现:`config-server/cmd/settings/main.go`; 入口:`bin/lib/core/Functions.ahk` 启动 `bin\ui\MyKeymap.Settings.exe`;
+- 实现:`config-server/cmd/settings/main.go`(模式判定/代码雨跳过) + `config-server/internal/server/server.go`(端口回退与 `MYKEYMAP_PORT=` 通告);
+  入口:`bin/lib/core/Functions.ahk` 启动 `bin\ui\MyKeymap.Settings.exe`;
   构建:`make buildClientAvalonia` → `bin/ui/`(`.gitignore` 忽略)。
 - 部署实测(2026-08, beta33):GUI 打开/关闭/进程回收正常, 配置哈希不变。
+
+## 5.2 Go HTTP 层双轨 DTO 边界 (2026-09-03 登记)
+
+| 端点 | 序列化路径 | 备注 |
+|---|---|---|
+| `GET /config` | model → `ConfigToDTO` → DTO → gin JSON | DTO 排除 `json:"-"` 计算态字段 |
+| `PUT /config` | gin JSON → DTO → `DTOToConfig` → model → 校验 → 落盘 | 落盘仍走 model, 生成器输入不变 |
+| `GET/POST/PUT/DELETE /api/action-schemes*` | **直接序列化 model** (未经 DTO) | 后续项: 统一走 DTO |
+| `GET /shortcuts` | 内联结构体, 无 model 依赖 | 无需 DTO |
+
+**改 json tag 须同时改两处**: `internal/script/model/types.go` (存储模型) 与 `internal/server/dto.go` (传输 DTO);
+漏改任一侧会导致 GET/PUT wire 不一致或落盘字段丢失。
+
+**RestartFailed 双份定义 (残留耦合, 登记为后续项)**:
+`model.ActionScheme.RestartFailed` 与 `ActionSchemeDTO.RestartFailed` 同时存在。
+action-scheme 端点直接在 model 上设置该字段后序列化返回, 未经 DTO 转换;
+移除 model 侧定义需先将 action-scheme 端点 DTO 化, 属后续清理范围。
+
+## 5.3 契约测试前置二进制契约 (2026-09-03 冻结)
+
+`MyKeymap.Settings.Tests/Infrastructure/SettingsTestServer.cs` 拉起 headless settings.exe 子进程,
+其前置二进制路径为:
+
+```
+%TEMP%\mk_settings_headless\settings.exe
+```
+
+- **产出命令**: 等价于 `make buildServer` (go build -tags=nomsgpack -ldflags "-s -w -X settings/internal/script.MykeymapVersion=$(version)" -o ../bin/settings.exe ./cmd/settings), 然后复制到上述路径;
+- **陈旧度要求**: 该二进制的 SHA256 必须与当前 `bin/settings.exe` 一致 (即本轮构建产物);
+  若不一致, 契约测试拿旧后端跑出假绿, 等于没测;
+- **覆盖时机**: 每次 `make buildServer` 后、运行 `make check-cs` 前, 须手动或自动覆盖;
+- **C 盘只读例外**: 此路径位于 `%TEMP%`, 是 C 盘只读约束的唯一既定例外。
 
 ## 6. 未来功能落点(不在本次实现)
 
@@ -342,3 +394,8 @@ class ConfigProvider {
 | 2026-08 | 新增 §5.1 `settings.exe --headless` 模式契约并冻结: 供 Avalonia 原生设置壳子进程拉起, stdout 首行 `MYKEYMAP_PORT=<端口>` 通告 (12333 占用回退随机端口并如实通告), 跳过代码雨/浏览器/装饰行, 路由与配置写盘与无参模式完全一致 |
 | 2026-08 | 设置界面原生窗口化 (零行为变更, 旧浏览器版保留): ① 新增 `config-ui-avalonia/` (Avalonia 11 / .NET 10 / CommunityToolkit.Mvvm, 完整移植键位图/自定义热键/缩写/选中动作/设置/主页全部页面) 与仓库根目录 `MyKeymap.Settings.Tests/` (74 个单元测试全绿); ② Go 后端新增 `--headless` 模式 (§5.1); ③ Makefile 新增 `buildClientAvalonia` (dotnet publish 自包含 win-x64 + ReadyToRun → `bin/ui/`, 已入 `build` 依赖链), `.gitignore` 追加 `bin/ui/`; ④ AHK 设置入口 (`bin/lib/core/Functions.ahk`) 改启动 `bin\ui\MyKeymap.Settings.exe`; ⑤ 配置写盘权不变: GUI 仅经 localhost HTTP 调用, Go 后端保持 config.json 唯一写盘权; 部署实测: GUI 打开/关闭/进程回收正常, 配置哈希不变 |
 | 2026-09-03 | Functions.ahk 按职责拆分 (零行为变更): 35 个函数逐字节搬运至 core/{Programs,WindowUtils,AbbrInput}.ahk, Functions.ahk 仅保留托盘生命周期/选中文本/编码杂项 (671→205 行); 模板 include +3; oracle.ps1 harness 同步新 include 并自包含 settings.exe 拷贝; Makefile 新增 check/check-cs/deploy 目标 (一键回归: Go 单测+GenerateAHK+/Validate+Oracle; 一键部署: 同步部署目录并重启实例) |
+| 2026-09-03 | 仓库卫生 + Makefile 部署源修正 (零行为变更): ① 维护者发布脚本 git mv 归位 `scripts/` (build_tools.go / lanzou_client.py, 不放 tools/ 因其随发布包出货), Makefile uploadLanZou 三处引用同步并顺带修 python3→python (本机无 python3); 脚本内部路径全部 cwd 相对, 移动后 0 改动; ② 修 Makefile:103 deploy 的 UI robocopy 源 bug: `config-ui-avalonia/bin/ui` 是旧自包含发布残留, 正牌输出为 buildClientAvalonia 写入的 `bin/ui`, 原写法会把部署目录 UI 用 /MIR 降级为旧构建 → 改为 `bin/ui`; ③ `bin/lib/Monitor.ahk` 头部加 MyKeymap 侧注明块 (仅 ; 注释, 代码零改动): 唯一消费者 ChangeBrightness.ahk、跨进程拉起链 type2_system.ahk BrightnessControl→TypeID2、实际使用面 Monitor()/GetBrightness/SetBrightness 及 13 方法传递闭包、未使用面约 580 行为保持与上游 tigerlily-dev v2.4.1 可 diff 而刻意保留 |
+| 2026-09-03 | I18n 字典外置 (零行为变更): `config-ui-avalonia/Services/I18n.cs` 的 440 行内联字典外置为 `Resources/i18n.json` (308 键, UTF-8 无 BOM), I18n.cs 降到 184 行只留加载器与 `T()`; csproj 新增 `Content` 项 (`CopyToOutputDirectory` + `CopyToPublishDirectory` 双元数据), 这是本项目首个松散部署物 (此前 AvaloniaResource 全打进 dll), publish 后落在 `bin\ui\Resources\i18n.json`, 随 Makefile:103 的 `robocopy bin/ui … /MIR` 自动同步到部署目录; 新增 7 项守卫测试 (键数 308、axaml/cs 键覆盖对账、null 与空串语义、占位符与转义保真、双语回退、Language 归一化、无 BOM), C# 测试总数 114→121 |
+| 2026-09-03 | cmd 瘦身 + API DTO 分离 (零 wire 变更): ① 任务1——`cmd/settings/main.go` 的 HTTP 层 (server() 函数体、11 条路由、全部 handler、PanicHandler、syncStartupFromRegistry) 与 `actionscheme.go` 整体迁入新建 `internal/server/` (server.go / handlers.go / actionscheme.go), `execCmd`/`fallbackExecCmd` 下沉为独立 `internal/proc/` 包 (main 与 server 共同引用, 避免循环依赖), cmd/settings/main.go 从 355 行瘦身到 61 行只留入口与模式判断; ② 任务2——新建 `internal/server/dto.go` 定义 Config 及全部嵌套结构的 DTO + 双向映射 (model→dto 供 GET, dto→model 供 PUT), GET/PUT /config handler 改为只与 DTO 打交道, 排除 json:"-" 计算态字段 (KeyMapping / RemapInHotIf) 进入 wire; RestartFailed 保守保留在 model (action-scheme 端点仍直接序列化 model, 残留耦合登记为后续项); 验证: wire 三端点逐字节一致、GenerateAHK 产物 SHA256 不变、/Validate exit=0、Oracle PASS、C# 契约测试 121 全绿 |
+| 2026-09-03 | 生成器回归网 (golden test): 新增 `internal/script/golden_test.go` + `testdata/golden.mykeymap.ahk`; 落点选 `internal/script/` 而非 `generators/` 因 golden test 调用 `SaveAHK`/`Preprocess` (属 script 包导出), 放 generators 会产生 script↔generators 导入环; 刷新方式: `UPDATE_GOLDEN=1 go test ./internal/script/...`; 合成配置规避 map 迭代序非确定性 (约束 1: sortHotkeys 非稳定排序; 约束 2: handleKeyRemapping SliceStable 保留随机序) |
+| 2026-09-03 | 三维评审非阻断修复批次 (Go/Makefile/AHK/文档, 零行为变更): ① `bin/lib/Monitor.ahk` 注明块裸行号全部改为符号锚点描述 (对上游 diff 更 robust, 消除 +25 行偏移导致的 ~15 处行号失效); ② `internal/server/dto.go` keymapToDTO/dtoToKeymap 内层 Hotkeys value slice 补 nil 守卫 (修复 null→[] 往返非恒等), 新增 `dto_test.go` 表驱动测试; ③ `internal/script/golden_test.go` BOM 断言从 normalizeAHK 归一化中拆出为独立 bytes.HasPrefix 检查 (消除产物 BOM 丢失不可观测盲区); ④ Makefile buildClientAvalonia 后新增 i18n.json SHA256 断言 (publish 产出与源不一致即 exit 1); ⑤ CONTRACTS.md 补全: §2 目录树补 i18n.json 双路径 + 契约条目、§5.1 实现指针更新、新增 §5.2 双轨 DTO 边界 + §5.3 契约测试前置二进制契约; 并行 C# 侧修复 (归属任务 #65): I18nResourceTests 物理存在断言、SettingsTestServer 陈旧度断言、I18n.cs 头部注释补回 |

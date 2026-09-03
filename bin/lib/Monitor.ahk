@@ -13,6 +13,31 @@
 ;
 ; =================================================================================================== ;
 
+; ===== MyKeymap 侧注明 (2026-09-03 新增, 仅本注释块, 上游代码零改动) ================================== ;
+; 唯一消费者: bin/ChangeBrightness.ahk:6 `#Include ./lib/Monitor.ahk`。
+;   跨进程拉起链: bin/lib/actions/builtins/type2_system.ahk:61-63 BrightnessControl()
+;   → Run("MyKeymap.exe /script bin\ChangeBrightness.ahk"), 由动作 TypeID 2 生成
+;   (config-server/internal/script/generators/type2_system.go:16), UI 文案键 ["22"] 显示器亮度调节。
+;   本文件不在 bin/MyKeymap.ahk 的 include 链内, 故 `make check` 的 /Validate ./bin/MyKeymap.ahk
+;   不解析本文件; 唯一会解析它的自动检查 = /Validate ./bin/ChangeBrightness.ahk。
+; 实际使用面: Monitor() 实例化 + GetBrightness() + SetBrightness() 及其 13 方法传递闭包
+;   (GetBrightness, SetBrightness, GetSetting, SetSetting, GetMonitorHandle,
+;    EnumDisplayMonitors, MonitorEnumProc, GetMonitorInfo,
+;    GetNumberOfPhysicalMonitorsFromHMONITOR, GetPhysicalMonitorsFromHMONITOR,
+;    DestroyPhysicalMonitors, GetMonitorBrightness, SetMonitorBrightness)。
+;   注意 SetSetting 内用 RegExReplace(SetMethodName,"S(.*)","G$1") 从 Set* 反推 Get* 做钳制,
+;   且 GetSetting/SetSetting 多处走 this.%name% 动态派发 —— 裁方法会静默炸掉 SetBrightness。
+; 未使用面 (约 580 行: contrast / gamma ramp / RGB drive & gain / display area 尺寸与位置 /
+;   VCP feature / sharpness / color temperature / technology type / power mode / degauss /
+;   restore factory / capabilities 系列) 是为保持与上游 tigerlily-dev v2.4.1 可 diff 而刻意保留,
+;   勿当死代码删除。上游拼写 (retreive/currentRefue)、GetMonitorBrightness 内的调试 MsgBox "Failed"、
+;   SaveCurrentMonitorSettings 内实际调用的 RestoreMonitorFactoryDefaults DllCall 均为 vendored 原样特征, 勿"修正"。
+; 更正: 此前"只用到 GetMethod/GetMonitorInfo 两个入口"的表述不准确 —— GetMethod 是 AHK v2 内建
+;   Any.GetMethod (用于 EnumDisplayMonitors 内 CallbackCreate(Monitor.GetMethod("MonitorEnumProc")…)),
+;   GetMonitorInfo 是内部私有静态方法 (由 MonitorEnumProc 调用),
+;   二者都是内部传递依赖, 不是消费方入口。
+; =================================================================================================== ;
+
 
 class Monitor {
 

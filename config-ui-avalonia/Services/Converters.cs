@@ -25,3 +25,17 @@ public sealed class StringNotEmptyConverter : IValueConverter
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         => throw new NotSupportedException();
 }
+
+/// <summary>
+/// 双语文案转换器 (App.axaml 里的 x:Key="Tr"): ConverterParameter 为文案键,
+/// 绑定源为 ViewModel 的 LanguageTick。LanguageTick 递增 -> 绑定重新求值 ->
+/// 按当前语言重新翻译。文案表见 <see cref="I18n"/> 与 Resources/i18n.json。
+/// </summary>
+public sealed class I18nConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => I18n.T(parameter as string ?? parameter?.ToString());
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}

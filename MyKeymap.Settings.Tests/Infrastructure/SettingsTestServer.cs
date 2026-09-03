@@ -55,6 +55,12 @@ public sealed class SettingsTestServer : IAsyncLifetime
         Assert.True(File.Exists(HeadlessExeSource),
             $"缺少 headless 测试二进制: {HeadlessExeSource} (前置任务产物)");
 
+        // 前置二进制陈旧度守护 (Kim H2): 上面只查存在不查新旧, check-cs 不刷新
+        // %TEMP%\mk_settings_headless\settings.exe, 可长期拿陈旧后端跑出假绿 (本轮实际
+        // 发生过: 旧构建 DAA20E28… 被手工覆盖为新构建 5D406656… 才真绿)。
+        // 以只读、零构建代价的方式断言 exe 不比 Go 源/模板旧; 不在测试内自动 go build。
+        AssertBackendNotStale();
+
         RootDir = Path.Combine(Path.GetTempPath(), "mk_contract_tests", Guid.NewGuid().ToString("N"));
         var dataDir = Path.Combine(RootDir, "data");
         var shortcutsDir = Path.Combine(RootDir, "shortcuts");
@@ -199,6 +205,43 @@ public sealed class SettingsTestServer : IAsyncLifetime
             {
                 await Task.Delay(300);
             }
+        }
+    }
+
+    /// <summary>
+    /// 前置二进制陈旧度断言 (Kim H2, 只读、零构建代价): 取 config-server/**/*.go 与
+    /// config-server/templates/** 的最大 LastWriteTime, 若 headless exe 的 mtime 早于它,
+    /// 说明 %TEMP% 里的后端是旧构建, 契约测试会拿陈旧后端跑出假绿 —— 直接 Fail 并
+    /// 打印刷新命令。刻意不在测试内 go build: 刷新是 make buildServer 的职责。
+    /// </summary>
+    private static void AssertBackendNotStale()
+    {
+        var exeMtime = File.GetLastWriteTime(HeadlessExeSource);
+        var serverDir = Path.Combine(RepoRoot, "config-server");
+        if (!Directory.Exists(serverDir)) return; // 源树缺失时不做陈旧度判定, 交给上层存在性断言
+
+        var sources = Directory.EnumerateFiles(serverDir, "*.go", SearchOption.AllDirectories);
+        var templateDir = Path.Combine(serverDir, "templates");
+        if (Directory.Exists(templateDir))
+        {
+            sources = sources.Concat(
+                Directory.EnumerateFiles(templateDir, "*", SearchOption.AllDirectories));
+        }
+
+        var newest = DateTime.MinValue;
+        var newestPath = "";
+        foreach (var f in sources)
+        {
+            var m = File.GetLastWriteTime(f);
+            if (m > newest) { newest = m; newestPath = f; }
+        }
+
+        if (newest != DateTime.MinValue && exeMtime < newest)
+        {
+            Assert.Fail(
+                "前置后端陈旧: " + HeadlessExeSource + " 的 mtime=" + exeMtime.ToString("yyyy-MM-dd HH:mm:ss") +
+                " 早于 config-server 最新源 " + newestPath + " 的 mtime=" + newest.ToString("yyyy-MM-dd HH:mm:ss") +
+                "。请先 make buildServer 并复制 bin/settings.exe 到 %TEMP%\\mk_settings_headless\\ 后重跑。");
         }
     }
 
