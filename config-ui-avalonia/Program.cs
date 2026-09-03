@@ -11,7 +11,7 @@ namespace MyKeymap.Settings;
 /// 程序入口：单实例守卫 + 初始化并启动 Avalonia 桌面应用。
 /// 单实例约定 (与 AHK 侧 MyKeymapOpenSettings 三分支语义配合):
 ///   命名 Mutex "MyKeymap.Settings.SingleInstance"; 第二实例不重复开窗口,
-///   激活已有窗口 (标题 "MyKeymap Setting") 后立即退出。
+///   激活已有窗口 (标题 "Setting", 限本进程) 后立即退出。
 /// </summary>
 internal static class Program
 {
@@ -19,7 +19,7 @@ internal static class Program
     public static readonly DateTime ProcessStartTimeUtc = GetProcessCreationTimeUtc();
 
     private const string SingleInstanceMutexName = "MyKeymap.Settings.SingleInstance";
-    private const string MainWindowTitle = "MyKeymap Setting";
+    private const string MainWindowTitle = "Setting";
 
     /// <summary>
     /// 主入口点，启动经典桌面生命周期。
@@ -64,13 +64,18 @@ internal static class Program
     // ----------------------------------------------------------- 窗口激活 (P/Invoke)
 
     /// <summary>
-    /// 枚举顶层窗口, 找到标题为 "MyKeymap Setting" 的已有实例窗口:
+    /// 枚举顶层窗口, 找到本进程内标题为 "Setting" 的已有实例窗口
+    /// (叠加进程 ID 过滤: 新标题较通用, 防误激活他进程同名窗口):
     /// 最小化则还原 (SW_RESTORE), 然后置为前台。找到第一个即停。
     /// </summary>
     private static void ActivateExistingWindow()
     {
+        var currentPid = GetCurrentProcessId();
         EnumWindows((hWnd, _) =>
         {
+            GetWindowThreadProcessId(hWnd, out var windowPid);
+            if (windowPid != currentPid) return true; // 非本进程窗口, 跳过
+
             var title = GetWindowTitle(hWnd);
             if (title != MainWindowTitle) return true; // 继续枚举
 
@@ -104,6 +109,12 @@ internal static class Program
 
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("kernel32.dll")]
+    private static extern uint GetCurrentProcessId();
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
 
     // ----------------------------------------------------------- 进程创建时间 (启动计时)
 

@@ -5,7 +5,8 @@ using MyKeymap.Settings.ViewModels;
 namespace MyKeymap.Settings.Views;
 
 /// <summary>
-/// 主窗口：标题必须为 "MyKeymap Setting"（AHK 侧以该标题匹配窗口）。
+/// 主窗口：标题 "Setting"（AHK 侧以 "Setting ahk_exe MyKeymap.Settings.exe" 匹配窗口）。
+/// 标题栏小图标透明化经 <see cref="TitleBarIconSuppressor"/> 统一接入 (与两个对话框窗口共用)。
 /// 生命周期: Opened -> InitializeAsync (连接后端/加载配置);
 /// Closing -> 同步关停后端会话 (整树 Kill); 另有 App.Exit 与 Program.Main finally 两层兜底。
 /// </summary>
@@ -24,6 +25,9 @@ public partial class MainWindow : Window
         {
             dialogs.Owner = this;
         }
+
+        // 标题栏小图标透明化: 助手内部订阅 Opened(应用)/ScalingChanged(DPI 变化重放)/Closed(回收句柄)
+        TitleBarIconSuppressor.Attach(this);
 
         Opened += (_, _) => _ = viewModel.InitializeAsync();
         Closing += (_, _) => viewModel.Session.Shutdown();

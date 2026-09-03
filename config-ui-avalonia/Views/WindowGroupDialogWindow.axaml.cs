@@ -14,6 +14,8 @@ public partial class WindowGroupDialogWindow : Window
     public WindowGroupDialogWindow()
     {
         InitializeComponent();
+        // 标题栏小图标透明化 (与主窗口同一助手, 行为一致)
+        TitleBarIconSuppressor.Attach(this);
         I18n.Changed += OnLanguageChanged;
         Closed += (_, _) => I18n.Changed -= OnLanguageChanged;
     }

@@ -23,6 +23,9 @@ public partial class OverviewEditWindow : Window
         InitializeComponent();
         _main = main;
 
+        // 标题栏小图标透明化 (与主窗口同一助手, 行为一致)
+        TitleBarIconSuppressor.Attach(this);
+
         Title = I18n.T("2406");
         TipText.Text = I18n.T("2405");
         RestoreButton.Content = I18n.T("2404");

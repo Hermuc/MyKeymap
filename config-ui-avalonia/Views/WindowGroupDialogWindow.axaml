@@ -5,7 +5,7 @@
         x:Class="MyKeymap.Settings.Views.WindowGroupDialogWindow"
         x:Name="DlgRoot"
         x:DataType="vm:WindowGroupDialogViewModel"
-        Title="MyKeymap Setting"
+        Title="Setting"
         Width="920" Height="620"
         WindowStartupLocation="CenterOwner">
 

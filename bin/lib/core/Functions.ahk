@@ -65,16 +65,18 @@ MyKeymapToggleSuspend() {
 
 /**
  * 打开设置 (原生 Avalonia GUI: bin\ui\MyKeymap.Settings.exe, 与 settings.exe 同处 bin\ 体系,
- * 窗口标题 "MyKeymap Setting"; 不再经 wt.exe 承载, 后端由 GUI 以子进程管理)
+ * 窗口标题 "Setting"; 不再经 wt.exe 承载, 后端由 GUI 以子进程管理)
  */
 MyKeymapOpenSettings() {
   launchSettings() {
     Run('"' A_ScriptDir '\ui\MyKeymap.Settings.exe"', A_ScriptDir)
   }
+  ; 标题 "Setting" 较通用 (v2 默认含匹配), 叠加 ahk_exe 约束防误中他进程同名窗口
+  winTitle := "Setting ahk_exe MyKeymap.Settings.exe"
   if (!ProcessExist("MyKeymap.Settings.exe")) {
     launchSettings()
-  } else if (WinExist("MyKeymap Setting")) {
-    WinActivate("MyKeymap Setting")
+  } else if (WinExist(winTitle)) {
+    WinActivate(winTitle)
   } else {
     ; 进程存在但设置窗口不可见, 重启设置程序 (其会一并重建后端子进程)
     if ProcessExist("MyKeymap.Settings.exe") {
