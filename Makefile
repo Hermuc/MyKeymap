@@ -79,4 +79,29 @@ server: buildServer
 ahk: buildServer
 	@bin/settings.exe GenerateAHK ./data/config.json ./config-server/templates/mykeymap.tmpl ./bin/MyKeymap.ahk
 
-.PHONY: server ahk buildServer buildClientAvalonia copyFiles upload build
+# ===== 本机回归与部署 (2026-09-03 新增) =====
+# 部署目录 = 正在使用的软件 (行为基线配置所在, 见 docs/CONTRACTS.md 约束 1)
+DEPLOY_DIR := ../MyKeymap-2.0-beta33
+CHECK_CONFIG := $(DEPLOY_DIR)/data/config.json
+
+# check: 一键回归 = Go 单测 + 重新生成产物 + AHK 语法校验 + Oracle 运行时对账
+# (MSYS_NO_PATHCONV: 防止 Git Bash 把 /ErrorStdOut /Validate 等开关误转换为路径)
+check: buildServer
+	MSYS_NO_PATHCONV=1 bin/settings.exe GenerateAHK "$(CHECK_CONFIG)" ./config-server/templates/mykeymap.tmpl ./bin/MyKeymap.ahk
+	MSYS_NO_PATHCONV=1 bin/AutoHotkey64.exe /ErrorStdOut /Validate ./bin/MyKeymap.ahk
+	pwsh -NoProfile -ExecutionPolicy Bypass -File tools/oracle.ps1
+
+# check-cs: C# 设置界面单元测试 (dotnet SDK 须在 PATH; 本机 SDK 在 Scoop 的 dotnet-sdk)
+check-cs:
+	dotnet test MyKeymap.Settings.Tests/MyKeymap.Settings.Tests.csproj --nologo
+
+# deploy: 回归通过后编译并同步到部署目录, 重启实例 (robocopy 退出码 0-7 均为成功)
+deploy: check buildClientAvalonia
+	MSYS_NO_PATHCONV=1 robocopy bin/lib $(DEPLOY_DIR)/bin/lib /MIR /NFL /NDL /NJH /NJS; [ $$? -le 7 ]
+	MSYS_NO_PATHCONV=1 robocopy bin/templates $(DEPLOY_DIR)/bin/templates /MIR /NFL /NDL /NJH /NJS; [ $$? -le 7 ]
+	MSYS_NO_PATHCONV=1 robocopy site-assets $(DEPLOY_DIR)/bin/site /MIR /NFL /NDL /NJH /NJS; [ $$? -le 7 ]
+	MSYS_NO_PATHCONV=1 robocopy config-ui-avalonia/bin/ui $(DEPLOY_DIR)/bin/ui /MIR /NFL /NDL /NJH /NJS; [ $$? -le 7 ]
+	MSYS_NO_PATHCONV=1 robocopy bin $(DEPLOY_DIR)/bin *.ahk *.exe *.ps1 *.txt *.dll /XF MyKeymap.ahk /NFL /NDL /NJH /NJS; [ $$? -le 7 ]
+	pwsh -NoProfile -Command "$$d=(Resolve-Path '$(DEPLOY_DIR)').Path; Stop-Process -Name MyKeymap,MyKeymap-CommandInput -Force -ErrorAction SilentlyContinue; Start-Sleep 1; Start-Process (Join-Path $$d 'MyKeymap.exe') -WorkingDirectory $$d"
+
+.PHONY: server ahk buildServer buildClientAvalonia copyFiles upload build check check-cs deploy
