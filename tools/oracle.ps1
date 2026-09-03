@@ -3,6 +3,8 @@
 $ErrorActionPreference = 'Stop'
 $repo = 'D:\PortableApps\MyKeymap-main'
 $tmp = "$env:TEMP\mk_baseline"
+New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+Copy-Item "$repo\bin\settings.exe" "$tmp\settings.exe" -Force
 
 # 1. Extract register lines from regenerated script (-Take N for bisection)
 $take = 0
@@ -22,6 +24,9 @@ $harness += "#Include $repo\bin\lib\core\translation.ahk"
 $harness += "#Include $repo\bin\lib\core\IKeyEventBus.ahk"
 $harness += "#Include $repo\bin\lib\core\EventBus.ahk"
 $harness += "#Include $repo\bin\lib\core\Functions.ahk"
+$harness += "#Include $repo\bin\lib\core\Programs.ahk"
+$harness += "#Include $repo\bin\lib\core\WindowUtils.ahk"
+$harness += "#Include $repo\bin\lib\core\AbbrInput.ahk"
 $harness += "#Include $repo\bin\lib\actions\Actions.ahk"
 $harness += "#Include $repo\bin\lib\core\KeymapManager.ahk"
 $harness += "#Include $repo\bin\lib\core\InputTipWindow.ahk"
