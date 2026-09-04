@@ -66,25 +66,73 @@ MyKeymapToggleSuspend() {
 /**
  * 打开设置 (原生 Avalonia GUI: bin\ui\MyKeymap.Settings.exe, 与 settings.exe 同处 bin\ 体系,
  * 窗口标题 "Setting"; 不再经 wt.exe 承载, 后端由 GUI 以子进程管理)
+ * WinWait 3s 超时不静默返回: 转后台 SetTimer 轮询兜底, 窗口迟到出现时补前台激活
  */
 MyKeymapOpenSettings() {
+  static fallbackTimer := ""  ; 兜底轮询闭包持有者, 供下一次唤起防重入清理
   launchSettings() {
     Run('"' A_ScriptDir '\ui\MyKeymap.Settings.exe"', A_ScriptDir)
   }
+  ; 窗口在 WinWait 后被销毁时各 Win 调用抛 TargetError, try 静默吞掉竞态;
+  ; ahk_id 锚定消除三窗口同标题 Setting 的 re-match 错绑
+  activateSettings(hwnd) {
+    try {
+      if (WinGetMinMax("ahk_id " hwnd) = -1)
+        WinRestore("ahk_id " hwnd)
+      WinActivate("ahk_id " hwnd)
+      if !WinActive("ahk_id " hwnd) {
+        ; Windows 前台锁拒绝激活时的 Z 序兜底: Topmost 瞬间翻转不需要前台授权, 必达;
+        ; 窗口在其它虚拟桌面时无法跨桌面召唤, 与旧行为一致
+        WinSetAlwaysOnTop(true, "ahk_id " hwnd)
+        WinSetAlwaysOnTop(false, "ahk_id " hwnd)
+        WinActivate("ahk_id " hwnd)
+      }
+    }
+  }
+  ; 慢冷启动兜底轮询: 500ms 一次非阻塞检查, 窗口迟到出现时补一次前台激活;
+  ; 闭包捕获 attempts/winTitle/activateSettings, 计数有界约 10s 后自删
+  WaitSettingsWindow() {
+    attempts := attempts - 1
+    if (attempts < 0) {
+      SetTimer(WaitSettingsWindow, 0)
+      return
+    }
+    cur := WinExist(winTitle)
+    if !cur
+      return
+    SetTimer(WaitSettingsWindow, 0)
+    activateSettings(cur)
+  }
   ; 标题 "Setting" 较通用 (v2 默认含匹配), 叠加 ahk_exe 约束防误中他进程同名窗口
   winTitle := "Setting ahk_exe MyKeymap.Settings.exe"
+  ; 防重入: 新一次唤起接管兜底, 先清上一轮遗留的轮询 timer (闭包实例不同, 必须显式清)
+  if (fallbackTimer != "")
+    SetTimer(fallbackTimer, 0)
   if (!ProcessExist("MyKeymap.Settings.exe")) {
     launchSettings()
   } else if (WinExist(winTitle)) {
-    WinActivate(winTitle)
+    WinActivate(winTitle)  ; 先行激活; 前台保证由下方统一后置段校验兜底
   } else {
     ; 进程存在但设置窗口不可见, 重启设置程序 (其会一并重建后端子进程)
     if ProcessExist("MyKeymap.Settings.exe") {
       ProcessClose("MyKeymap.Settings.exe")
-      ProcessWaitClose("MyKeymap.Settings.exe", 2)
+      ; v2.0.19 实测: 返回 0=进程已关闭, 非 0(PID)=超时进程仍在
+      if (ProcessWaitClose("MyKeymap.Settings.exe", 2) != 0)
+        return  ; 旧进程未被杀干净且持单实例 Mutex, 新实例会自退, 放弃本次唤起
     }
     launchSettings()
   }
+  ; 唤起时强制前台一次 (三分支统一后置段): 冷启动/重启后等窗口出现, 有界 3s,
+  ; 超时转兜底轮询 (进程可能启动失败, 不阻塞热键语境); 激活后立即撤销 Topmost,
+  ; 非常驻置顶, 仍可手动切后台
+  hwnd := WinWait(winTitle, , 3)
+  if !hwnd {
+    attempts := 20  ; 20 次 x 500ms, 有界约 10s 后自删
+    fallbackTimer := WaitSettingsWindow
+    SetTimer(fallbackTimer, 500)
+    return
+  }
+  activateSettings(hwnd)
 }
 
 /**
