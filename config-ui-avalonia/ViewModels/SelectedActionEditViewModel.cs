@@ -97,6 +97,20 @@ public sealed partial class RuleEditorVm : ObservableObject
     private readonly SelectedActionEditViewModel _owner;
     private bool _applying; // 程序化回填时抑制联动处理器
 
+    /// <summary>
+    /// 当前条件值关联的文件分组 name (仅 fileExt 语境; 不进 UI):
+    /// 选中分组 / 回填命中分组后缀集时建立, 驱动行为下拉按分组过滤,
+    /// 并在保存时把条件值修改写回 Config.FileGroups 对应条目。
+    /// </summary>
+    private string? _associatedGroupName;
+
+    /// <summary>
+    /// 关联生命周期标志 (评审 F2): 首次 <see cref="ApplyFromRule"/> 按
+    /// 「页面级映射 -> 条件值推导」解析一次后置位; 后续回填保留现有关联
+    /// (不再按值重推导/清空), 显式动作 (选分组 / × / 「无」 / 切匹配类型) 直接驱动。
+    /// </summary>
+    private bool _associationResolved;
+
     public RuleEditorVm(SelectedActionEditViewModel owner, ActionRule rule)
     {
         _owner = owner;
@@ -219,35 +233,83 @@ public sealed partial class RuleEditorVm : ObservableObject
     partial void OnFileGroupSelectedChanged(ComboOption? value)
     {
         if (_applying) return;
-        if (value is null) return; // 清除 (×) 或程序化复位: 保留条件值供手改
+        if (value is null)
+        {
+            // 清除 (×) 或程序化复位 (切匹配类型): 保留条件值供手改; 同步解除分组关联 (行为过滤回退全文件集)
+            if (_associatedGroupName is not null)
+            {
+                _associatedGroupName = null;
+                OnPropertyChanged(nameof(ActionTypeOptions));
+            }
+            MarkAssociationResolved(null); // F2: 解除意图显式化 (映射移除 + 置 resolved), 不再被按值推导回滚
+            return;
+        }
         if (value.Value == "")
         {
-            MatchValue = ""; // 选中「无」: 清空条件值
+            _associatedGroupName = null; // 选中「无」: 解除关联
+            MatchValue = "";             // 并清空条件值
+            OnPropertyChanged(nameof(ActionTypeOptions)); // 行为过滤回退全文件集
+            MarkAssociationResolved(null); // F2: 解除意图显式化
+            return;
         }
-        else
+
+        var group = _owner.FileGroups.FirstOrDefault(g => g.Name == value.Value);
+        if (group is null) return;
+        MatchValue = string.Join(", ", group.Exts); // 填充条件值
+        _associatedGroupName = group.Name;          // 记录关联 (驱动行为下拉按分组过滤)
+        MarkAssociationResolved(group.Name);        // F2: 显式建立 (映射记录 + 置 resolved)
+        // 镜像 textType 联动: 当前行为不在该分组可选范围 -> 落到分组默认行为
+        var allowed = ActionSchemeCatalog.FileGroupActions.GetValueOrDefault(group.Name)
+                      ?? ActionSchemeCatalog.FileActions;
+        if (!allowed.Contains(Rule.ActionType))
         {
-            var group = _owner.FileGroups.FirstOrDefault(g => g.Name == value.Value);
-            if (group is not null) MatchValue = string.Join(", ", group.Exts);
+            Rule.ActionType = ActionSchemeCatalog.FileGroupDefaultAction;
+            if (ActionSchemeCatalog.TextActions.Contains(Rule.ActionType))
+            {
+                Rule.ActionValue = ""; // 纠正到无参行为时清空残留模板 (复刻 onTextTypeChange)
+            }
         }
+        ApplyFromRule();       // 回填下拉选中项, 并触发 ActionTypeOptions 联动刷新
+        _owner.OnRuleEdited(); // 刷新规则列表展示文本
     }
 
     public string FileGroupHint => I18n.T("1007");
 
     // ------------------------------------------------------------- 行为类型
 
-    /// <summary>行为下拉选项: textType 时随特征动态联动, 其余匹配类型展示全量。</summary>
+    /// <summary>
+    /// 行为下拉选项: textType 随特征联动; fileExt 按关联分组过滤 (展示层过滤副本,
+    /// 后端不校验 fileExt, 未知分组回退 FileActions); 其余匹配类型展示全量。
+    /// 当前行为始终并入候选 (union), 保证存量脏值可见可选、回填不脱靶。
+    /// </summary>
     public IReadOnlyList<ComboOption> ActionTypeOptions
     {
         get
         {
             var all = ActionSchemeCatalog.ActionTypes;
-            if (Rule.MatchType != "textType")
+            if (Rule.MatchType == "textType")
             {
-                return all.Select(t => new ComboOption(t.Value, I18n.T(t.LabelKey))).ToList();
+                var textAllowed = ActionSchemeCatalog.TextTypeActions.GetValueOrDefault(Rule.MatchValue) ?? [];
+                return all.Where(t => textAllowed.Contains(t.Value))
+                    .Select(t => new ComboOption(t.Value, I18n.T(t.LabelKey))).ToList();
             }
-            var allowed = ActionSchemeCatalog.TextTypeActions.GetValueOrDefault(Rule.MatchValue) ?? [];
-            return all.Where(t => allowed.Contains(t.Value))
-                .Select(t => new ComboOption(t.Value, I18n.T(t.LabelKey))).ToList();
+            if (Rule.MatchType == "fileExt")
+            {
+                var allowed = _associatedGroupName is not null
+                    ? ActionSchemeCatalog.FileGroupActions.GetValueOrDefault(_associatedGroupName)
+                      ?? ActionSchemeCatalog.FileActions
+                    : ActionSchemeCatalog.FileActions;
+                var values = new HashSet<string>(allowed) { Rule.ActionType }; // union 保证脏值恒可见
+                var list = all.Where(t => values.Contains(t.Value))
+                    .Select(t => new ComboOption(t.Value, I18n.T(t.LabelKey))).ToList();
+                // 词表外的脏值 (理论上不存在) 追加兜底, 维持「当前行为恒可选」
+                if (list.All(o => o.Value != Rule.ActionType) && !string.IsNullOrEmpty(Rule.ActionType))
+                {
+                    list.Add(new ComboOption(Rule.ActionType, ActionSchemeCatalog.ActionTypeLabel(Rule.ActionType)));
+                }
+                return list;
+            }
+            return all.Select(t => new ComboOption(t.Value, I18n.T(t.LabelKey))).ToList();
         }
     }
 
@@ -344,6 +406,20 @@ public sealed partial class RuleEditorVm : ObservableObject
             // 历史 default 规则不在选项中, 会显示为第一项 (数据仍为 default); 需切换到其它类型再切回才能完成迁移——直接重选当前显示项不会触发 SelectionChanged (2026-09 移除兜底选项)
             SelectedMatchType = MatchTypeOptions.FirstOrDefault(o => o.Value == Rule.MatchType) ?? MatchTypeOptions[0];
             SelectedTextType = TextTypeOptions.FirstOrDefault(o => o.Value == Rule.MatchValue) ?? TextTypeOptions[0];
+
+            // 关联生命周期 (F2, 须在 SelectedActionType 回填前, 其候选依赖 _associatedGroupName):
+            // 首次回填按「页面级映射 -> 条件值推导」解析一次并置 resolved; 后续回填保留现有关联
+            // (不再按值重推导/清空), 避免「× 解除」「手改后缀 + 换行为类型」被静默回滚。
+            if (!_associationResolved)
+            {
+                _associationResolved = true;
+                ResolveAssociation();
+            }
+            // 快捷填入选中项跟随现有关联 (写入处于 _applying 区间, 不触发 OnFileGroupSelectedChanged 联动)
+            FileGroupSelected = _associatedGroupName is null
+                ? null
+                : FileGroupOptions.FirstOrDefault(o => o.Value == _associatedGroupName);
+
             SelectedActionType = ActionTypeOptions.FirstOrDefault(o => o.Value == Rule.ActionType)
                                  ?? ActionTypeOptions.FirstOrDefault()
                                  ?? new ComboOption("", "");
@@ -367,6 +443,68 @@ public sealed partial class RuleEditorVm : ObservableObject
         OnPropertyChanged(nameof(ActionValue));
         OnPropertyChanged(nameof(ShowWorkingDir));
         OnPropertyChanged(nameof(WorkingDir));
+    }
+
+    /// <summary>
+    /// F2: 首次关联解析 (仅回填链路调用一次)。优先级:
+    /// ① 页面级待写回映射 (跨编辑器重建保持显式关联意图; 规则已非 fileExt 或分组已被删除
+    ///    则移除映射条目并回退按值推导);
+    /// ② 条件值后缀集与某分组一致 (忽略大小写/顺序) -> 关联, 二义 (多组同集) 时优先保持
+    ///    推导前现有关联名 (F3), 否则取声明序首个; 手输或不一致 -> 解除。
+    /// 解析结果写回映射 (建立或移除) 保持同步。
+    /// </summary>
+    private void ResolveAssociation()
+    {
+        _associatedGroupName = null;
+
+        if (_owner.TryGetPendingGroupAssociation(Rule, out var pending))
+        {
+            if (Rule.MatchType == "fileExt" && _owner.FileGroups.Any(g => g.Name == pending))
+            {
+                _associatedGroupName = pending;
+                return; // 映射命中即直接关联 (值不再≡分组也保持 —— 手改后缀后的恢复路径)
+            }
+            _owner.SetPendingGroupAssociation(Rule, null); // 映射失效: 移除后回退按值推导
+        }
+
+        if (Rule.MatchType == "fileExt" && !string.IsNullOrEmpty(Rule.MatchValue))
+        {
+            var parsed = ActionSchemeCatalog.NormalizeExts(Rule.MatchValue);
+            if (parsed.Count > 0)
+            {
+                var hits = _owner.FileGroups
+                    .Where(g => ActionSchemeCatalog.SameExts(parsed, g.Exts)).ToList();
+                var group = _associatedGroupName is not null && hits.Any(g => g.Name == _associatedGroupName)
+                    ? hits.First(g => g.Name == _associatedGroupName) // F3: 二义时优先现有关联
+                    : hits.FirstOrDefault();
+                if (group is not null) _associatedGroupName = group.Name;
+            }
+        }
+
+        _owner.SetPendingGroupAssociation(Rule, _associatedGroupName); // 结果同步进映射
+    }
+
+    /// <summary>F2: 显式关联动作落点 —— 置 resolved 标志并同步页面级映射 (groupName=null 解除)。</summary>
+    private void MarkAssociationResolved(string? groupName)
+    {
+        _associationResolved = true;
+        _owner.SetPendingGroupAssociation(Rule, groupName);
+    }
+
+    /// <summary>
+    /// 保存前把关联分组的条件值修改写回 Config.FileGroups 对应条目
+    /// (记住修改, 下次选该组即新列表)。无关联 / 条件值空 / 与分组内容一致
+    /// (忽略大小写与顺序) 时不动; 写回以编辑框当前顺序为准。
+    /// </summary>
+    internal void ApplyFileGroupWriteBack(Config config)
+    {
+        if (_associatedGroupName is null || Rule.MatchType != "fileExt") return;
+        var parsed = ActionSchemeCatalog.NormalizeExts(Rule.MatchValue);
+        if (parsed.Count == 0) return;
+        var group = config.FileGroups.FirstOrDefault(g => g.Name == _associatedGroupName);
+        if (group is null) return;
+        if (ActionSchemeCatalog.SameExts(parsed, group.Exts)) return;
+        group.Exts = parsed;
     }
 }
 
@@ -404,6 +542,24 @@ public sealed partial class SelectedActionEditViewModel : ObservableObject
 
     /// <summary>文件分组 (快捷填入数据源, 复刻 configStore.config?.fileGroups)。</summary>
     public IReadOnlyList<FileGroup> FileGroups => Config.FileGroups;
+
+    /// <summary>
+    /// F2: 页面级待写回映射 (key=规则对象引用, value=显式关联的分组名)。
+    /// 跨规则编辑器重建保持显式关联意图: 选分组建立 / ×·「无」·切匹配类型解除 /
+    /// 首次按值推导结果同步, 使解除与手改后缀不被后续回填按值重推导回滚。
+    /// </summary>
+    public Dictionary<ActionRule, string> PendingGroupAssociations { get; } = [];
+
+    /// <summary>F2: 显式关联落点 (groupName=null 解除)。</summary>
+    internal void SetPendingGroupAssociation(ActionRule rule, string? groupName)
+    {
+        if (groupName is null) PendingGroupAssociations.Remove(rule);
+        else PendingGroupAssociations[rule] = groupName;
+    }
+
+    /// <summary>F2: 首次关联解析前查询显式关联。</summary>
+    internal bool TryGetPendingGroupAssociation(ActionRule rule, out string? groupName)
+        => PendingGroupAssociations.TryGetValue(rule, out groupName);
 
     // ------------------------------------------------------------- 方案字段
 
@@ -522,6 +678,7 @@ public sealed partial class SelectedActionEditViewModel : ObservableObject
     public void DeleteRule(int index)
     {
         if (index < 0 || index >= Scheme.Rules.Count) return;
+        PendingGroupAssociations.Remove(Scheme.Rules[index]); // F2: 被删规则的显式关联映射一并移除
         Scheme.Rules.RemoveAt(index);
         var next = Math.Min(index, Scheme.Rules.Count - 1);
         SyncRulesFromModel(next);
@@ -647,10 +804,20 @@ public sealed partial class SelectedActionEditViewModel : ObservableObject
 
     // ------------------------------------------------------------- 保存 / 删除 / 导入导出
 
+    /// <summary>
+    /// 保存前写回: 把当前编辑器关联分组的后缀修改更新到 Config.FileGroups
+    /// (评审 F1: 调用点已上移到 MainViewModel.SaveAsync 统一保存咽喉 —— Ctrl+S /
+    /// 侧栏「保存」/ 编辑页保存 / 删除方案全部经此, 不再被绕过; 本方法降为 internal 供其调用)。
+    /// 规则编辑器仅当前选中规则持有单个实例 (<see cref="Editor"/>), 故以当前编辑器为对象;
+    /// 多编辑器先后改同一分组时后保存者胜, 无需加锁。
+    /// </summary>
+    internal void ApplyFileGroupWriteBack() => Editor?.ApplyFileGroupWriteBack(Config);
+
     /// <summary>保存 (复刻「保存」按钮 -> store.saveConfig() -> PUT /config); 成功后复位热键未保存提示。</summary>
     [RelayCommand]
     private async Task SaveAsync()
     {
+        // 分组后缀写回已统一在 MainViewModel.SaveAsync 咽喉执行 (评审 F1), 此处不再重复调用
         var ok = await _page.SaveConfigAsync();
         if (ok) HotkeyPendingSave = false;
     }
@@ -723,6 +890,7 @@ public sealed partial class SelectedActionEditViewModel : ObservableObject
         // 按数组顺序重写 priority, 保证与匹配顺序一致
         for (var i = 0; i < rules.Count; i++) rules[i].Priority = i + 1;
         Scheme.Rules = rules;
+        PendingGroupAssociations.Clear(); // F2: 导入整体替换规则集, 旧规则的显式关联映射一并失效
         SetMatched(null);
         SyncRulesFromModel(0);
         return null;

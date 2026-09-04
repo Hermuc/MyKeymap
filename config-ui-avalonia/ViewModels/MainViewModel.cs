@@ -242,6 +242,12 @@ public sealed partial class MainViewModel : ObservableObject
     {
         if (Config is null || Session.Api is null || _saving) return false;
 
+        // 评审 F1: 统一保存咽喉 —— 编辑页关联分组的后缀修改先写回 fileGroups
+        // (Ctrl+S / 侧栏「保存」/ 各页 SaveConfigAsync / 删除方案全部经此;
+        // 原编辑页 SaveAsync 内的调用点已移除避免双写)。置于节流与 CleanForSave 之前:
+        // 被节流跳过的保存也已把内存 Config 写一致, 下次真实保存自然落盘。
+        ActionVm?.EditVm?.ApplyFileGroupWriteBack();
+
         var now = DateTime.UtcNow;
         if (!force && (now - _lastSaveAtUtc).TotalMilliseconds < 1000) return false;
         _lastSaveAtUtc = now;

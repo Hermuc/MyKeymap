@@ -81,6 +81,62 @@ public static class ActionSchemeCatalog
     public static readonly HashSet<string> TextActions =
         ["open_url", "open_path", "open_folder", "magnet_download", "open_registry"];
 
+    // ---- 文件后缀 (fileExt) 语境行为过滤 ----
+    // 展示层过滤副本; 后端不校验 fileExt; 未知分组回退 FileActions。
+    // 背景: fileExt 规则的组合合法性 Go 侧 ValidateActionSchemeRules 不裁决 (仅校验 textType),
+    // 若不过滤会出现「图片分组 -> 磁力链接下载」等语义错配选项 (2026-09-15 修复)。
+
+    /// <summary>
+    /// 文件分组 -> 可选行为类型。展示层过滤副本 (分组名对齐 config.json fileGroups 默认六组),
+    /// 后端不校验 fileExt 组合; 未列出的分组 (用户自建) 回退 <see cref="FileActions"/>。
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, string[]> FileGroupActions =
+        new Dictionary<string, string[]>
+        {
+            // 图片/文档/视频/音频/压缩包: 文件语境安全行为 (默认程序打开 / 指定路径打开 / 所在目录 / 复制)
+            ["image"] = ["open_path", "open", "open_folder", "copy"],
+            ["doc"] = ["open_path", "open", "open_folder", "copy"],
+            ["video"] = ["open_path", "open", "open_folder", "copy"],
+            ["audio"] = ["open_path", "open", "open_folder", "copy"],
+            ["archive"] = ["open_path", "open", "open_folder", "copy"],
+            // 代码文件: 额外允许以脚本执行 / 运行命令处理
+            ["code"] = ["open_path", "open", "open_folder", "copy", "script", "run"],
+        };
+
+    /// <summary>选中分组且当前行为不可选时的默认行为 (镜像 TextTypeDefaultAction 的联动纠正)。</summary>
+    public const string FileGroupDefaultAction = "open_path";
+
+    /// <summary>文件语境通用安全行为集 (无关联分组的手输后缀 / 未知分组的回退)。</summary>
+    public static readonly string[] FileActions = ["open", "open_path", "open_folder", "run", "script", "copy"];
+
+    /// <summary>
+    /// 归一化后缀串: 按逗号/顿号/分号 (含全角) 分割、Trim、去空、去两端点
+    /// (评审 F4: 尾点如 "jpg." 一并去除, 防死条目经写回进共享分组);
+    /// 去重 (忽略大小写) 但保留首个书写形式。供编辑器分组关联重建与保存写回共用。
+    /// </summary>
+    public static List<string> NormalizeExts(string? matchValue)
+    {
+        var result = new List<string>();
+        if (string.IsNullOrWhiteSpace(matchValue)) return result;
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var token in matchValue.Split([',', '，', '、', ';', '；']))
+        {
+            var ext = token.Trim().Trim('.'); // 两端去点 (评审 F4)
+            if (ext.Length == 0) continue;
+            if (seen.Add(ext)) result.Add(ext);
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// 两个后缀集合是否等价 (评审 F4: 两侧先各自 <see cref="NormalizeExts"/> 归一化再比较,
+    /// 忽略大小写/顺序/两端点 —— 防带点存量分组被「无变化重写」; 供分组关联重建与保存写回共用)。
+    /// </summary>
+    public static bool SameExts(IEnumerable<string> a, IEnumerable<string> b)
+        => new HashSet<string>(
+               NormalizeExts(string.Join(',', a)), StringComparer.OrdinalIgnoreCase)
+            .SetEquals(NormalizeExts(string.Join(',', b)));
+
     /// <summary>默认搜索模板 (复刻 DEFAULT_SEARCH_URL)。</summary>
     public const string DefaultSearchUrl = "https://www.google.com/search?q=%selected%";
 
