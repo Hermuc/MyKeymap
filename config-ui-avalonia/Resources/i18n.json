@@ -306,5 +306,6 @@
   "1078": { "zh": "已保存, 但 MyKeymap 重启失败", "en": "Saved, but MyKeymap failed to restart" },
   "1079": { "zh": "改动已写入配置, 但 MyKeymap 进程重启失败, 新热键暂不生效。请通过托盘菜单「重载」手动生效。", "en": "Changes were written to config, but MyKeymap failed to restart, so the new hotkey is not active yet. Use the tray menu \"Reload\" to apply it." },
   "1080": { "zh": "拾取窗口：点击后移动准星到目标窗口并单击填入；Esc 或右键取消", "en": "Pick window: click, then move the crosshair onto the target window and click to fill it in; Esc or right-click cancels" },
-  "1081": { "zh": "无法识别该窗口，请以管理员身份运行设置界面后重试", "en": "Cannot identify this window. Run the Settings UI as administrator and try again." }
+  "1081": { "zh": "无法识别该窗口，请以管理员身份运行设置界面后重试", "en": "Cannot identify this window. Run the Settings UI as administrator and try again." },
+  "1082": { "zh": "未识别到窗口，请重新瞄准目标窗口", "en": "No window recognized — aim at the target window and click again" }
 }

@@ -35,14 +35,22 @@ public enum WindowPickStatus
     /// <summary>目标进程拒绝访问 (非提权运行探高完整性窗口), 需明确提示而非静默错值。</summary>
     FailedAccessDenied,
 
-    /// <summary>提交点无窗口 / 落在自身进程 (会话内部据此保持存活让用户重瞄, 不外泄)。</summary>
+    /// <summary>提交点无窗口 / 落在自身进程。M3: 首次即终止会话并外泄 (FirstNoWindow=true), 控件经 Popup 提示 i18n 1082。</summary>
     FailedNoWindow,
 }
 
 /// <summary>
 /// 拾取结果。Cancelled / 失败态: <see cref="Text"/>="" 且 <see cref="Window"/>=null。
+/// <see cref="FirstNoWindow"/>=true 表示会话内首次提交点探测无窗口/命中自身进程:
+/// 会话就此终止并把结果沿现有通道外泄, 控件侧据此显示「未识别到窗口」提示 (I18n 1082,
+/// 不再静默); 兼容性: 默认 false, 既有构造点与 switch 均无需改动。
 /// </summary>
-public sealed record WindowPickResult(WindowPickStatus Status, WindowDescriptor? Window, WindowMatchKind Kind, string Text);
+public sealed record WindowPickResult(
+    WindowPickStatus Status,
+    WindowDescriptor? Window,
+    WindowMatchKind Kind,
+    string Text,
+    bool FirstNoWindow = false);
 
 /// <summary>拾取行为选项 (AppendMode 是控件侧写回关注点, 不在本层)。</summary>
 public sealed class WindowPickerOptions
@@ -108,16 +116,24 @@ public sealed class WindowPickerService : IWindowPickerService
         Window owner, WindowPickerOptions options, CancellationToken ct = default)
     {
         options ??= new WindowPickerOptions();
+        // M1: owner-null / busy 重入不再 BeginSession (此刻截断会毁掉【正在运行】会话的日志, 评审 M1),
+        // 改用 Log 追加留痕; BeginSession 下移到两项检查之后 —— 仅真正启动会话时才截断重写。
         if (owner is null)
         {
+            PickLog.Log("pick async: owner null -> Cancelled");
             return new WindowPickResult(WindowPickStatus.Cancelled, null, options.Kind, "");
         }
 
         // 防重入: 已有会话在跑则立即返回 Cancelled (不排队、不并发装钩子)
         if (Interlocked.Exchange(ref _busy, 1) == 1)
         {
+            PickLog.Log("pick async: busy re-entry -> Cancelled");
             return new WindowPickResult(WindowPickStatus.Cancelled, null, options.Kind, "");
         }
+
+        // M1: 每轮拾取开新日志 (截断重写)。时机在 owner/busy 检查之后: busy 时另一会话仍在跑,
+        // 过早截断会清空其日志证据链; 走到这里上一会话必已结束, 截断安全。
+        PickLog.BeginSession($"pick session kind={options.Kind} owner=ok");
 
         try
         {
@@ -179,6 +195,28 @@ internal sealed class PickSession
     private bool _draining;
     // L-B: WM_APP_CANCEL 补发闩锁 —— L-4 定时器自愈只补发一次, 避免每 tick 重投。
     private bool _cancelPosted;
+    // M2: WM_APP_COMMIT 补发闩锁 —— 钩子回调内 PostThreadMessage 失败 (队列未建/满) 时置位,
+    //   OnTimer (60ms 节流处) 检测补投, 成功即清锁。与 _cancelPosted 同为 pump 线程私有。
+    private volatile bool _commitPostFailed;
+    // M3: 会话内首次 FailedNoWindow 已通知闩锁 —— 只把首次失败沿结果通道外泄。
+    private bool _noWindowNotified;
+
+    // C1: 钩子回调内的诊断留痕改为「只写事件号, 零 IO」 —— PickLog.Log 是 lock(Gate)+File.AppendAllText,
+    // 回调内做锁+同步文件 IO 违反铁律1 (超 LowLevelHooksTimeout 300ms 被系统静默摘钩)。回调把事件写入
+    // _lastHookEvent (钩子回调与 OnTimer 同在 pump 线程, 单写单读, 无需 volatile/锁), OnTimer 每 tick
+    // 读出并转落 PickLog.Log。同一 tick 内多次事件只记最后一次 (MOVE 不记, DOWN/UP/取消语义另有
+    // pump 消息与 session exit 日志兜底), 可接受 —— 保留证据链且回调严格 O(1)。
+    private const int HookEventLButtonDownCommit = 1;  // 左键 DOWN -> 提交 (post 失败另有 _commitPostFailed 闩锁+补投日志)
+    private const int HookEventLButtonUpSwallowed = 2; // 吞配对左键 UP
+    private const int HookEventRButtonDownCancel = 3;  // 右键 DOWN -> 取消 (post 失败另有 L-B 闩锁自愈)
+    private const int HookEventRButtonUpSwallowed = 4; // 吞配对右键 UP
+    private const int HookEventEscDownCancel = 5;      // Esc DOWN -> 取消
+    private const int HookEventEscUpSwallowed = 6;     // 吞配对 Esc UP
+    private int _lastHookEvent; // 仅 pump 线程读写, 0=无待落盘事件
+
+    // C1/评审建议: 补投失败首次留痕闩锁 (pump 线程私有) —— 失败只记一次, 不每 tick 刷屏,
+    // 消除「闩锁持续保持 + 静默重试」的证据盲区。
+    private bool _repostFailLogged;
 
     // High#1: 探测短路缓存 —— root hwnd 未变则整条跨进程链 + region 重建全跳过
     private IntPtr _lastRootHwnd;
@@ -281,12 +319,14 @@ internal sealed class PickSession
             // 从而保证任何线程读到非零 tid 时队列必已存在, PostThreadMessage 不会因队列未建而丢信号。
             PeekMessage(out _, IntPtr.Zero, 0, 0, PM_NOREMOVE);
             _threadId = GetCurrentThreadId();
+            PickLog.Log($"pump enter tid={_threadId}"); // M1
             Thread.MemoryBarrier(); // L-6: 形式化闭合 Dekker —— 保证"队列已建 + tid 发布"先于任何跨线程 RequestCancel 读取
 
             EnsureHighlightClass();
 
             if (_cancelRequested)
             {
+                PickLog.Log("exit before pump: cancel requested (pre-tid-publish)"); // M1
                 _finalResult = Cancelled();
                 return;
             }
@@ -296,17 +336,26 @@ internal sealed class PickSession
             _mouseHook = SetWindowsHookEx(WH_MOUSE_LL, _mouseProc, hMod, 0);
             if (_mouseHook == IntPtr.Zero)
             {
-                // Low#13: SetWindowsHookEx 已 SetLastError=true, 记录错误码
-                System.Diagnostics.Debug.WriteLine($"[WindowPicker] WH_MOUSE_LL 装钩失败 err={Marshal.GetLastWin32Error()}");
+                // Low#13: SetWindowsHookEx 已 SetLastError=true, 记录错误码 (M1: 落诊断文件)
+                PickLog.Log($"hook WH_MOUSE_LL install failed err={Marshal.GetLastWin32Error()}");
+            }
+            else
+            {
+                PickLog.Log("hook WH_MOUSE_LL installed"); // M1
             }
             _kbHook = SetWindowsHookEx(WH_KEYBOARD_LL, _kbProc, hMod, 0);
             if (_kbHook == IntPtr.Zero)
             {
-                System.Diagnostics.Debug.WriteLine($"[WindowPicker] WH_KEYBOARD_LL 装钩失败 err={Marshal.GetLastWin32Error()}"); // Low#13
+                PickLog.Log($"hook WH_KEYBOARD_LL install failed err={Marshal.GetLastWin32Error()}"); // Low#13 + M1
+            }
+            else
+            {
+                PickLog.Log("hook WH_KEYBOARD_LL installed"); // M1
             }
             if (_mouseHook == IntPtr.Zero || _kbHook == IntPtr.Zero)
             {
                 // 钩子安装失败: 无法进行拾取, 按取消处理 (finally 会摘掉可能已装上的那个)
+                PickLog.Log("exit: hook install failed -> Cancelled"); // M1
                 _finalResult = Cancelled();
                 return;
             }
@@ -326,18 +375,20 @@ internal sealed class PickSession
             }
 
             // High#3: 进入 GetMessage 阻塞前再复查一次取消 —— 覆盖"取消发生在发布 tid 之后、入泵之前"的竞态,
-            // 否则 GetMessage 永久阻塞 -> 双钩滞留系统 + _tcs 永不兜现 + _busy 永为 1。
+            // 否则 GetMessage 永久阻塞 -> 双钩滞留系统 + _tcs 永不兑现 + _busy 永为 1。
             if (_cancelRequested)
             {
+                PickLog.Log("exit before pump: cancel requested (pre-GetMessage)"); // M1
                 _finalResult = Cancelled();
                 return;
             }
 
             PumpMessages();
         }
-        catch
+        catch (Exception ex)
         {
             // 任何异常都不外泄到调用方 UI 线程; 统一降级为取消 (finally 保证恢复现场)
+            PickLog.Log($"run exception: {ex.GetType().Name} {ex.Message}"); // M1: 探测异常降级等静默路径留痕 (H1)
             _finalResult ??= Cancelled();
         }
         finally
@@ -358,7 +409,9 @@ internal sealed class PickSession
             }
             finally
             {
-                _tcs.TrySetResult(_finalResult ?? Cancelled());
+                var result = _finalResult ?? Cancelled();
+                PickLog.Log($"session exit status={result.Status} text={result.Text}"); // M1: 兑现状态
+                _tcs.TrySetResult(result);
             }
         }
     }
@@ -370,6 +423,7 @@ internal sealed class PickSession
         {
             if (msg.message == WM_APP_CANCEL)
             {
+                PickLog.Log("pump exit: WM_APP_CANCEL"); // M1
                 _finalResult = Cancelled();
                 break;
             }
@@ -378,9 +432,11 @@ internal sealed class PickSession
                 HandleCommit();
                 if (_finalResult is not null)
                 {
+                    PickLog.Log("pump exit: commit resolved"); // M1 (退出原因: success/取消/无窗口反馈)
                     break;
                 }
-                // FailedNoWindow (自身/无窗口): 保持会话存活让用户重瞄, 不退出
+                // M3: 首次 FailedNoWindow 已由 HandleCommit 置 _finalResult (会话即将终止);
+                // _noWindowNotified 闩锁保证只外泄一次, 未来若重引入"存活重瞄"路径也只提示首次。
             }
 
             TranslateMessage(ref msg);
@@ -395,7 +451,8 @@ internal sealed class PickSession
     /// 而 HandleCommit 完整探测仅 ~0.03ms, 远早于人手物理抬起 (典型 50-150ms) —— 摘钩必然早于配对 UP 到达,
     /// 导致孤立 WM_RBUTTONUP 投递给光标下目标窗口 → DefWindowProc 生成 WM_CONTEXTMENU → 弹右键菜单/夺焦
     /// (文档化主取消路径右键 100% 复现)。左键提交产生孤立 WM_LBUTTONUP (DOWN 已吞不会误激活, 危害低);
-    /// Esc 产生孤立 WM_KEYUP (基本无害)。注: FailedNoWindow 重瞄路径不退出会话、钩子仍在, 不经此排空。
+    /// Esc 产生孤立 WM_KEYUP (基本无害)。注: M3 后 FailedNoWindow 首次失败即终止会话, 提交点配对 UP
+    /// 必经此排空 (不再有「重瞄存活路径不经排空」的分支)。
     /// H-A 有界硬约束 (铁律2, 与定时器完全解耦): 用 PeekMessage(PM_REMOVE) + Thread.Sleep(1) 轮询替代 GetMessage 阻塞 ——
     /// 有界性不再依赖 SetTimer 成功/ThrottleMs 唤醒 (旧实现若 SetTimer 失败且配对 UP 被别的 LL 钩子吞掉/系统已摘钩/
     /// 设备断开而永不到达, GetMessage 会无限阻塞 → 双钩永久滞留 + 全局左键失效)。
@@ -439,6 +496,9 @@ internal sealed class PickSession
     private void HandleCommit()
     {
         var res = _probe.ProbeAt(new PixelPoint(_commitX, _commitY));
+        // M1: 提交点探测结果全量留痕 (status/hwnd/pid/exe 名)
+        PickLog.Log($"probe commit ({_commitX},{_commitY}) status={res.Status} "
+            + $"hwnd={res.Window?.Hwnd ?? IntPtr.Zero} pid={res.Window?.Pid ?? 0} exe={res.Window?.ExeName ?? "-"}");
         switch (res.Status)
         {
             case WindowPickStatus.Success when res.Window is not null:
@@ -449,7 +509,15 @@ internal sealed class PickSession
                 _finalResult = new WindowPickResult(WindowPickStatus.FailedAccessDenied, null, _options.Kind, "");
                 break;
             default:
-                // FailedNoWindow: 不取消, 等待用户重瞄
+                // M3: FailedNoWindow (无窗口 / 命中自身进程): 首次沿现有结果通道外泄 (FirstNoWindow=true)
+                // -> PickAsync 兑现 -> 控件 ShowTransientMessage(1082), 不再静默存活。
+                if (!_noWindowNotified)
+                {
+                    _noWindowNotified = true;
+                    PickLog.Log("commit no-window (first) -> terminate session with FirstNoWindow feedback");
+                    _finalResult = new WindowPickResult(
+                        WindowPickStatus.FailedNoWindow, null, _options.Kind, "", FirstNoWindow: true);
+                }
                 break;
         }
     }
@@ -473,6 +541,15 @@ internal sealed class PickSession
     /// </summary>
     private void OnTimer(IntPtr hWnd, uint uMsg, IntPtr nIdEvent, uint dwTime)
     {
+        // C1: 钩子回调内已无日志 IO —— 回调只写 _lastHookEvent (单写, 严格 O(1)), 此处转落文件。
+        // 置最前: 保证 _cancelRequested / _draining 早返回路径也不丢事件; 同一 tick 多事件只记最后一次
+        // (以最后一次为准), 见 _lastHookEvent 注释。
+        if (_lastHookEvent != 0)
+        {
+            PickLog.Log($"hook event={_lastHookEvent}");
+            _lastHookEvent = 0;
+        }
+
         // L-4 + L-B: 自愈 —— 若已请求取消但 pump 迟迟没收到 WM_APP_CANCEL (PostToPump 5 次重试全失败的极端情况),
         // 定时器每 ThrottleMs 必触发, 在此重投, 防双钩滞留系统 (铁律2 兜底); _cancelPosted 闩锁保证只补发一次, 不每 tick 重投。
         if (_cancelRequested)
@@ -487,6 +564,25 @@ internal sealed class PickSession
 
         // L-A: 排空期间 (DrainPairedUp 已置位) 不再探测/刷新高亮, 直接 return —— 蓝框已在排空开头隐藏。
         if (_draining) return;
+
+        // M2: COMMIT 投递失败自愈 —— 阆锁置位则补投 (照 L-B 取消补发模式写法), 成功即清锁。
+        // 坐标仍是 DOWN 时刻的 _commitX/_commitY (仅 DOWN 更新), 补投后 pump 循环照常 HandleCommit。
+        // 仍失败则保持阆锁下个 tick 再试 (钩子仍在链上, 用户下次点击仍会被正常提交, 不丢)。
+        if (_commitPostFailed)
+        {
+            if (_threadId != 0 && PostThreadMessage(_threadId, WM_APP_COMMIT, IntPtr.Zero, IntPtr.Zero))
+            {
+                _commitPostFailed = false;
+                _repostFailLogged = false; // C1: 恢复成功, 失败闩锁复位 (下轮再失败仍会留痕)
+                PickLog.Log("commit re-posted via timer latch"); // M1
+            }
+            else if (!_repostFailLogged)
+            {
+                // C1/评审建议: 持续投递失败只记首次, 消除每 tick 静默重试的证据盲区。
+                PickLog.Log("commit re-post failed");
+                _repostFailLogged = true;
+            }
+        }
 
         if (!_dirty) return;
         _dirty = false;
@@ -544,24 +640,40 @@ internal sealed class PickSession
                     _commitX = _curX;
                     _commitY = _curY;
                     _swallowLButtonUp = true; // Medium#4: 标记吞配对 UP, 防向目标投递不成对事件
-                    PostThreadMessage(_threadId, WM_APP_COMMIT, IntPtr.Zero, IntPtr.Zero);
+                    // M2: 检查 PostThreadMessage 返回值; 失败仅置阆锁 (回调内严格 O(1), 不做其他事),
+                    // 由 OnTimer (60ms 节流处) 补投。_threadId==0 时跳过投递只置阆锁。
+                    var posted = _threadId != 0
+                        && PostThreadMessage(_threadId, WM_APP_COMMIT, IntPtr.Zero, IntPtr.Zero);
+                    if (!posted) _commitPostFailed = true;
+                    _lastHookEvent = HookEventLButtonDownCommit; // C1: 回调零 IO, 日志由 OnTimer 转落
                     return new IntPtr(1);      // 吞掉这次 down (防误激活目标程序)
                 }
                 case (int)WM_LBUTTONUP:
                 {
-                    if (_swallowLButtonUp) { _swallowLButtonUp = false; return new IntPtr(1); } // Medium#4
+                    if (_swallowLButtonUp)
+                    {
+                        _swallowLButtonUp = false;
+                        _lastHookEvent = HookEventLButtonUpSwallowed; // C1: 回调零 IO (仅 DOWN/UP 摘要, MOVE 不记)
+                        return new IntPtr(1); // Medium#4
+                    }
                     return CallNextHookEx(_mouseHook, nCode, wParam, lParam);
                 }
                 case (int)WM_RBUTTONDOWN:
                 case (int)WM_RBUTTONDBLCLK:
                 {
                     _swallowRButtonUp = true; // Medium#4: 防孤立 RBUTTONUP 弹残留上下文菜单夺焦
-                    PostThreadMessage(_threadId, WM_APP_CANCEL, IntPtr.Zero, IntPtr.Zero);
+                    PostThreadMessage(_threadId, WM_APP_CANCEL, IntPtr.Zero, IntPtr.Zero); // 失败有 L-B 闩锁自愈
+                    _lastHookEvent = HookEventRButtonDownCancel; // C1: 回调零 IO
                     return new IntPtr(1);
                 }
                 case (int)WM_RBUTTONUP:
                 {
-                    if (_swallowRButtonUp) { _swallowRButtonUp = false; return new IntPtr(1); } // Medium#4
+                    if (_swallowRButtonUp)
+                    {
+                        _swallowRButtonUp = false;
+                        _lastHookEvent = HookEventRButtonUpSwallowed; // C1: 回调零 IO
+                        return new IntPtr(1); // Medium#4
+                    }
                     return CallNextHookEx(_mouseHook, nCode, wParam, lParam);
                 }
             }
@@ -582,11 +694,13 @@ internal sealed class PickSession
                 {
                     _swallowEscUp = true; // Medium#4: 标记吞配对 UP
                     PostThreadMessage(_threadId, WM_APP_CANCEL, IntPtr.Zero, IntPtr.Zero);
+                    _lastHookEvent = HookEventEscDownCancel; // C1: 回调零 IO, 日志由 OnTimer 转落
                     return new IntPtr(1);  // 吞掉 Esc down
                 }
                 if ((m == (int)WM_KEYUP || m == (int)WM_SYSKEYUP) && _swallowEscUp)
                 {
                     _swallowEscUp = false;
+                    _lastHookEvent = HookEventEscUpSwallowed; // C1: 回调零 IO
                     return new IntPtr(1);  // Medium#4: 吞掉配对 Esc up
                 }
             }

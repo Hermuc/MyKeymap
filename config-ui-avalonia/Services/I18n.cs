@@ -39,7 +39,8 @@ namespace MyKeymap.Settings.Services;
 //   1031-1063 选中动作词表标签 (对应 constants.ts 的 MATCH_TYPES /
 //            ACTION_TYPES / TEXT_TYPES)
 //   1077 热键未保存提示 | 1078-1079 保存后重启失败提示 (保存链路修复)
-//   1080-1081 窗口拾取准星 WindowPickButton (按钮 ToolTip / 非提权识别失败提示)
+//   1080-1082 窗口拾取准星 WindowPickButton (按钮 ToolTip / 非提权识别失败提示 /
+//            首次无窗口或命中自身进程提示, M3 不再静默)
 //
 // 墓碑 (已删键的来历, 勿复用这些号段):
 //   1064/1065/1067~1076 (按键写法说明卡) 已随卡片移除而删除, 内容迁入

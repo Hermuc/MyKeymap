@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 using System.Threading;
 using Avalonia;
 using Avalonia.Controls;
@@ -12,11 +11,15 @@ namespace MyKeymap.Settings.Controls;
 /// <summary>
 /// 窗口拾取准星按钮 (方案 L5 控件层, 照 <see cref="HotkeyCapture"/> 范式):
 ///   - <see cref="Text"/> 双向绑定回填/追加目标 (如 WinTitle / WindowGroupRowVm.Value);
+///     控件不占用 DataContext (内部绑定 $parent[controls:WindowPickButton] 显式定源),
+///     宿主绑定相对宿主 VM 正常解析, WriteBack 经 TwoWay 绑定推送回源;
 ///   - <see cref="Kind"/> 决定标识符格式 (默认 TitleAndExe 组合: "{标题} ahk_exe {进程名}");
 ///   - <see cref="AppendMode"/> 为 true 时把结果作为新行追加 (多行字段, T8), 否则整值替换 (T7);
 ///   - <see cref="Picker"/> 未注入时回落 <see cref="WindowPickerService.Shared"/> 静态单例,
 ///     使控件在 DataTemplate 内零配置可用, 同时可注入 mock 供测试;
-///   - 非提权识别失败 (FailedAccessDenied) 以 Popup 浮层提示 I18n 键 1081 (不参与布局测量), 约 4s 后自动收起。
+///   - 非提权识别失败 (FailedAccessDenied) 以 Popup 浮层提示 I18n 键 1081,
+///     首次无窗口/命中自身进程 (FailedNoWindow) 提示 I18n 键 1082 (M3 不再静默),
+///     均约 4s 后自动收起;
 /// 拾取交互机制 (钩子/高亮/取消) 全部封装在 <see cref="IWindowPickerService"/> 后, 本控件只负责装配与写回。
 /// </summary>
 public partial class WindowPickButton : UserControl
@@ -56,7 +59,11 @@ public partial class WindowPickButton : UserControl
     public WindowPickButton()
     {
         InitializeComponent();
-        DataContext = this; // 控件自包含: 绑定源为控件自身属性
+        // 刻意不设 DataContext = this (HotkeyCapture 同款写法, 但对两向绑定链路有致命差异):
+        // 本地值优先级高于继承, 会把宿主 Text="{Binding WinTitle}" 的源钉死在控件自身,
+        // 路径解析失败且永不重试 -> WriteBack 的 SetCurrentValue 只改本地值、无法推送回 VM
+        // (headless 裁决实验: WriteBack_Success_Pushes_Value_To_Hosted_Binding_Source)。
+        // 控件内部绑定已在 WindowPickButton.axaml 里改为 $parent[controls:WindowPickButton] 显式定源。
 
         I18n.Changed += OnLanguageChanged;
         DetachedFromVisualTree += (_, _) =>
@@ -132,8 +139,8 @@ public partial class WindowPickButton : UserControl
         catch (Exception ex)
         {
             // 无静态日志通道 (IMessageService 为需注入的模态对话框, 控件内不可达);
-            // dev 侧写 Debug 输出, 用户侧复用瞬态 Popup 提示 I18n 1081 -> 故障可观测, 绝不留空 catch。
-            Debug.WriteLine($"[WindowPickButton] PickAsync failed: {ex}");
+            // M1: 落诊断文件 + Release 可见, 用户侧复用瞬态 Popup 提示 I18n 1081 -> 故障可观测, 绝不留空 catch。
+            PickLog.Log($"pick click exception: {ex.GetType().Name} {ex.Message}");
             if (Dispatcher.UIThread.CheckAccess())
             {
                 ShowTransientMessage(I18n.T("1081"));
@@ -156,9 +163,13 @@ public partial class WindowPickButton : UserControl
         }
     }
 
-    /// <summary>结果分派 (必在 UI 线程): Success 写回 Text; FailedAccessDenied 内联提示; 其余不改 Text。</summary>
+    /// <summary>
+    /// 结果分派 (必在 UI 线程): Success 写回 Text; FailedAccessDenied 内联提示 (1081);
+    /// FailedNoWindow 首次无窗口/命中自身进程内联提示 (1082, M3 不再静默); 其余不改 Text。
+    /// </summary>
     private void ApplyResult(WindowPickResult result)
     {
+        PickLog.Log($"apply result status={result.Status} text={result.Text}"); // M1
         switch (result.Status)
         {
             case WindowPickStatus.Success:
@@ -167,12 +178,24 @@ public partial class WindowPickButton : UserControl
             case WindowPickStatus.FailedAccessDenied:
                 ShowTransientMessage(I18n.T("1081"));
                 break;
-            // Cancelled / FailedNoWindow: 不改 Text
+            case WindowPickStatus.FailedNoWindow:
+                // M3: 会话内首次无窗口/命中自身进程, 会话已携带 FirstNoWindow 终止外泄。
+                // FirstNoWindow 标志在本分支仅作诊断用途 (分派已由 Status 足够): 测试与诊断日志据此
+                // 区分「首次无窗口即终止」与未来可能重新引入的「存活重瞄」路径, 消除「看似有语义
+                // 实际未接线」的观感 (评审建议, 不改行为)。
+                // 详见 WindowPickButton.axaml 头部注释; 文案见 Resources/i18n.json 键 1082。
+                ShowTransientMessage(I18n.T("1082"));
+                break;
+            // Cancelled: 不改 Text
         }
     }
 
-    /// <summary>写回 Text: AppendMode 追加为新行 ("\n" 分隔, 对齐 WindowGroupRowVm.Value), 否则整值替换。</summary>
-    private void WriteBack(string text)
+    /// <summary>
+    /// 写回 Text: AppendMode 追加为新行 ("\n" 分隔, 对齐 WindowGroupRowVm.Value), 否则整值替换。
+    /// internal 供 MyKeymap.Settings.Tests 的绑定链路裁决/回归测试直接调用
+    /// (csproj 已有 InternalsVisibleTo; 借此锁定 "Success 写回 -> 宿主绑定源更新" 的行为)。
+    /// </summary>
+    internal void WriteBack(string text)
     {
         if (AppendMode)
         {
@@ -180,10 +203,12 @@ public partial class WindowPickButton : UserControl
             // (空行会被 Go/AHK NotBlankLines 过滤, 但仍避免写入无意义的空行)。
             var trimmed = (Text ?? "").TrimEnd('\r', '\n');
             var merged = trimmed.Length == 0 ? text : trimmed + "\n" + text;
+            PickLog.Log($"writeback append={AppendMode} final={merged}"); // M1
             SetCurrentValue(TextProperty, merged);
         }
         else
         {
+            PickLog.Log($"writeback append=False final={text}"); // M1
             SetCurrentValue(TextProperty, text);
         }
     }

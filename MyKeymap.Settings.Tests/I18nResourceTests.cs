@@ -18,8 +18,8 @@ namespace MyKeymap.Settings.Tests;
 /// </remarks>
 public sealed class I18nResourceTests
 {
-    /// <summary>外置前 C# 字典的键数: 306 个数字键 + 301err / 301hint 两个非数字键。</summary>
-    private const int ExpectedKeyCount = 308;
+    /// <summary>外置前 C# 字典的键数: 307 个数字键 + 301err / 301hint 两个非数字键。</summary>
+    private const int ExpectedKeyCount = 309;
 
     private const string LabelPrefix = "label:";
 
@@ -73,7 +73,7 @@ public sealed class I18nResourceTests
 
     // ---------------------------------------------------------------- 守卫断言
 
-    /// <summary>① 文案表真的被加载了, 且 308 键无重复。</summary>
+    /// <summary>① 文案表真的被加载了, 且键数与 <see cref="ExpectedKeyCount"/> 一致、无重复。</summary>
     [Fact]
     public void Json_Is_Loaded_Completely_Without_Duplicate_Keys()
     {
@@ -82,7 +82,7 @@ public sealed class I18nResourceTests
 
         // KeyCount 由 I18n 加载器给出, 但加载器 Locate() 有「源码树向上回退」(回退②):
         // 在本仓布局下, 即便 csproj 的 Content 项失效、输出目录没有 Resources/i18n.json,
-        // 回退②仍会从 BaseDirectory 上溯命中源码树里的 i18n.json, 使 KeyCount 照常 == 308。
+        // 回退②仍会从 BaseDirectory 上溯命中源码树里的 i18n.json, 使 KeyCount 照常等于 ExpectedKeyCount。
         // 因此 KeyCount 无法暴露「Content 项没复制到输出目录」这类故障 (只有生产 beta33\bin\ui
         // 下回退②触不到源码树时才会暴露), 必须由下方 Publish_Output_Contains_Loose_Resource
         // 的物理存在断言兜底 —— 那条不经加载器, 直接检查输出目录里的散部署物。

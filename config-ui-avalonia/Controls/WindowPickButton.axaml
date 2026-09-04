@@ -11,16 +11,20 @@
        Text 为 TwoWay 承载回填/追加目标; AppendMode 区分追加(T8)与替换(T7)语义;
        Picker 未注入时回落 WindowPickerService.Shared -> DataTemplate 零配置可用。
        布局稳定性: 控件根设固定 Width -> 宿主 Auto 列宽恒定; 失败提示用 Popup 浮层
-       (不参与布局测量, 显示/折叠均不改变控件宽高) -> 彻底消除对相邻 TextBox 的挤压/撑高抖动。 -->
+       (不参与布局测量, 显示/折叠均不改变控件宽高) -> 彻底消除对相邻 TextBox 的挤压/撑高抖动。
+       绑定定源 (修复准星不回填 bug): 构造函数不再设 DataContext = this —— 本地值优先级高于继承,
+       会把宿主 Text="{Binding WinTitle}" 的源钉死在控件自身, 路径解析失败且永不重试,
+       WriteBack 的 SetCurrentValue 只改本地值无法推送回 VM (headless 裁决实验证实)。
+       内部绑定改为显式 $parent[controls:WindowPickButton] 定源, 与宿主绑定互不干扰。 -->
   <Panel>
     <Button x:Name="PickButton"
             Click="OnPickClick"
-            IsEnabled="{Binding !IsPicking}"
+            IsEnabled="{Binding !$parent[controls:WindowPickButton].IsPicking}"
             Background="Transparent" BorderBrush="#4169E1" BorderThickness="1"
             Foreground="#4169E1" Padding="0" CornerRadius="6"
             Width="30" Height="30" Cursor="Hand"
             HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
-            ToolTip.Tip="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=1080}">
+            ToolTip.Tip="{Binding $parent[controls:WindowPickButton].LanguageTick, Converter={StaticResource Tr}, ConverterParameter=1080}">
       <TextBlock Text="🎯" FontSize="15" />
     </Button>
 
@@ -31,10 +35,10 @@
            Placement="Bottom"
            Focusable="False"
            IsLightDismissEnabled="False"
-           IsOpen="{Binding MessageText, Mode=OneWay, Converter={StaticResource NotEmpty}}">
+           IsOpen="{Binding $parent[controls:WindowPickButton].MessageText, Mode=OneWay, Converter={StaticResource NotEmpty}}">
       <Border Background="#FFF3F3" BorderBrush="#C62828" BorderThickness="1"
               CornerRadius="6" Padding="10,6" MaxWidth="240" Focusable="False">
-        <TextBlock Text="{Binding MessageText}" Foreground="#C62828" FontSize="12" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding $parent[controls:WindowPickButton].MessageText}" Foreground="#C62828" FontSize="12" TextWrapping="Wrap" />
       </Border>
     </Popup>
   </Panel>
