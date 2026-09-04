@@ -94,12 +94,6 @@
           </DockPanel>
           <TextBlock FontSize="11" Foreground="#8A8F98"
                      Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=978}" />
-          <!-- 兜底规则不在末尾警示 -->
-          <Border IsVisible="{Binding DefaultRuleNotLast}" Background="#FDECEA"
-                  CornerRadius="6" Padding="10,6">
-            <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=979}"
-                       Foreground="#D32F2F" FontSize="12" TextWrapping="Wrap" />
-          </Border>
 
           <Grid ColumnDefinitions="340,*" MinHeight="200">
             <!-- 左: 规则列表 (优先级升序, 第一条命中生效) -->

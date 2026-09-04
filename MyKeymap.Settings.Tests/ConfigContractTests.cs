@@ -7,7 +7,7 @@ namespace MyKeymap.Settings.Tests;
 /// <summary>共享测试数据构造器 (合法/非法方案)。</summary>
 internal static class TestData
 {
-    /// <summary>合法方案: fileExt(jpg,png)->open, textType(url)->open_url, default->copy。</summary>
+    /// <summary>合法方案: fileExt(jpg,png)->open, textType(url)->open_url, fileExt(*)->copy。</summary>
     public static ActionScheme ValidScheme(string name = "契约测试方案") => new()
     {
         Name = name,
@@ -35,8 +35,8 @@ internal static class TestData
             new ActionRule
             {
                 Priority = 3,
-                MatchType = "default",
-                MatchValue = "",
+                MatchType = "fileExt",
+                MatchValue = "*",
                 ActionType = "copy",
                 ActionValue = "",
                 Options = new RuleOptions { CopyToClipboard = true },

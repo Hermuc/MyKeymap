@@ -18,8 +18,9 @@ namespace MyKeymap.Settings.Tests;
 /// </remarks>
 public sealed class I18nResourceTests
 {
-    /// <summary>外置前 C# 字典的键数: 307 个数字键 + 301err / 301hint 两个非数字键。</summary>
-    private const int ExpectedKeyCount = 309;
+    /// <summary>外置前 C# 字典的键数: 307 个数字键 + 301err / 301hint 两个非数字键;
+    /// 2026-09 移除 default 匹配类型相关 4 键 (979/998/1033/1036) 后为 303 数字键 + 2 非数字键。</summary>
+    private const int ExpectedKeyCount = 305;
 
     private const string LabelPrefix = "label:";
 

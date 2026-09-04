@@ -109,8 +109,6 @@ func matchActionRule(rule *ActionRule, isFile bool, content string) bool {
 			return false
 		}
 		return matchTextType(rule.MatchValue, content)
-	case "default":
-		return true
 	}
 	return false
 }

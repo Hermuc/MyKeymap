@@ -50,7 +50,7 @@ type FileGroup struct {
 }
 
 // 规则按 Priority 升序匹配, 第一个匹配的规则生效
-// MatchType: fileExt(文件后缀) / textType(文本特征) / default(兜底)
+// MatchType: fileExt(文件后缀) / textType(文本特征) (default(兜底) 已于 2026-09 移除, 存量不再命中)
 //   - fileExt 条件值为逗号分隔后缀列表, 可用配置中的 fileGroups 快捷填充
 // ActionType: open(程序打开) / search(搜索) / run(执行命令) / send_keys(发送按键) / script(AHK脚本) / copy(复制到剪贴板)
 //   + textType 专用行为: open_url(默认浏览器打开网址) / open_path(系统关联打开) / open_folder(打开文件夹)

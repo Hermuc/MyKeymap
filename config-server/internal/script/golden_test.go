@@ -339,12 +339,10 @@ func syntheticConfig() *Config {
 				Rules: []ActionRule{
 					{Priority: 1, MatchType: "textType", MatchValue: "url", ActionType: "open_url", ActionValue: "", WorkingDir: "", Options: RuleOptions{CopyToClipboard: false, ClearSelection: false, Confirm: false}},
 					{Priority: 2, MatchType: "fileExt", MatchValue: "jpg,png", ActionType: "open", ActionValue: "%selected%", WorkingDir: "", Options: RuleOptions{CopyToClipboard: true, ClearSelection: false, Confirm: true}},
-					{Priority: 3, MatchType: "default", MatchValue: "", ActionType: "search", ActionValue: "https://www.google.com/search?q=%selected%", WorkingDir: `D:\`, Options: RuleOptions{CopyToClipboard: false, ClearSelection: true, Confirm: false}},
 				},
 			},
 			{
-				ID: 2, Name: "禁用方案", Hotkey: "", Enable: false,
-				Rules: []ActionRule{{Priority: 1, MatchType: "default", ActionType: "copy", ActionValue: "%selected%"}},
+				ID: 2, Name: "禁用方案", Hotkey: "", Enable: false, // 2026-09 移除 default 夹具后不挂规则
 			},
 		},
 	}

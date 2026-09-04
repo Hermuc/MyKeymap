@@ -124,7 +124,6 @@ InitKeymap()
     {id: 1, name: "搜索选中", hotkey: "#f", rules: Array(
       {priority: 1, matchType: "textType", matchValue: "url", actionType: "open_url", actionValue: "", workingDir: "", options: {copyToClipboard: false, clearSelection: false, confirm: false}},
       {priority: 2, matchType: "fileExt", matchValue: "jpg,png", actionType: "open", actionValue: "%selected%", workingDir: "", options: {copyToClipboard: true, clearSelection: false, confirm: true}},
-      {priority: 3, matchType: "default", matchValue: "", actionType: "search", actionValue: "https://www.google.com/search?q=%selected%", workingDir: "D:\", options: {copyToClipboard: false, clearSelection: true, confirm: false}},
     )},
   )
   InitActionScheme(ActionSchemeList)

@@ -43,9 +43,7 @@ public sealed partial class RuleItemVm : ObservableObject
     public void RefreshDisplay()
     {
         MatchTypeLabel = ActionSchemeCatalog.MatchTypeLabel(Rule.MatchType);
-        MatchValueText = Rule.MatchType == "default"
-            ? I18n.T("998")
-            : (string.IsNullOrEmpty(Rule.MatchValue) ? I18n.T("999") : Rule.MatchValue);
+        MatchValueText = string.IsNullOrEmpty(Rule.MatchValue) ? I18n.T("999") : Rule.MatchValue;
         ActionTypeLabel = ActionSchemeCatalog.ActionTypeLabel(Rule.ActionType);
 
         var actionText = ActionValueText();
@@ -139,7 +137,7 @@ public sealed partial class RuleEditorVm : ObservableObject
     [ObservableProperty]
     private ComboOption _selectedMatchType = new("fileExt", "");
 
-    /// <summary>切换匹配类型时重置条件值 (复刻: textType→url, default→*, 其余→"")。</summary>
+    /// <summary>切换匹配类型时重置条件值 (复刻: textType→url, 其余→"")。</summary>
     partial void OnSelectedMatchTypeChanged(ComboOption value)
     {
         if (_applying || value.Value == Rule.MatchType) return;
@@ -147,7 +145,6 @@ public sealed partial class RuleEditorVm : ObservableObject
         Rule.MatchValue = value.Value switch
         {
             "textType" => "url",
-            "default" => "*",
             _ => "",
         };
         FileGroupSelected = null; // 复位快捷填入 (复刻 watch(matchType))
@@ -344,6 +341,7 @@ public sealed partial class RuleEditorVm : ObservableObject
         _applying = true;
         try
         {
+            // 历史 default 规则不在选项中, 会显示为第一项 (数据仍为 default); 需切换到其它类型再切回才能完成迁移——直接重选当前显示项不会触发 SelectionChanged (2026-09 移除兜底选项)
             SelectedMatchType = MatchTypeOptions.FirstOrDefault(o => o.Value == Rule.MatchType) ?? MatchTypeOptions[0];
             SelectedTextType = TextTypeOptions.FirstOrDefault(o => o.Value == Rule.MatchValue) ?? TextTypeOptions[0];
             SelectedActionType = ActionTypeOptions.FirstOrDefault(o => o.Value == Rule.ActionType)
@@ -497,19 +495,6 @@ public sealed partial class SelectedActionEditViewModel : ObservableObject
 
     public bool HasEditor => Editor is not null;
 
-    /// <summary>
-    /// 兜底规则不在末尾警示 (复刻 defaultRuleNotLast): default 之后还有其他规则时,
-    /// 这些规则永远不会被匹配到 (第一个命中的规则生效)。
-    /// </summary>
-    [ObservableProperty]
-    private bool _defaultRuleNotLast;
-
-    private void RefreshDefaultWarning()
-    {
-        var idx = Scheme.Rules.FindIndex(r => r.MatchType == "default");
-        DefaultRuleNotLast = idx >= 0 && idx < Scheme.Rules.Count - 1;
-    }
-
     /// <summary>按模型重建规则条目集合 (保持/指定选中下标)。</summary>
     private void SyncRulesFromModel(int selectIndex)
     {
@@ -521,7 +506,6 @@ public sealed partial class SelectedActionEditViewModel : ObservableObject
         }
         var clamped = Math.Clamp(selectIndex, 0, Rules.Count - 1);
         SelectedRule = clamped >= 0 ? Rules[clamped] : null;
-        RefreshDefaultWarning();
         ReapplyMatchedHighlight();
     }
 
@@ -563,11 +547,10 @@ public sealed partial class SelectedActionEditViewModel : ObservableObject
         SyncRulesFromModel(to);
     }
 
-    /// <summary>编辑器改了规则内容: 刷新列表展示文本与兜底警示。</summary>
+    /// <summary>编辑器改了规则内容: 刷新列表展示文本。</summary>
     public void OnRuleEdited()
     {
         foreach (var item in Rules) item.RefreshDisplay();
-        RefreshDefaultWarning();
     }
 
     // ------------------------------------------------------------- 模拟测试

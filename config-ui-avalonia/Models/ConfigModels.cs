@@ -124,7 +124,7 @@ public sealed class FileGroup
 
 /// <summary>
 /// 对应 Go struct ActionRule。规则按 Priority 升序匹配, 第一个匹配的规则生效。
-/// MatchType: fileExt / textType / default;
+/// MatchType: fileExt / textType;
 /// ActionType: open / search / run / send_keys / script / copy
 ///   + textType 专用: open_url / open_path / open_folder / magnet_download / open_registry
 ///   (textType 特征与行为的合法组合由 Go 侧 ValidateActionSchemeRules 约束)。

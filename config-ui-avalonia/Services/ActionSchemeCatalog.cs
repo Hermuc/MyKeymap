@@ -19,13 +19,13 @@ public sealed record ComboOption(string Value, string Label);
 /// <summary>选中动作常量与工厂方法。</summary>
 public static class ActionSchemeCatalog
 {
-    // 匹配条件类型 (复刻 MATCH_TYPES; 「文本正则」与「文件分组」已按 2026-08 改造移除)
+    // 匹配条件类型 (复刻 MATCH_TYPES; 「文本正则」与「文件分组」已按 2026-08 改造移除,
+    // 「默认 (兜底)」已按 2026-09 移除, 现仅剩 fileExt / textType 两类)
     // (Value, LabelKey, HintKey)
     public static readonly (string Value, string LabelKey, string HintKey)[] MatchTypes =
     [
         ("fileExt", "1031", "1034"),
         ("textType", "1032", "1035"),
-        ("default", "1033", "1036"),
     ];
 
     // 行为类型 (复刻 ACTION_TYPES; textType 下可选行为受 TextTypeActions 联动约束)

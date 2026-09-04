@@ -91,8 +91,6 @@ MatchActionRule(rule, selected) {
         return false
       }
       return MatchTextType(rule.matchValue, selected.content)
-    case "default":
-      return true
   }
   return false
 }
