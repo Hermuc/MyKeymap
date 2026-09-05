@@ -8,7 +8,8 @@ namespace MyKeymap.Settings.ViewModels;
 
 /// <summary>
 /// 选中动作方案卡片 (复刻 SelectedAction.vue 的 v-card):
-/// 名称 / 热键显示 / 规则数 / 启用开关 / 编辑删除入口; 整卡点击进入编辑页。
+/// 名称 / 热键显示 / 规则数 / 启用开关 / 删除入口; 整卡点击进入编辑页 (编辑按钮已删,
+/// 点卡片即编辑, 按钮冗余)。
 /// </summary>
 public sealed partial class SchemeCardVm : ObservableObject
 {
@@ -39,8 +40,7 @@ public sealed partial class SchemeCardVm : ObservableObject
 
     public string EnableLabel => Scheme.Enable ? I18n.T("964") : I18n.T("965");
 
-    /// <summary>卡片操作按钮文案 (预翻译, 避免模板内跨层绑定)。</summary>
-    public string EditLabel => I18n.T("966");
+    /// <summary>卡片删除按钮文案 (预翻译, 避免模板内跨层绑定)。</summary>
     public string DeleteLabel => I18n.T("967");
 
     /// <summary>启用开关: 写入内存配置并立即保存 (复刻 toggleEnable -> saveConfig)。</summary>
@@ -70,7 +70,6 @@ public sealed partial class SchemeCardVm : ObservableObject
         OnPropertyChanged(nameof(HotkeyDisplay));
         OnPropertyChanged(nameof(RuleCountText));
         OnPropertyChanged(nameof(EnableLabel));
-        OnPropertyChanged(nameof(EditLabel));
         OnPropertyChanged(nameof(DeleteLabel));
     }
 }

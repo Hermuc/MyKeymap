@@ -60,7 +60,7 @@
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:SchemeCardVm">
-              <Border Classes="scheme-card" Width="292" Margin="0,0,14,14"
+              <Border Classes="scheme-card" Width="380" Margin="0,0,14,14"
                       Background="White" BorderBrush="#E3E6EC" BorderThickness="1"
                       CornerRadius="10" Padding="14" Cursor="Hand"
                       Tapped="OnCardTapped">
@@ -87,9 +87,6 @@
                   <TextBlock Text="{Binding RuleCountText}" FontSize="11" Foreground="#8A8F98" />
                   <!-- 操作行 -->
                   <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
-                    <Button Command="{Binding OpenCommand}" Background="Transparent"
-                            BorderThickness="0" Padding="8,4" Foreground="#4169E1" FontSize="12"
-                            Content="{Binding EditLabel}" />
                     <Button Command="{Binding AskDeleteCommand}" Background="Transparent"
                             BorderThickness="0" Padding="8,4" Foreground="#D32F2F" FontSize="12"
                             Content="{Binding DeleteLabel}" />
