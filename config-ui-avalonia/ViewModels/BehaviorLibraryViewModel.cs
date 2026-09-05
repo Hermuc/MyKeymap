@@ -58,15 +58,24 @@ public sealed partial class BehaviorLibraryViewModel : ObservableObject
     [ObservableProperty] private string? _statusText;
     [ObservableProperty] private int _languageTick;
 
+    /// <summary>选中内置行时给出只读解释, 避免「按钮灰=坏了」的困惑。</summary>
+    partial void OnSelectedRowChanged(BehaviorRowVm? value)
+    {
+        if (value is { IsUser: false })
+        {
+            StatusText = I18n.T("1103_only");
+        }
+    }
+
     private void OnLanguageChanged() => ++LanguageTick;
 
     public void UnsubscribeLanguage() => I18n.Changed -= OnLanguageChanged;
 
-    /// <summary>从后端拉取目录快照并重建列表 (窗口打开与每次变更后调用)。</summary>
-    public async Task ReloadAsync()
+    /// <summary>从后端拉取目录快照并重建列表; selectId 优先 (新建/编辑后定位到该行)。</summary>
+    public async Task ReloadAsync(string? selectId = null)
     {
         await BehaviorCatalog.LoadAsync(Api);
-        var selectedId = SelectedRow?.Id;
+        var selectedId = selectId ?? SelectedRow?.Id;
         Rows.Clear();
         foreach (var p in BehaviorCatalog.Packs)
         {

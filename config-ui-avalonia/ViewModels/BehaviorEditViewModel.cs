@@ -53,6 +53,9 @@ public sealed partial class BehaviorEditViewModel : ObservableObject
 
     public bool IsNew { get; }
 
+    /// <summary>保存成功后的包 ID (行为库窗口据此选中新行); 取消/失败为 null。</summary>
+    public string? SavedId { get; private set; }
+
     public ObservableCollection<BehaviorPremiseRowVm> Premises { get; } = [];
 
     /// <summary>基础动作候选 = 内置包 (entry.action 的合法取值即内置动作 ID)。</summary>
@@ -93,7 +96,9 @@ public sealed partial class BehaviorEditViewModel : ObservableObject
         var resp = IsNew
             ? await Api.CreateBehaviorAsync(pack)
             : await Api.UpdateBehaviorAsync(_originalId!, pack);
-        return resp.Success ? null : resp.ErrorMessage;
+        if (!resp.Success) return resp.ErrorMessage;
+        SavedId = pack.Id;
+        return null;
     }
 
     private BehaviorPack BuildPack()

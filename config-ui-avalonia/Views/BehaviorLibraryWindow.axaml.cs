@@ -28,11 +28,11 @@ public partial class BehaviorLibraryWindow : Window
         ReloadSilently();
     }
 
-    private async void ReloadSilently()
+    private async void ReloadSilently(string? selectId = null)
     {
         try
         {
-            if (DataContext is BehaviorLibraryViewModel vm) await vm.ReloadAsync();
+            if (DataContext is BehaviorLibraryViewModel vm) await vm.ReloadAsync(selectId);
         }
         catch (Exception ex)
         {
@@ -54,8 +54,15 @@ public partial class BehaviorLibraryWindow : Window
         if (DataContext is not BehaviorLibraryViewModel vm) return;
         var dialog = new BehaviorEditWindow { DataContext = new BehaviorEditViewModel(vm.Main, existing) };
         await dialog.ShowDialog(this);
-        if (dialog.Saved) vm.IsDirty = true;
-        ReloadSilently();
+        if (dialog.Saved)
+        {
+            vm.IsDirty = true;
+            ReloadSilently(dialog.DataContext is BehaviorEditViewModel form ? form.SavedId : null);
+        }
+        else
+        {
+            ReloadSilently();
+        }
     }
 
     private async void OnDeleteClick(object? sender, RoutedEventArgs e)
