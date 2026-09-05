@@ -43,13 +43,13 @@
       <Border Background="White" BorderBrush="#E3E6EC" BorderThickness="1"
               CornerRadius="10" Padding="16">
         <StackPanel Spacing="12">
-          <Grid ColumnDefinitions="140,*">
+          <Grid ColumnDefinitions="140,*" ColumnSpacing="10">
             <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=975}"
                        VerticalAlignment="Center" Foreground="#5F6368" />
             <TextBox Grid.Column="1" Text="{Binding Name}" MaxWidth="420"
                      HorizontalAlignment="Left" MinWidth="320" />
           </Grid>
-          <Grid ColumnDefinitions="140,*">
+          <Grid ColumnDefinitions="140,*" ColumnSpacing="10">
             <TextBlock VerticalAlignment="Top" Foreground="#5F6368" Margin="0,7,0,0"
                        Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=1063}" />
             <StackPanel Grid.Column="1" Spacing="6" MaxWidth="420" HorizontalAlignment="Left">
@@ -70,7 +70,7 @@
               </Border>
             </StackPanel>
           </Grid>
-          <Grid ColumnDefinitions="140,*">
+          <Grid ColumnDefinitions="140,*" ColumnSpacing="10">
             <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=964}"
                        VerticalAlignment="Center" Foreground="#5F6368" />
             <ToggleSwitch Grid.Column="1" IsChecked="{Binding Enable}"

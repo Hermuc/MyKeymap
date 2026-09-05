@@ -32,7 +32,7 @@
           <!-- ===================== 类型 1: 启动程序或激活窗口 ===================== -->
           <DataTemplate DataType="vm:ActivateOrRunEditorVm" x:DataType="vm:ActivateOrRunEditorVm">
             <StackPanel Spacing="6">
-              <Grid ColumnDefinitions="140,*,Auto" Margin="0,6,0,0">
+              <Grid ColumnDefinitions="140,*,Auto" ColumnSpacing="10" Margin="0,6,0,0">
                 <TextBlock Text="{Binding #PanelRoot.((vm:ActionEditorViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=301}"
                            Foreground="#8A8F98" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" />
                 <TextBox Grid.Column="1" Text="{Binding WinTitle}" Padding="8,6" />
@@ -43,7 +43,7 @@
                          IsVisible="{Binding WinTitleError, Converter={StaticResource NotEmpty}}" />
               <TextBlock Text="{Binding #PanelRoot.((vm:ActionEditorViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=301hint}"
                          Foreground="#8A8F98" FontSize="12" TextWrapping="Wrap" />
-              <Grid ColumnDefinitions="140,*" Margin="0,6,0,0">
+              <Grid ColumnDefinitions="140,*" ColumnSpacing="10" Margin="0,6,0,0">
                 <TextBlock Text="{Binding #PanelRoot.((vm:ActionEditorViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=302}"
                            Foreground="#8A8F98" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" />
                 <AutoCompleteBox Grid.Column="1" Text="{Binding Target, Mode=TwoWay}"
@@ -51,17 +51,17 @@
                                  Padding="8,6" />
               </Grid>
 
-              <Grid ColumnDefinitions="140,*" Margin="0,6,0,0">
+              <Grid ColumnDefinitions="140,*" ColumnSpacing="10" Margin="0,6,0,0">
                 <TextBlock Text="{Binding #PanelRoot.((vm:ActionEditorViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=303}"
                            Foreground="#8A8F98" FontSize="12" VerticalAlignment="Center" />
                 <TextBox Grid.Column="1" Text="{Binding Args}" Padding="8,6" />
               </Grid>
-              <Grid ColumnDefinitions="140,*">
+              <Grid ColumnDefinitions="140,*" ColumnSpacing="10">
                 <TextBlock Text="{Binding #PanelRoot.((vm:ActionEditorViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=304}"
                            Foreground="#8A8F98" FontSize="12" VerticalAlignment="Center" />
                 <TextBox Grid.Column="1" Text="{Binding WorkingDir}" Padding="8,6" />
               </Grid>
-              <Grid ColumnDefinitions="140,*">
+              <Grid ColumnDefinitions="140,*" ColumnSpacing="10">
                 <TextBlock Text="{Binding #PanelRoot.((vm:ActionEditorViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=305}"
                            Foreground="#8A8F98" FontSize="12" VerticalAlignment="Center" />
                 <TextBox Grid.Column="1" Text="{Binding Comment}" Padding="8,6" />
