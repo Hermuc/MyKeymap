@@ -105,12 +105,14 @@ jobs:
 
       - name: Publish Avalonia UI (self-contained win-x64 + ReadyToRun)
         shell: pwsh
-        run: >
-          dotnet publish config-ui-avalonia/MyKeymap.Settings.csproj
-          -c Release -r win-x64 --self-contained true
-          -p:PublishReadyToRun=true
-          -p:SatelliteResourceLanguages="zh-Hans;en"
-          -o bin/ui --nologo -v q
+        run: |
+          $out = dotnet publish config-ui-avalonia/MyKeymap.Settings.csproj -c Release -r win-x64 --self-contained true -p:PublishReadyToRun=true -p:SatelliteResourceLanguages="zh-Hans;en" -o bin/ui --nologo -v q 2>&1 | Out-String
+          if ($LASTEXITCODE -ne 0) {
+            $tail = ($out -split "`r?`n" | Where-Object { $_ -ne '' } | Select-Object -Last 20) -join "`n"
+            Write-Output ("::error::publish failed%0A" + ($tail -replace "%", "%25" -replace "`n", "%0A"))
+            Set-Content -Path "$env:GITHUB_WORKSPACE/publish-error.log" -Value $out
+            exit 1
+          }
 
       - name: Assert i18n loose resource hash
         shell: bash
