@@ -20,11 +20,16 @@ public partial class SelectedActionPageView : UserControl
     {
         InitializeComponent();
         DataContextChanged += (_, _) => InjectConfirmDialog();
+        // 视图随导航每次重建 (MainWindow 的 DataTemplate), 而页面 VM 是启动期单例:
+        // ConfirmAsync 必须始终指向"当前挂在可视树上"的视图实例, 否则旧视图的
+        // TopLevel.GetTopLevel 返回 null, 确认框静默失败 → 删除无反应。
+        AttachedToVisualTree += (_, _) => InjectConfirmDialog();
     }
 
     private void InjectConfirmDialog()
     {
-        if (DataContext is SelectedActionPageViewModel vm && vm.ConfirmAsync is null)
+        // 仅当本视图当前挂在窗口上时才注入 (脱离树的旧视图 GetTopLevel 恒为 null)
+        if (TopLevel.GetTopLevel(this) is Window && DataContext is SelectedActionPageViewModel vm)
         {
             vm.ConfirmAsync = ShowConfirmAsync;
         }
