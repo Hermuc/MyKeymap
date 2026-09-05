@@ -11,26 +11,25 @@ namespace MyKeymap.Settings.Views;
 /// </summary>
 public partial class BehaviorEditWindow : Window
 {
-    private readonly BehaviorEditViewModel _vm;
-
     /// <summary>保存成功标记 (行为库窗口据此刷新 + 标记 IsDirty)。</summary>
     public bool Saved { get; private set; }
 
+    /// <summary>DataContext 构造后才赋值, 此处不做构造期强转 (同 BehaviorLibraryWindow)。</summary>
     public BehaviorEditWindow()
     {
         InitializeComponent();
-        _vm = (BehaviorEditViewModel)DataContext!;
-        Closed += (_, _) => _vm.UnsubscribeLanguage();
+        Closed += (_, _) => (DataContext as BehaviorEditViewModel)?.UnsubscribeLanguage();
     }
 
     private async void OnSaveClick(object? sender, RoutedEventArgs e)
     {
+        if (DataContext is not BehaviorEditViewModel vm) return;
         try
         {
-            var error = await _vm.SaveAsync();
+            var error = await vm.SaveAsync();
             if (error is not null)
             {
-                _vm.StatusText = error;
+                vm.StatusText = error;
                 return;
             }
             Saved = true;
@@ -38,7 +37,7 @@ public partial class BehaviorEditWindow : Window
         }
         catch (Exception ex)
         {
-            _vm.StatusText = ex.Message;
+            vm.StatusText = ex.Message;
         }
     }
 

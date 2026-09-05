@@ -44,8 +44,10 @@ public sealed partial class BehaviorEditViewModel : ObservableObject
             });
         }
         if (Premises.Count == 0) Premises.Add(new BehaviorPremiseRowVm());
+        // 目录未加载 (异常时序) 时兜底, 避免空序列 First() 崩溃
         SelectedBaseAction = BaseActionOptions.FirstOrDefault(o => o.Value == existing?.Entry.Action)
-                             ?? BaseActionOptions.First();
+                             ?? BaseActionOptions.FirstOrDefault()
+                             ?? new ComboOption("run", "");
         I18n.Changed += OnLanguageChanged;
     }
 
