@@ -1,4 +1,4 @@
-version = 2.0-beta33
+version = 1.0-beta1
 ahkVersion = 2.0.19
 folder = MyKeymap-$(version)
 zip = $(folder).7z
@@ -82,7 +82,7 @@ ahk: buildServer
 
 # ===== 本机回归与部署 (2026-09-03 新增) =====
 # 部署目录 = 正在使用的软件 (行为基线配置所在, 见 docs/CONTRACTS.md 约束 1)
-DEPLOY_DIR := ../MyKeymap-2.0-beta33
+DEPLOY_DIR := ../MyKeymap-1.0-beta1
 CHECK_CONFIG := $(DEPLOY_DIR)/data/config.json
 
 # check: 一键回归 = Go 单测 + 重新生成产物 + AHK 语法校验 + Oracle 运行时对账

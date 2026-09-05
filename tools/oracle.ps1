@@ -51,7 +51,7 @@ $harness += '}'
 [IO.File]::WriteAllLines("$repo\tmp_oracle_harness.ahk", $harness, (New-Object Text.UTF8Encoding $false))
 
 # 2. Run harness to export runtime registry (kill stray AHK processes first)
-Get-Process | Where-Object { $_.ProcessName -match 'AutoHotkey' -and $_.Path -notlike '*MyKeymap-2.0-beta33*' } | Stop-Process -Force
+Get-Process | Where-Object { $_.ProcessName -match 'AutoHotkey' -and $_.Path -notlike '*MyKeymap-1.0-beta1*' } | Stop-Process -Force
 Start-Sleep -Milliseconds 300
 Remove-Item "$tmp\resolver_dump.json", "$tmp\oracle_progress.txt" -ErrorAction SilentlyContinue
 $p = Start-Process -FilePath "$repo\bin\AutoHotkey64.exe" -ArgumentList '/ErrorStdOut', "$repo\tmp_oracle_harness.ahk" -WorkingDirectory "$repo\bin" -PassThru -NoNewWindow -RedirectStandardError "$tmp\oracle_err.txt"
@@ -59,7 +59,7 @@ if (!$p.WaitForExit(20000)) { $p | Stop-Process -Force; Get-Content "$tmp\oracle
 if (!(Test-Path "$tmp\resolver_dump.json")) { Get-Content "$tmp\oracle_err.txt"; throw 'no resolver dump' }
 
 # 3. Go side plan
-& "$tmp\settings.exe" DumpPlan 'D:\PortableApps\MyKeymap-2.0-beta33\data\config.json' "$tmp\plan.json"
+& "$tmp\settings.exe" DumpPlan 'D:\PortableApps\MyKeymap-1.0-beta1\data\config.json' "$tmp\plan.json"
 
 # 4. Compare: command set + step count
 $plan = [IO.File]::ReadAllText("$tmp\plan.json", [Text.Encoding]::UTF8) | ConvertFrom-Json
