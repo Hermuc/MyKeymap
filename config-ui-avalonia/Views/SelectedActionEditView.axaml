@@ -41,7 +41,7 @@
 
       <!-- ===================== 方案字段 (名称 / 热键 / 启用) ===================== -->
       <Border Background="White" BorderBrush="#E3E6EC" BorderThickness="1"
-              CornerRadius="10" Padding="16">
+              CornerRadius="10" Padding="16" MaxWidth="1093" HorizontalAlignment="Left">
         <StackPanel Spacing="12">
           <Grid ColumnDefinitions="140,*" ColumnSpacing="10">
             <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=975}"
@@ -82,7 +82,7 @@
 
       <!-- ===================== 规则列表 + 规则编辑器 ===================== -->
       <Border Background="White" BorderBrush="#E3E6EC" BorderThickness="1"
-              CornerRadius="10" Padding="16">
+              CornerRadius="10" Padding="16" MaxWidth="1093" HorizontalAlignment="Left">
         <StackPanel Spacing="10">
           <DockPanel>
             <TextBlock DockPanel.Dock="Left" FontSize="15" FontWeight="SemiBold"
@@ -271,7 +271,7 @@
 
       <!-- ===================== 模拟测试 (复刻 ActionTester.vue) ===================== -->
       <Border Background="White" BorderBrush="#E3E6EC" BorderThickness="1"
-              CornerRadius="10" Padding="16">
+              CornerRadius="10" Padding="16" MaxWidth="1093" HorizontalAlignment="Left">
         <StackPanel Spacing="10">
           <TextBlock FontSize="15" FontWeight="SemiBold"
                      Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=987}" />
