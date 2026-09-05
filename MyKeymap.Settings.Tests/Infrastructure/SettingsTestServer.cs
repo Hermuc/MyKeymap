@@ -24,7 +24,21 @@ public sealed class SettingsTestServer : IAsyncLifetime
     private static readonly string HeadlessExeSource =
         Path.Combine(Path.GetTempPath(), "mk_settings_headless", "settings.exe");
 
-    private const string RepoRoot = @"D:\PortableApps\MyKeymap-main";
+    /// <summary>
+    /// 仓库根: 从测试输出目录逐级向上找含 config-ui-avalonia 的目录
+    /// (与 I18nResourceTests.RepoRoot 同款; 硬编码盘符路径会在 CI 检出目录下全线失败)。
+    /// </summary>
+    private static readonly string RepoRoot = FindRepoRoot();
+
+    private static string FindRepoRoot()
+    {
+        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
+        {
+            if (Directory.Exists(Path.Combine(dir.FullName, "config-ui-avalonia"))) return dir.FullName;
+        }
+        throw new InvalidOperationException(
+            "找不到仓库根 (含 config-ui-avalonia 的目录), BaseDirectory=" + AppContext.BaseDirectory);
+    }
 
     private Process? _process;
     private Task? _stdoutDrain;
