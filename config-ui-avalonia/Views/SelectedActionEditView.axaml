@@ -46,16 +46,16 @@
           <Grid ColumnDefinitions="140,*" ColumnSpacing="10">
             <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=975}"
                        VerticalAlignment="Center" Foreground="#5F6368" />
-            <TextBox Grid.Column="1" Text="{Binding Name}" MaxWidth="420"
-                     HorizontalAlignment="Left" MinWidth="320" />
+            <TextBox Grid.Column="1" Text="{Binding Name}" Width="210"
+                     HorizontalAlignment="Left" />
           </Grid>
           <Grid ColumnDefinitions="140,*" ColumnSpacing="10">
             <TextBlock VerticalAlignment="Top" Foreground="#5F6368" Margin="0,7,0,0"
                        Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=1063}" />
-            <StackPanel Grid.Column="1" Spacing="6" MaxWidth="420" HorizontalAlignment="Left">
+            <StackPanel Grid.Column="1" Spacing="6" MaxWidth="210" HorizontalAlignment="Left">
               <controls:HotkeyCapture Hotkey="{Binding Hotkey}"
                                       UsedHotkeys="{Binding UsedHotkeys}"
-                                      Width="420" HorizontalAlignment="Left" />
+                                      Width="210" HorizontalAlignment="Left" />
               <!-- 空热键警示 (复刻 warning alert) -->
               <Border IsVisible="{Binding NoHotkeyWarning}" Background="#FFF8E1"
                       CornerRadius="6" Padding="10,6">

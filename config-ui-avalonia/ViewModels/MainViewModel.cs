@@ -57,8 +57,6 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string? _saveNotice;
 
-    public string Version => Config?.Options.MykeymapVersion ?? "";
-
     // ------------------------------------------------------------- 页面与导航
 
     public HomePageViewModel? HomeVm { get; private set; }
@@ -109,7 +107,6 @@ public sealed partial class MainViewModel : ObservableObject
 
         Config = ConfigReadDefaults.Apply(resp.Value);
         I18n.ApplyConfigLanguage(Config.Options.Language);
-        OnPropertyChanged(nameof(Version));
 
         HomeVm = new HomePageViewModel(Session, this);
         SettingsVm = new SettingsPageViewModel(this);
@@ -309,7 +306,6 @@ public sealed partial class MainViewModel : ObservableObject
         if (HomeVm is not null) HomeVm.LanguageTick++;
         ActionVm?.OnLanguageChanged();
         foreach (var page in _keymapPages.Values.OfType<ILanguageRefresh>()) page.OnLanguageChanged();
-        OnPropertyChanged(nameof(Version));
         BuildNav();
     }
 

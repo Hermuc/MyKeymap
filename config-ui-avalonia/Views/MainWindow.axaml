@@ -38,10 +38,8 @@
                  不影响 DockPanel Top 布局; 右侧 "MyKeymap" 标题 VerticalAlignment=Center 自动居中。 -->
             <Image Source="avares://MyKeymap.Settings/Assets/logo.png"
                    Width="52" Height="52" />
-            <StackPanel VerticalAlignment="Center" Spacing="1">
-              <TextBlock Text="MyKeymap" FontSize="18" FontWeight="SemiBold" />
-              <TextBlock Text="{Binding Version}" FontSize="12" Foreground="#8A8F98" />
-            </StackPanel>
+            <TextBlock VerticalAlignment="Center" Text="MyKeymap"
+                       FontSize="18" FontWeight="SemiBold" />
           </StackPanel>
           <Border Height="1" Background="#E3E6EC" />
         </StackPanel>
