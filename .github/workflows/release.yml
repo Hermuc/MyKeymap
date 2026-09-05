@@ -74,15 +74,24 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          if ! dotnet test MyKeymap.Settings.Tests/MyKeymap.Settings.Tests.csproj --nologo 2>&1 | tee "$TEMP/citest.log"; then
-            {
-              echo "### C# test failures"
-              echo '```'
-              grep -E "失败 |Failed [A-Z]|Assert|错误消息|Expected|Actual|at MyKeymap" "$TEMP/citest.log" | head -60
-              echo '```'
-            } >> "$GITHUB_STEP_SUMMARY"
-            exit 1
-          fi
+          dotnet test MyKeymap.Settings.Tests/MyKeymap.Settings.Tests.csproj --nologo --logger trx 2>&1 | tee "$TEMP/citest.log"
+
+      - name: Dump test failures as annotations
+        if: failure()
+        shell: bash
+        run: |
+          grep -E "失败 [A-Za-z_]|Failed [A-Za-z_]|错误消息|Assert\.?[A-Za-z]* Failure|Expected|Actual" "$TEMP/citest.log" | head -12 | while IFS= read -r l; do
+            echo "::error::${l:0:180}"
+          done
+          ls -la "$TEMP"/*.trx 2>/dev/null | head -3
+      - name: Upload trx on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            **/TestResults/*.trx
+            ${{ runner.temp }}/citest.log
 
       - name: Generate + validate AHK script (/Validate)
         run: |
