@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <!-- 精简框架本地化附属资源 (原 Makefile -p: 开关; pwsh 下引号包裹的 zh-Hans;en 会拆坏命令行, 故移入工程文件) -->
+    <SatelliteResourceLanguages>zh-Hans;en</SatelliteResourceLanguages>
     <!-- 输出为 Windows 可执行程序，最终产物为 MyKeymap.Settings.exe -->
     <OutputType>WinExe</OutputType>
     <!-- 目标框架：.NET 10 -->

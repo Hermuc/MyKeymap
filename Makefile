@@ -13,7 +13,7 @@ buildServer:
 buildClientAvalonia:
 	@dotnet --list-sdks | grep -q . || (echo "[错误] dotnet --list-sdks 为空: 未找到 .NET SDK (PATH 陷阱: C:\\Program Files\\dotnet 可能只有运行时无 SDK), 请安装 SDK 或将 PATH 指向含 SDK 的 dotnet.exe"; exit 1)
 	rm -f -r bin/ui
-	cd config-ui-avalonia; dotnet publish -c Release -r win-x64 --self-contained true -p:PublishReadyToRun=true -p:SatelliteResourceLanguages="zh-Hans;en" -o ../bin/ui
+	cd config-ui-avalonia; dotnet publish -c Release -r win-x64 --self-contained true -p:PublishReadyToRun=true -o ../bin/ui
 	@pwsh -NoProfile -Command "$$src='config-ui-avalonia/Resources/i18n.json'; $$dst='bin/ui/Resources/i18n.json'; if(!(Test-Path $$dst)){Write-Error '[断言失败] publish 后缺少散资源: '$$dst; exit 1}; $$h1=(Get-FileHash $$src -Algorithm SHA256).Hash; $$h2=(Get-FileHash $$dst -Algorithm SHA256).Hash; if($$h1 -ne $$h2){Write-Error ('[断言失败] i18n.json SHA256 不一致: 源=' + $$h1 + ' 产出=' + $$h2); exit 1}; Write-Host '[OK] i18n.json SHA256 一致: '$$h1"
 
 copyFiles: CopyAHK
