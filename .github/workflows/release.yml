@@ -71,7 +71,18 @@ jobs:
           cp bin/settings.exe "$TEMP/mk_settings_headless/settings.exe"
 
       - name: C# unit tests
-        run: dotnet test MyKeymap.Settings.Tests/MyKeymap.Settings.Tests.csproj --nologo -v q
+        shell: bash
+        run: |
+          set -o pipefail
+          if ! dotnet test MyKeymap.Settings.Tests/MyKeymap.Settings.Tests.csproj --nologo 2>&1 | tee "$TEMP/citest.log"; then
+            {
+              echo "### C# test failures"
+              echo '```'
+              grep -E "失败 |Failed [A-Z]|Assert|错误消息|Expected|Actual|at MyKeymap" "$TEMP/citest.log" | head -60
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
 
       - name: Generate + validate AHK script (/Validate)
         run: |
