@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"settings/internal/behaviors"
 	"settings/internal/proc"
 	"settings/internal/script"
 )
@@ -64,7 +65,7 @@ func CreateActionSchemeHandler(c *gin.Context) {
 	if err := c.ShouldBindJSON(&scheme); err != nil {
 		panic(err)
 	}
-	if err := script.ValidateActionSchemeRules(&scheme); err != nil {
+	if err := script.ValidateActionSchemeRules(&scheme, loadBehaviorCatalog()); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
@@ -90,7 +91,7 @@ func UpdateActionSchemeHandler(c *gin.Context) {
 	if err := c.ShouldBindJSON(&scheme); err != nil {
 		panic(err)
 	}
-	if err := script.ValidateActionSchemeRules(&scheme); err != nil {
+	if err := script.ValidateActionSchemeRules(&scheme, loadBehaviorCatalog()); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
@@ -155,7 +156,7 @@ func TestActionSchemeHandler(c *gin.Context) {
 		return
 	}
 	// 校验组合合法性: textType 特征 -> 行为 必须语义匹配 (非法组合拒绝测试, 与保存行为一致)
-	if err := script.ValidateActionSchemeRules(scheme); err != nil {
+	if err := script.ValidateActionSchemeRules(scheme, loadBehaviorCatalog()); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
@@ -164,9 +165,16 @@ func TestActionSchemeHandler(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"matched": false})
 		return
 	}
+	// 预览按解析后的实际动作生成 (用户行为 builtin entry 展开为基础动作+包默认模板),
+	// 与渲染语义一致; rule 本身原样返回 (UI 展示的仍是行为 ID)
+	actionType, actionValue, workingDir := behaviors.ResolveRuleAction(loadBehaviorCatalog(), rule.ActionType, rule.ActionValue, rule.WorkingDir)
+	resolved := *rule
+	resolved.ActionType = actionType
+	resolved.ActionValue = actionValue
+	resolved.WorkingDir = workingDir
 	c.JSON(http.StatusOK, gin.H{
 		"matched": true,
 		"rule":    rule,
-		"preview": script.PreviewAction(rule, req.Content),
+		"preview": script.PreviewAction(&resolved, req.Content),
 	})
 }

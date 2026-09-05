@@ -111,9 +111,10 @@ func SaveConfigHandler(debug bool) gin.HandlerFunc {
 		// DTO→model 映射在校验与落盘之前
 		config := DTOToConfig(&dto)
 
-		// 校验选中动作方案组合合法性 (textType 特征 -> 行为 必须语义匹配), 非法组合拒绝保存
+		// 校验选中动作方案组合合法性 (规则引用的行为必须存在且覆盖匹配前提), 非法组合拒绝保存
+		behaviorCatalog := loadBehaviorCatalog()
 		for i := range config.ActionSchemes {
-			if err := script.ValidateActionSchemeRules(&config.ActionSchemes[i]); err != nil {
+			if err := script.ValidateActionSchemeRules(&config.ActionSchemes[i], behaviorCatalog); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{"message": "保存失败: " + err.Error()})
 				return
 			}

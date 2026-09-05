@@ -274,6 +274,45 @@ class ConfigProvider {
 }
 ```
 
+
+### 3.9 行为包 (Behavior Pack) —— 选中动作「行为库」契约 (2026-09-05 冻结)
+
+行为 = 自描述目录包: `<id>/behavior.json` (+ 二期可选脚本)。两个来源: **内置包**随软件分发
+(settings.exe 同级 `behaviors/`, 仓库 `bin/behaviors/` 入库), **用户包**在 config.json 同级
+`behaviors/`(即 `../data/behaviors`), 经设置界面增删。
+
+```json
+{
+  "id": "ps_edit", "name": "PS 编辑图片", "nameEn": "PS Edit", "version": "1.0.0",
+  "specVersion": 1, "description": "用 Photoshop 打开选中图片",
+  "appliesTo": [
+    {"type": "fileExt", "exts": ["jpg", "png"]},
+    {"type": "textType", "value": "url", "default": true}
+  ],
+  "entry": {"kind": "builtin", "action": "run", "params": {"actionValue": "Photoshop.exe \"%selected%\"", "workingDir": ""}}
+}
+```
+
+- **ID 规范**: `^[a-z][a-z0-9_]{0,31}$`; 内置 11 个基础动作 ID (`open_url`…`copy`) 为保留
+  命名空间; 目录名必须等于 id。
+- **前提语义**: 不存分组名 (分组仅是设置界面快捷填入模板, 与规则编辑页同款结论);
+  fileExt 用显式后缀集 (`"*"`=任意文件)。
+- **规则引用**: `ActionRule.ActionType` 的取值语义 = 行为 ID。内置 ID 直通 (存量配置零迁移,
+  golden/DumpPlan 对既有配置逐字节稳定); 用户包 builtin entry 渲染期由
+  `ResolveRuleAction` 展开为基础动作 (规则 ActionValue/WorkingDir 非空优先, 空值补包默认)。
+- **保存校验统一为覆盖检查**: 规则引用的行为必须存在且 appliesTo 覆盖规则前提 —— 取代旧
+  `textTypeActions` 静态表, 并补上 fileExt 无后端校验缺口; 顺带修复旧校验「第一条 textType
+  规则即短路」缺陷。
+- **删除约束 (ValidateDelete)**: 内置包不可删; 被规则引用不可删; 删除后若存在「仍被引用
+  但无任何行为覆盖」的前提值 (空前提桶) → 拒绝并列出断档值; 无人引用的前提值随包消失。
+- **API**: `GET /api/behaviors` (builtin+user+errors) / `POST`(创建) / `PUT :id`(更新) /
+  `DELETE :id`(校验后删除) / `POST /api/behaviors/apply`(显式重启引擎生效 —— 行为变更
+  不自动重启, 与方案 CRUD 的「保存即重启」刻意区分, 避免连续增删的重启风暴)。
+- **一期边界**: 仅 builtin entry; script entry (编译期 Include + BehaviorRegistry,
+  `BehaviorMain(ctx)` 对齐 §3.2 ActionContext) 与 zip 导入导出为二期, 格式预留。
+- 实现: `internal/behaviors/` (加载/覆盖/校验), `internal/server/behaviors.go` (API),
+  `internal/script/generators` 注入 `BehaviorCatalog` (渲染 + plan 镜像同步展开)。
+
 ## 4. 插件清单格式(冻结)
 
 `data/plugins/<id>/plugin.json`:
@@ -400,3 +439,4 @@ action-scheme 端点直接在 model 上设置该字段后序列化返回, 未经
 | 2026-09-03 | 生成器回归网 (golden test): 新增 `internal/script/golden_test.go` + `testdata/golden.mykeymap.ahk`; 落点选 `internal/script/` 而非 `generators/` 因 golden test 调用 `SaveAHK`/`Preprocess` (属 script 包导出), 放 generators 会产生 script↔generators 导入环; 刷新方式: `UPDATE_GOLDEN=1 go test ./internal/script/...`; 合成配置规避 map 迭代序非确定性 (约束 1: sortHotkeys 非稳定排序; 约束 2: handleKeyRemapping SliceStable 保留随机序) |
 | 2026-09-03 | 三维评审非阻断修复批次 (Go/Makefile/AHK/文档, 零行为变更): ① `bin/lib/Monitor.ahk` 注明块裸行号全部改为符号锚点描述 (对上游 diff 更 robust, 消除 +25 行偏移导致的 ~15 处行号失效); ② `internal/server/dto.go` keymapToDTO/dtoToKeymap 内层 Hotkeys value slice 补 nil 守卫 (修复 null→[] 往返非恒等), 新增 `dto_test.go` 表驱动测试; ③ `internal/script/golden_test.go` BOM 断言从 normalizeAHK 归一化中拆出为独立 bytes.HasPrefix 检查 (消除产物 BOM 丢失不可观测盲区); ④ Makefile buildClientAvalonia 后新增 i18n.json SHA256 断言 (publish 产出与源不一致即 exit 1); ⑤ CONTRACTS.md 补全: §2 目录树补 i18n.json 双路径 + 契约条目、§5.1 实现指针更新、新增 §5.2 双轨 DTO 边界 + §5.3 契约测试前置二进制契约; 并行 C# 侧修复 (归属任务 #65): I18nResourceTests 物理存在断言、SettingsTestServer 陈旧度断言、I18n.cs 头部注释补回 |
 | 2026-09-04 | 移除选中动作「默认 (兜底)」匹配类型: ① Go `matchActionRule` 删 `case "default": return true` (仅剩 fileExt/textType, 落空 return false), AHK `MatchActionRule` 同步删 case; ② 前端 MATCH_TYPES 词条、default→\* 条件值分支、RuleList default→「任意内容」展示分支、兜底规则不在末尾警示 (DefaultRuleNotLast/RefreshDefaultWarning + axaml 警示 Border) 全清; ③ i18n 删 4 键 (979/998/1033/1036) 键数守卫 309→305; ④ 存量 default 规则将不再命中 (历史规则在编辑器中回退显示为第一项, 用户重新选择即完成迁移); ⑤ golden 夹具删两条 default 规则并重刷基线 (仅 matchType: "default" 渲染行消失); readme/readme.en 匹配类型改两类表述 |
+| 2026-09-05 | 行为包体系一期落地 (§3.9 冻结): 11 个内置行为打包为只读内置包 (bin/behaviors 入库), 规则 ActionType 语义升级为行为 ID (内置 ID 直通=存量零迁移), internal/behaviors 包 (加载/覆盖/删除约束), 保存校验统一为覆盖检查 (取代 textTypeActions 静态表+修复首条短路缺陷), API 5 端点 (GET/POST/PUT/DELETE /api/behaviors + apply 显式重启), 生成期展开 (渲染+plan 镜像); 行为库前端窗口与 C# 目录服务为二期提交 |

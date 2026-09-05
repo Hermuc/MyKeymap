@@ -3,12 +3,17 @@ package script
 import (
 	"os"
 	"path/filepath"
+	"settings/internal/behaviors"
 	"settings/internal/script/generators"
 	"strings"
 	"text/template"
 )
 
 func GenerateScripts(config *Config) {
+	// 行为目录: 渲染期据此把规则引用的用户行为 ID 展开为基础动作 (内置 ID 直通);
+	// 运行时 cwd=bin, 用户包随配置在 ../data/behaviors
+	generators.BehaviorCatalog = LoadBehaviorCatalog("../data/config.json")
+
 	Preprocess(config)
 
 	if err := SaveAHK(config, "./templates/MyKeymap.tmpl", "../bin/MyKeymap.ahk"); err != nil {
@@ -17,6 +22,18 @@ func GenerateScripts(config *Config) {
 	if err := SaveAHK(config, "./templates/CommandInputSkin.tmpl", "../bin/CommandInputSkin.txt"); err != nil {
 		panic(err)
 	}
+}
+
+// LoadBehaviorCatalog 加载行为目录: 内置包在 settings.exe 同级 behaviors/, 用户包在
+// config.json 同级 behaviors/。CLI 与运行时的 cwd 不同, 故以可执行文件与配置文件路径
+// 推导目录位置, 不依赖当前工作目录。
+func LoadBehaviorCatalog(configPath string) *behaviors.Catalog {
+	builtinDir := "behaviors"
+	if exePath, err := os.Executable(); err == nil {
+		builtinDir = filepath.Join(filepath.Dir(exePath), "behaviors")
+	}
+	userDir := filepath.Join(filepath.Dir(configPath), "behaviors")
+	return behaviors.LoadCatalog(builtinDir, userDir)
 }
 
 // Preprocess 对配置做生成前的预处理。

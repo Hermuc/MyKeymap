@@ -4,20 +4,11 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"settings/internal/behaviors"
 )
 
-// 文本特征 -> 可选行为类型 映射 (单一真源, 需同步的副本):
-//   - 前端: 由后端 /api/action-schemes 下发 (旧 Vue 前端 config-ui 已退役删除)
-//   - AHK 端: bin/lib/rules/SelectedAction.ahk 的 ExecuteActionRule 分支
-// 规则: 特征与行为必须语义匹配, 禁止出现「链接 + 程序打开」这类错配组合
-var textTypeActions = map[string][]string{
-	"url":    {"open_url", "search"},
-	"path":   {"open_path", "open_folder"},
-	"magnet": {"magnet_download"},
-	"plain":  {"open_registry", "search", "run", "send_keys", "script", "copy"},
-}
-
-// 特征/行为的中文显示名 (保存校验的错误提示用, 与前端 constants.ts label 保持一致)
+// 特征中文显示名 (保存校验的错误提示用, 与前端 i18n 保持一致)
 var textTypeLabels = map[string]string{
 	"url":    "链接",
 	"path":   "路径",
@@ -25,48 +16,56 @@ var textTypeLabels = map[string]string{
 	"plain":  "纯文本",
 }
 
-var actionTypeLabels = map[string]string{
-	"open_url":        "默认浏览器打开网址",
-	"open_path":       "打开文件/程序 (系统关联)",
-	"open_folder":     "打开文件夹",
-	"magnet_download": "磁力链接下载",
-	"open_registry":   "注册表定位",
+// matchTypeName 匹配类型中文显示名 (错误提示用)
+func matchTypeName(matchType string) string {
+	if matchType == "textType" {
+		return "文本特征"
+	}
+	return "文件后缀"
 }
 
-// ValidateActionSchemeRules 校验方案规则的组合合法性 (textType 特征 -> 行为 必须语义匹配)
-// 非法组合返回含中文提示的错误, 调用方应拒绝保存
-func ValidateActionSchemeRules(s *ActionScheme) error {
+// behaviorDisplayName 行为显示名: 优先包名, 缺失回退原始 ID
+func behaviorDisplayName(cat *behaviors.Catalog, id string) string {
+	if cat != nil {
+		if p := cat.Get(id); p != nil {
+			return p.Name
+		}
+	}
+	return id
+}
+
+// ValidateActionSchemeRules 校验方案规则的组合合法性: 规则引用的行为 (actionType = 行为 ID)
+// 必须存在且其 appliesTo 覆盖规则的匹配前提 —— 统一取代旧 textTypeActions 静态表,
+// 并补上 fileExt 此前无后端校验的缺口 (覆盖语义见 internal/behaviors 包注释)。
+// 同时修复旧实现的短路缺陷: 旧版第一条 textType 规则校验完即 return, 其后规则从未被校验。
+// 未知匹配类型不在保存时拒绝 (沿用 textRegex/fileGroup 移除任务的口径: 不把含遗留规则
+// 的旧配置锁死在 PUT /config), 该规则运行时不命中; cat 为 nil 时跳过覆盖检查仅做词表校验。
+func ValidateActionSchemeRules(s *ActionScheme, cat *behaviors.Catalog) error {
 	for i := range s.Rules {
 		r := &s.Rules[i]
-		if r.MatchType != "textType" {
+		var values []string
+		switch r.MatchType {
+		case "fileExt":
+			values = behaviors.RefValues(r.MatchType, r.MatchValue)
+		case "textType":
+			v := strings.ToLower(strings.TrimSpace(r.MatchValue))
+			if !behaviors.KnownTextTypes[v] {
+				return fmt.Errorf("未知的文本特征「%s」, 可选: 链接 / 路径 / 磁力链接 / 纯文本", r.MatchValue)
+			}
+			values = []string{v}
+		default:
 			continue
 		}
-		allowed, ok := textTypeActions[r.MatchValue]
-		if !ok {
-			return fmt.Errorf("未知的文本特征「%s», 可选: 链接 / 路径 / 磁力链接 / 纯文本", r.MatchValue)
+		// 内置基础动作在目录缺失 (异常部署/纯 CLI 场景) 时跳过覆盖检查, 保持旧配置可保存
+		if cat == nil || (behaviors.BuiltinActionIDs[r.ActionType] && cat.Get(r.ActionType) == nil) {
+			continue
 		}
-		for _, a := range allowed {
-			if a == r.ActionType {
-				return nil
-			}
+		if !cat.Covers(r.ActionType, r.MatchType, values) {
+			return fmt.Errorf("规则第 %d 条: 行为「%s」不适用于该%s前提「%s」",
+				i+1, behaviorDisplayName(cat, r.ActionType), matchTypeName(r.MatchType), r.MatchValue)
 		}
-		return fmt.Errorf("文本特征「%s」与行为「%s」不匹配, 可选行为: %s",
-			textTypeLabels[r.MatchValue], actionTypeLabels[r.ActionType], joinActionLabels(allowed))
 	}
 	return nil
-}
-
-// joinActionLabels 把行为类型列表拼接为中文提示 (无显示名的回退原值)
-func joinActionLabels(actions []string) string {
-	labels := make([]string, 0, len(actions))
-	for _, a := range actions {
-		if l, ok := actionTypeLabels[a]; ok {
-			labels = append(labels, l)
-		} else {
-			labels = append(labels, a)
-		}
-	}
-	return strings.Join(labels, " / ")
 }
 
 // ValidateFileGroups 校验文件分组表结构: 名称/显示名非空, 后缀列表非空 (分组为快捷填充数据, 结构非法时拒绝保存)

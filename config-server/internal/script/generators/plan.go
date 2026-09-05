@@ -1,6 +1,7 @@
 package generators
 
 import (
+	"settings/internal/behaviors"
 	"encoding/json"
 	"os"
 	"sort"
@@ -188,11 +189,18 @@ func planActionSchemes(cfg *model.Config) []PlanActionScheme {
 		if !s.Enable || s.Hotkey == "" {
 			continue
 		}
+		// 与 actionSchemesCode 一致: 计划记录解析后的实际注册值 (内置 ID 直通,
+		// 用户行为展开为基础动作+包默认模板), 保证 Oracle 计划与运行时一致
+		rules := make([]model.ActionRule, len(s.Rules))
+		for i, r := range s.Rules {
+			r.ActionType, r.ActionValue, r.WorkingDir = behaviors.ResolveRuleAction(BehaviorCatalog, r.ActionType, r.ActionValue, r.WorkingDir)
+			rules[i] = r
+		}
 		res = append(res, PlanActionScheme{
 			ID:     s.ID,
 			Name:   s.Name,
 			Hotkey: s.Hotkey,
-			Rules:  s.Rules,
+			Rules:  rules,
 		})
 	}
 	return res

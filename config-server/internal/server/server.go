@@ -50,6 +50,13 @@ func Run(hasError chan<- struct{}, rainDone <-chan struct{}, debug bool, headles
 	router.DELETE("/api/action-schemes/:id", DeleteActionSchemeHandler)
 	router.POST("/api/action-schemes/test", TestActionSchemeHandler)
 
+	// 行为包 (选中动作「行为库」)
+	router.GET("/api/behaviors", GetBehaviorsHandler)
+	router.POST("/api/behaviors", CreateBehaviorHandler)
+	router.PUT("/api/behaviors/:id", UpdateBehaviorHandler)
+	router.DELETE("/api/behaviors/:id", DeleteBehaviorHandler)
+	router.POST("/api/behaviors/apply", ApplyBehaviorsHandler)
+
 	// 先尝试 12333 端口, 失败了则用随机端口. 因为 12333 端口可能已被占用, 或者被禁:
 	// An attempt was made to access a socket in a way forbidden by its access permissions.
 	ln, err := net.Listen("tcp", "localhost:12333")

@@ -35,6 +35,7 @@ func GenerateAHK(args ...string) {
 
 	// 与运行时路径(GenerateScripts)保持一致: 先预处理(注入 !f17 免疫热键等)再生成,
 	// 否则验证产物与真实运行产物不一致, 无法用于零行为变更验证/Oracle diff
+	generators.BehaviorCatalog = script.LoadBehaviorCatalog(configFile)
 	script.Preprocess(config)
 
 	if err := script.SaveAHK(config, templateFile, outputFile); err != nil {
@@ -59,6 +60,7 @@ func DumpPlan(args ...string) {
 
 	// 与运行时路径(GenerateScripts)保持一致: 先预处理(注入 !f17 免疫热键等)再推导计划,
 	// 否则计划与真实运行注册不一致, Oracle diff 失去意义
+	generators.BehaviorCatalog = script.LoadBehaviorCatalog(configFile)
 	script.Preprocess(config)
 
 	if err := generators.WritePlan(config, outputFile); err != nil {
