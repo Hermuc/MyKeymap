@@ -11,7 +11,7 @@
        顶栏 (返回/保存/导出/导入/删除) + 方案字段 (名称/热键/启用) +
        规则列表 (优先级排序) + 规则编辑器 + 模拟测试器。 -->
 
-  <ScrollViewer>
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
     <StackPanel Margin="20" Spacing="16">
 
       <!-- ===================== 顶栏 ===================== -->
@@ -77,6 +77,53 @@
                           OnContent="{Binding EnableLabel}" OffContent="{Binding EnableLabel}"
                           MinWidth="10" />
           </Grid>
+        </StackPanel>
+      </Border>
+
+      <!-- ===================== 模拟测试 (复刻 ActionTester.vue) ===================== -->
+      <Border Background="White" BorderBrush="#E3E6EC" BorderThickness="1"
+              CornerRadius="10" Padding="16" MaxWidth="1093" HorizontalAlignment="Left">
+        <StackPanel Spacing="10">
+          <TextBlock FontSize="15" FontWeight="SemiBold"
+                     Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=987}" />
+          <TextBlock FontSize="12" Foreground="#5F6368"
+                     Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=988}" />
+          <TextBox Text="{Binding TestContent}" AcceptsReturn="True" MinHeight="54" />
+          <DockPanel>
+            <CheckBox DockPanel.Dock="Left" IsChecked="{Binding TestIsFile}"
+                      Content="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=989}" />
+            <Button DockPanel.Dock="Right" Command="{Binding RunTestCommand}"
+                    IsEnabled="{Binding !Testing}" HorizontalAlignment="Right"
+                    Background="#4169E1" Foreground="White" CornerRadius="8" Padding="18,6"
+                    Content="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=990}" />
+          </DockPanel>
+
+          <!-- 错误 (后端 400 时展示 message) -->
+          <TextBlock IsVisible="{Binding TestError, Converter={StaticResource NotEmpty}}"
+                     Text="{Binding TestError}" Foreground="#D32F2F" FontSize="12"
+                     TextWrapping="Wrap" />
+
+          <!-- 结果 -->
+          <Border IsVisible="{Binding HasResult}" Background="#F7F8FB"
+                  CornerRadius="8" Padding="12">
+            <StackPanel Spacing="6">
+              <TextBlock IsVisible="{Binding !ResultMatched}" FontWeight="SemiBold"
+                         Foreground="#8A8F98"
+                         Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=993}" />
+              <StackPanel IsVisible="{Binding ResultMatched}" Spacing="6">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <TextBlock FontWeight="SemiBold" Foreground="#2E7D32"
+                             Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=994}" />
+                  <TextBlock Text="{Binding MatchedRuleText}" TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <TextBlock Foreground="#5F6368"
+                             Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=996}" />
+                  <TextBlock Text="{Binding PreviewText}" TextWrapping="Wrap" />
+                </StackPanel>
+              </StackPanel>
+            </StackPanel>
+          </Border>
         </StackPanel>
       </Border>
 
@@ -269,52 +316,7 @@
         </StackPanel>
       </Border>
 
-      <!-- ===================== 模拟测试 (复刻 ActionTester.vue) ===================== -->
-      <Border Background="White" BorderBrush="#E3E6EC" BorderThickness="1"
-              CornerRadius="10" Padding="16" MaxWidth="1093" HorizontalAlignment="Left">
-        <StackPanel Spacing="10">
-          <TextBlock FontSize="15" FontWeight="SemiBold"
-                     Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=987}" />
-          <TextBlock FontSize="12" Foreground="#5F6368"
-                     Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=988}" />
-          <TextBox Text="{Binding TestContent}" AcceptsReturn="True" MinHeight="54" />
-          <DockPanel>
-            <CheckBox DockPanel.Dock="Left" IsChecked="{Binding TestIsFile}"
-                      Content="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=989}" />
-            <Button DockPanel.Dock="Right" Command="{Binding RunTestCommand}"
-                    IsEnabled="{Binding !Testing}" HorizontalAlignment="Right"
-                    Background="#4169E1" Foreground="White" CornerRadius="8" Padding="18,6"
-                    Content="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=990}" />
-          </DockPanel>
 
-          <!-- 错误 (后端 400 时展示 message) -->
-          <TextBlock IsVisible="{Binding TestError, Converter={StaticResource NotEmpty}}"
-                     Text="{Binding TestError}" Foreground="#D32F2F" FontSize="12"
-                     TextWrapping="Wrap" />
-
-          <!-- 结果 -->
-          <Border IsVisible="{Binding HasResult}" Background="#F7F8FB"
-                  CornerRadius="8" Padding="12">
-            <StackPanel Spacing="6">
-              <TextBlock IsVisible="{Binding !ResultMatched}" FontWeight="SemiBold"
-                         Foreground="#8A8F98"
-                         Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=993}" />
-              <StackPanel IsVisible="{Binding ResultMatched}" Spacing="6">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                  <TextBlock FontWeight="SemiBold" Foreground="#2E7D32"
-                             Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=994}" />
-                  <TextBlock Text="{Binding MatchedRuleText}" TextWrapping="Wrap" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                  <TextBlock Foreground="#5F6368"
-                             Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=996}" />
-                  <TextBlock Text="{Binding PreviewText}" TextWrapping="Wrap" />
-                </StackPanel>
-              </StackPanel>
-            </StackPanel>
-          </Border>
-        </StackPanel>
-      </Border>
 
     </StackPanel>
   </ScrollViewer>
