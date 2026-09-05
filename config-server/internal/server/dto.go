@@ -10,10 +10,10 @@ import "settings/internal/script/model"
 // 同时保守保留在 model 中 (action-scheme 端点仍直接序列化 model, 见报告说明)。
 
 type ConfigDTO struct {
-	Keymaps       []KeymapDTO       `json:"keymaps,omitempty"`
+	Keymaps       []KeymapDTO       `json:"keymaps"`
 	Options       OptionsDTO        `json:"options,omitempty"`
-	ActionSchemes []ActionSchemeDTO `json:"actionSchemes,omitempty"`
-	FileGroups    []FileGroupDTO    `json:"fileGroups,omitempty"`
+	ActionSchemes []ActionSchemeDTO `json:"actionSchemes"`
+	FileGroups    []FileGroupDTO    `json:"fileGroups"`
 	OverviewDocMd string            `json:"overviewDocMd,omitempty"`
 }
 
@@ -158,18 +158,26 @@ func ConfigToDTO(cfg *model.Config) *ConfigDTO {
 		for i, km := range cfg.Keymaps {
 			dto.Keymaps[i] = keymapToDTO(km)
 		}
+	} else {
+		dto.Keymaps = []KeymapDTO{}
 	}
+	// 空集合恒输出 [] 而非缺键/	null: GET /config 的结构契约保证前端与测试可无条件取数组
+	// (工厂默认配置可以没有选中动作方案与文件分组, 但响应结构不随配置内容漂移)
 	if cfg.ActionSchemes != nil {
 		dto.ActionSchemes = make([]ActionSchemeDTO, len(cfg.ActionSchemes))
 		for i, s := range cfg.ActionSchemes {
 			dto.ActionSchemes[i] = actionSchemeToDTO(s)
 		}
+	} else {
+		dto.ActionSchemes = []ActionSchemeDTO{}
 	}
 	if cfg.FileGroups != nil {
 		dto.FileGroups = make([]FileGroupDTO, len(cfg.FileGroups))
 		for i, fg := range cfg.FileGroups {
 			dto.FileGroups[i] = FileGroupDTO{Name: fg.Name, Label: fg.Label, Exts: fg.Exts}
 		}
+	} else {
+		dto.FileGroups = []FileGroupDTO{}
 	}
 	return dto
 }

@@ -158,11 +158,16 @@ public sealed class ConfigContractTests : ServerTestBase
         // commandInputSkin 全零时 Go 注入默认皮肤
         Assert.False(string.IsNullOrEmpty(options.GetProperty("commandInputSkin").GetProperty("backgroundColor").GetString()));
 
-        // FileGroup 字段
-        var fg = root.GetProperty("fileGroups")[0];
-        Assert.True(fg.TryGetProperty("name", out _));
-        Assert.True(fg.TryGetProperty("label", out _));
-        Assert.True(fg.TryGetProperty("exts", out _));
+        // FileGroup 字段 (出厂默认配置可为空数组; 非空时核对字段结构)
+        var fgs = root.GetProperty("fileGroups");
+        Assert.Equal(JsonValueKind.Array, fgs.ValueKind);
+        if (fgs.GetArrayLength() > 0)
+        {
+            var fg = fgs[0];
+            Assert.True(fg.TryGetProperty("name", out _));
+            Assert.True(fg.TryGetProperty("label", out _));
+            Assert.True(fg.TryGetProperty("exts", out _));
+        }
 
         // 强类型反序列化抽查
         var config = resp.Value!;

@@ -15,8 +15,9 @@ public sealed class ActionSchemeCrudTests : ServerTestBase
         var resp = await Client.GetActionSchemesAsync();
         Assert.True(resp.Success, resp.ErrorMessage);
         Assert.NotNull(resp.Value);
-        // 种子 data\config.json 自带 1 个方案; 空时后端也保证返回 [] 而非 null
-        Assert.True(resp.Value!.Count >= 1, "种子配置应至少含 1 个选中动作方案");
+        // 种子 data\config.json 为上游出厂默认, 不含选中动作方案;
+        // 后端契约: 空时也必须返回 [] 而非 null
+        Assert.True(resp.Value!.Count >= 0, "后端应保证返回数组而非 null");
         Assert.All(resp.Value, s => Assert.True(s.Id > 0, "方案 id 应为正数"));
     }
 
