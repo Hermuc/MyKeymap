@@ -86,6 +86,8 @@
 
 - [ ] 基线(重构前)不含 `ActionSchemeList` 段;当前部署配置含 1 个空规则 scheme(enable=true)
   → 生成空的 `ActionSchemeList := Array()` + `InitActionScheme(ActionSchemeList)`,不注册任何热键
+- 注记 (2026-09 方案 D 单键分发重构): 生成产物已改为 `SelectedActionData := Array(...)` +
+  `SelectedActionInit(...)` (顶层 selectedAction), 旧 `ActionSchemeList`/`InitActionScheme` 不再生成
 - [ ] 选中动作路径(SelectionContext/SelectedAction.ahk)须保持可用,为阶段 2+ 拆分做铺垫
 
 ## 核对方法

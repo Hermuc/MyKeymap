@@ -8,18 +8,14 @@ namespace MyKeymap.Settings.Services;
 // ============================================================================
 // settings.exe (Go gin 服务) HTTP 客户端层
 //
-// 端点清单 (权威来源: config-server/cmd/settings/main.go + actionscheme.go):
+// 端点清单 (权威来源: config-server/cmd/settings/main.go + selectedaction.go):
 //   GET    /config                      完整 Config JSON
 //   PUT    /config                      完整 Config JSON -> 200 {"message":"ok"}
 //                                       校验失败 -> 400 {"message":"保存失败: ..."}
 //   GET    /shortcuts                   [{"path":"shortcuts\\xx.lnk"}] (相对部署根)
 //   POST   /server/command/:id          id=2|3|4, 恒 200 {} (会 exec MyKeymap.exe)
-//   GET    /api/action-schemes          数组 (空时 [])
-//   GET    /api/action-schemes/:id      单方案, 不存在 -> 404 {"message":"scheme not found"}
-//   POST   /api/action-schemes          创建 (无 id, 后端分配 max+1 回写)
-//   PUT    /api/action-schemes/:id      更新, 校验失败 -> 400 {"message":"..."}
-//   DELETE /api/action-schemes/:id      -> 200 {"message":"ok"} 或 404
-//   POST   /api/action-schemes/test     模拟测试 (含编辑中快照语义)
+//   POST   /api/selected-action/test    模拟测试 (含页面快照语义; 2026-09 方案 D,
+//                                       旧 /api/action-schemes 6 路由已随多方案模型退役)
 // ============================================================================
 
 /// <summary>统一响应包装: 强类型结果 + 状态码 + 错误信息 (400/404 时解析 {"message":"..."} 字段)。</summary>
@@ -35,7 +31,7 @@ public sealed record ApiResponse<T>(
     string? ErrorMessage = null,
     string RawBody = "");
 
-/// <summary>形如 {"message":"..."} 的响应体 (PUT /config、DELETE /api/action-schemes/:id)。</summary>
+/// <summary>形如 {"message":"..."} 的响应体 (PUT /config 校验失败等)。</summary>
 public sealed record MessageBody
 {
     [JsonPropertyName("message")]
@@ -60,13 +56,9 @@ public sealed record ShortcutInfo
 /// <summary>形如 {} 的空对象响应体 (POST /server/command/:id)。</summary>
 public sealed record EmptyJson;
 
-/// <summary>POST /api/action-schemes/test 请求体 (对照 Go actionSchemeTestRequest)。</summary>
-public sealed class ActionSchemeTestRequest
+/// <summary>POST /api/selected-action/test 请求体 (对照 Go selectedActionTestRequest)。</summary>
+public sealed class SelectedActionTestRequest
 {
-    /// <summary>scheme 为空时, 按此 id 从磁盘配置回退查找。</summary>
-    [JsonPropertyName("schemeId")]
-    public int SchemeId { get; set; }
-
     /// <summary>模拟的选中内容 (文本或文件路径列表, 多行用 \n 分隔)。</summary>
     [JsonPropertyName("content")]
     public string Content { get; set; } = "";
@@ -75,24 +67,48 @@ public sealed class ActionSchemeTestRequest
     [JsonPropertyName("isFile")]
     public bool IsFile { get; set; }
 
-    /// <summary>编辑中的方案快照 (未保存的修改也能测试); null 时后端回退读取磁盘配置。</summary>
-    [JsonPropertyName("scheme")]
-    public ActionScheme? Scheme { get; set; }
+    /// <summary>页面编辑中的 selectedAction 快照 (未保存的修改也能测试); null 时后端回退读取磁盘配置。</summary>
+    [JsonPropertyName("selectedAction")]
+    public SelectedAction? SelectedAction { get; set; }
 }
 
-/// <summary>POST /api/action-schemes/test 响应体。</summary>
-public sealed class ActionSchemeTestResult
+/// <summary>POST /api/selected-action/test 响应菜单项 (key 从 1 起, 顺序即映射 entries 顺序)。</summary>
+public sealed class SelectedActionMenuEntry
+{
+    /// <summary>菜单键位序号 (1..9)。</summary>
+    [JsonPropertyName("key")]
+    public int Key { get; set; }
+
+    /// <summary>行为包 ID。</summary>
+    [JsonPropertyName("behavior")]
+    public string Behavior { get; set; } = "";
+
+    /// <summary>行为显示名 (后端按语言 name/nameEn 推导)。</summary>
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = "";
+}
+
+/// <summary>POST /api/selected-action/test 响应体。</summary>
+public sealed class SelectedActionTestResult
 {
     [JsonPropertyName("matched")]
     public bool Matched { get; set; }
 
-    /// <summary>matched=true 时命中的规则。</summary>
-    [JsonPropertyName("rule")]
-    public ActionRule? Rule { get; set; }
+    /// <summary>matched=true 时命中的映射类型 ("textType" | "fileExt")。</summary>
+    [JsonPropertyName("matchType")]
+    public string MatchType { get; set; } = "";
 
-    /// <summary>matched=true 时的执行预览文本。</summary>
+    /// <summary>matched=true 时命中的映射值 (文本特征词或后缀串)。</summary>
+    [JsonPropertyName("matchValue")]
+    public string MatchValue { get; set; } = "";
+
+    /// <summary>matched=true 时的菜单键位表。</summary>
+    [JsonPropertyName("menu")]
+    public List<SelectedActionMenuEntry> Menu { get; set; } = [];
+
+    /// <summary>matched=true 时的执行预览文本 (取菜单第一项行为展开)。</summary>
     [JsonPropertyName("preview")]
-    public string? Preview { get; set; }
+    public string Preview { get; set; } = "";
 }
 
 /// <summary>
@@ -106,12 +122,7 @@ public interface ISettingsApi
     Task<ApiResponse<List<ShortcutInfo>>> GetShortcutsAsync(CancellationToken ct = default);
     Task<ApiResponse<EmptyJson>> SendServerCommandAsync(int id, CancellationToken ct = default);
 
-    Task<ApiResponse<List<ActionScheme>>> GetActionSchemesAsync(CancellationToken ct = default);
-    Task<ApiResponse<ActionScheme>> GetActionSchemeAsync(int id, CancellationToken ct = default);
-    Task<ApiResponse<ActionScheme>> CreateActionSchemeAsync(ActionScheme scheme, CancellationToken ct = default);
-    Task<ApiResponse<ActionScheme>> UpdateActionSchemeAsync(int id, ActionScheme scheme, CancellationToken ct = default);
-    Task<ApiResponse<MessageBody>> DeleteActionSchemeAsync(int id, CancellationToken ct = default);
-    Task<ApiResponse<ActionSchemeTestResult>> TestActionSchemeAsync(ActionSchemeTestRequest request, CancellationToken ct = default);
+    Task<ApiResponse<SelectedActionTestResult>> TestSelectedActionAsync(SelectedActionTestRequest request, CancellationToken ct = default);
 
     // 行为包 (选中动作「行为库」, CONTRACTS §3.9)
     Task<ApiResponse<BehaviorCatalogResponse>> GetBehaviorsAsync(CancellationToken ct = default);
@@ -161,23 +172,8 @@ public sealed class SettingsApiClient : ISettingsApi, IDisposable
     public Task<ApiResponse<EmptyJson>> SendServerCommandAsync(int id, CancellationToken ct = default)
         => SendAsync<EmptyJson>(HttpMethod.Post, $"server/command/{id}", new EmptyJson(), ct);
 
-    public Task<ApiResponse<List<ActionScheme>>> GetActionSchemesAsync(CancellationToken ct = default)
-        => SendAsync<List<ActionScheme>>(HttpMethod.Get, "api/action-schemes", content: null, ct);
-
-    public Task<ApiResponse<ActionScheme>> GetActionSchemeAsync(int id, CancellationToken ct = default)
-        => SendAsync<ActionScheme>(HttpMethod.Get, $"api/action-schemes/{id}", content: null, ct);
-
-    public Task<ApiResponse<ActionScheme>> CreateActionSchemeAsync(ActionScheme scheme, CancellationToken ct = default)
-        => SendAsync<ActionScheme>(HttpMethod.Post, "api/action-schemes", scheme, ct);
-
-    public Task<ApiResponse<ActionScheme>> UpdateActionSchemeAsync(int id, ActionScheme scheme, CancellationToken ct = default)
-        => SendAsync<ActionScheme>(HttpMethod.Put, $"api/action-schemes/{id}", scheme, ct);
-
-    public Task<ApiResponse<MessageBody>> DeleteActionSchemeAsync(int id, CancellationToken ct = default)
-        => SendAsync<MessageBody>(HttpMethod.Delete, $"api/action-schemes/{id}", content: null, ct);
-
-    public Task<ApiResponse<ActionSchemeTestResult>> TestActionSchemeAsync(ActionSchemeTestRequest request, CancellationToken ct = default)
-        => SendAsync<ActionSchemeTestResult>(HttpMethod.Post, "api/action-schemes/test", request, ct);
+    public Task<ApiResponse<SelectedActionTestResult>> TestSelectedActionAsync(SelectedActionTestRequest request, CancellationToken ct = default)
+        => SendAsync<SelectedActionTestResult>(HttpMethod.Post, "api/selected-action/test", request, ct);
 
     public Task<ApiResponse<BehaviorCatalogResponse>> GetBehaviorsAsync(CancellationToken ct = default)
         => SendAsync<BehaviorCatalogResponse>(HttpMethod.Get, "api/behaviors", content: null, ct);

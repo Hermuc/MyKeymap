@@ -47,7 +47,7 @@ var TemplateFuncMap = template.FuncMap{
 	"divide":               divide,
 	"renderKeymap":         renderKeymap,
 	"GroupDisableMyKeymap": GroupDisableMyKeymap,
-	"actionSchemesCode":    actionSchemesCode,
+	"selectedActionCode":   selectedActionCode,
 }
 
 func divide(a, b int) string {

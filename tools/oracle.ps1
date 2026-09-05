@@ -1,5 +1,8 @@
 # Oracle diff (phase 4): AHK runtime registry dump vs Go DumpPlan abbr section
 # NOTE: pure ASCII on purpose - pwsh -File misreads non-BOM UTF-8 Chinese as ANSI.
+# TODO(selected-action): extend to the selectedAction data array once the AHK side
+# SelectedActionInit consumer lands (task #30) - compare DumpPlan selectedAction
+# projection vs the rendered SelectedActionData rows (same ResolveRuleAction source).
 $ErrorActionPreference = 'Stop'
 $repo = 'D:\PortableApps\MyKeymap-main'
 $tmp = "$env:TEMP\mk_baseline"

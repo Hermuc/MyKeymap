@@ -1,98 +1,364 @@
 ; ============================================================
-; 选中动作系统 (Selected Action)
+; 选中动作系统 (Selected Action) —— 方案 D「单键分发」
 ; 参考 RunAny 的「选中内容 + 快捷键触发预设行为」能力
-; 配置由 config-server 渲染到生成的 MyKeymap.ahk 中:
-;   ActionSchemeList := Array({id:1, name:"...", hotkey:"^+q", rules:Array(...)})
-;   InitActionScheme(ActionSchemeList)
-; 变量约定: 在命令或脚本中使用 {selected} 表示当前选中的文本或文件路径,
-; %selected% 为兼容形 (由 context/SelectionContext.ahk 归一处理);
-; 多文件用换行分隔, 与资源管理器复制文件到剪贴板的格式一致。
-; 阶段2拆分说明: 本文件保留匹配层 (Match*) 与执行层 (Execute*/Run*);
-; 选中内容获取已统一到 SelectionContext, 执行层未来 (阶段3) 委托 ActionRegistry。
+;
+; 生成端契约 (config-server selectedActionCode 渲染, 任务 #29 冻结):
+;   SelectedActionData := Array(
+;     {matchType: "textType", matchValue: "url", key: 1, behavior: "open_url",
+;      action: "open_url", actionValue: "", workingDir: "", name: "open_url"},
+;     ...)
+;   SelectedActionInit(">^p", SelectedActionData)
+;
+; 8 列含义: matchType (textType=url/path/magnet/plain; fileExt=逗号分隔后缀) /
+;   matchValue (条件值) / key (菜单序号 1-9, 同一 mapping 内从 1 递增) /
+;   behavior (行为库 ID) / action (ResolveRuleAction 展开后基础动作) /
+;   actionValue (展开后模板) / workingDir (工作目录) / name (显示名)。
+; 数组顺序 = mappings 配置顺序 = 匹配优先级; 连续同 (matchType, matchValue) 的行
+; 构成同一匹配组 (同一 mapping 的展开), key 在组内即菜单序号。
+;
+; 执行模型 (定稿): 选中文本/文件 -> 按主快捷键 -> 按数组行序找到首个类型匹配的组:
+;   - 组内仅 1 条 entry: 直接执行;
+;   - 组内多条: 弹无焦点菜单 (InputTipWindow 同款小窗), 按数字 1-9 立即执行对应项,
+;     Esc 或重复按主键取消, 5s 超时自动取消, 淡入淡出不抢焦点;
+;   - 无任何组匹配: Tip 气泡提示「未识别的类型」。
+;
+; 决策记录 (2026-09-05): 本版引擎不做 confirm/copyToClipboard/clearSelection 选项 ——
+; 方案 D 菜单语义下这三个选项的行为未定义, 生成端 (任务 #29) 也未把 entry.options
+; 写进数据数组; 执行模型定稿只有: 直接执行 / 菜单 / Esc / 超时。
+;
+; 阶段说明: 本文件重写入口与分发层 (SelectedActionInit / SelectedAction 类);
+; 匹配原语 (MatchTextType/MatchFileExt) 与执行辅助 (OpenSelectedPaths/OpenSelectedFolder/
+; DownloadMagnet/OpenRegistryKey/RunReplaced/RunScriptWithSelected 等) 原样保留;
+; 选中内容获取统一在 SelectionContext, 执行层未来委托 ActionRegistry。
+; 变量约定: {selected} 为规范形, %selected% 为兼容形 (由 context/SelectionContext.ahk
+; 归一处理); 多文件用换行分隔, 与资源管理器复制文件到剪贴板的格式一致。
 ; ============================================================
 
 /**
- * 初始化选中动作方案: 为每个方案注册全局热键
- * @param schemes 方案数组
+ * 初始化选中动作: 为「单键分发」注册主快捷键 (生成端在 InitKeymap 中调用)
+ * @param hotkey 主快捷键 (如 ">^p"); 禁用/空热键时生成端输出空串不调用本函数, 此处兜底跳过
+ * @param entries 数据数组 (契约见文件头), 每项 8 列
  */
-InitActionScheme(schemes) {
-  for scheme in schemes {
-    if scheme.hotkey {
-      ; 无效热键(如反引号)注册失败时跳过该方案, 避免单个方案拖垮整个脚本
-      try {
-        KeymapManager.GlobalKeymap.Map(scheme.hotkey, RunActionScheme.Bind(scheme), , , , "S")
-      } catch {
-        continue
-      }
-    }
-  }
-}
-
-/**
- * 方案入口: 获取选中内容 -> 按优先级匹配规则 -> 执行行为
- * @param scheme 方案对象
- * @param trigger 热键名: 热键回调经 BoundFunc 调用时会把绑定参数前置并追加本参数, 此处仅吸收避免超参 (KeymapManager._wrapHandler 调用 handler(thisHotkey))
- */
-RunActionScheme(scheme, trigger := "") {
-  selected := SelectionContext.Get()
-  if not (selected.content) {
-    Tip(Translation().no_items_selected, -700)
+SelectedActionInit(hotkeyName, entries) {
+  if (hotkeyName == "" || !IsObject(entries) || entries.Length == 0) {
     return
   }
+  trigger(thisHotkey) {
+    SelectedAction.Trigger(hotkeyName, entries)
+  }
+  ; 无效热键(如反引号)注册失败时跳过该方案, 避免单个方案拖垮整个脚本 (与旧 InitActionScheme 同策略)
+  try {
+    KeymapManager.GlobalKeymap.Map(hotkeyName, trigger, , , , "S")
+  } catch {
+    return
+  }
+}
 
-  for ruleIndex, rule in scheme.rules {
-    if MatchActionRule(rule, selected) {
-      if rule.options.confirm {
-        if not (MsgBox("执行选中动作「" scheme.name "」?", "确认", "YesNo") == "Yes") {
-          return
-        }
-      }
-      ; 阶段 6: 慢事件广播 (薄观察层, 隔离兜底, 不影响动作执行)
-      try EventBus.Publish("selection_action", Map("schemeId", scheme.id, "ruleIndex", ruleIndex, "selected", selected.content))
-      ExecuteActionRule(rule, selected)
-      ; 执行后处理: copyToClipboard 在动作执行后把选中内容保留到剪贴板 (便于执行完成后直接粘贴), 而非执行前
-      if rule.options.copyToClipboard {
-        A_Clipboard := selected.content
-      }
-      if rule.options.clearSelection {
-        Send("{Esc}")
-      }
+class SelectedAction {
+  ; 菜单运行状态 (当前为单主热键设计, 重入即视为取消)
+  static MenuActive := false
+  static MenuIH := ""       ; 菜单 InputHook (打开期间非空, 供取消方跨线程 Stop)
+  static MenuWindow := ""   ; InputTipWindow 实例 (淡出结束前持引用防 GC 拆窗)
+  static MenuSeq := 0       ; 菜单代际号: 每次开/关菜单自增, 让过期的淡入淡出定时器自杀
+
+  /**
+   * 主热键入口: 取选中内容 -> 行序匹配 -> 单条直执 / 多条弹菜单 / 未命中气泡
+   * @param hotkeyName 主快捷键串 (如 ">^p"), 用于菜单期间主键取消判定
+   * @param entries 数据数组
+   */
+  static Trigger(hotkeyName, entries) {
+    if (this.MenuActive) {
+      this._CancelMenu()
       return
     }
+    selected := SelectionContext.Get()
+    if not (selected.content) {
+      Tip(Translation().no_items_selected, -700)
+      return
+    }
+    group := this._FirstMatch(entries, selected)
+    if (group.Length == 0) {
+      Tip(Translation().no_matching_type, -2000)
+      return
+    }
+    if (group.Length == 1) {
+      this._Execute(group[1], selected)
+      return
+    }
+    this._RunMenu(hotkeyName, group, selected)
   }
-  ; 没有任何规则匹配时静默返回
+
+  /**
+   * 按数组行序扫描, 把「连续同 (matchType, matchValue)」的行视为同一匹配组
+   * (即同一 mapping 的展开, key 在组内即菜单序号), 返回首个匹配的组。
+   * 行序即优先级: 首个匹配组命中后不再看后续组 (旧 RunActionScheme 同语义)。
+   * 无匹配时返回空数组。
+   */
+  static _FirstMatch(entries, selected) {
+    n := entries.Length
+    i := 1
+    while (i <= n) {
+      mt := entries[i].matchType
+      mv := entries[i].matchValue
+      j := i
+      while (j < n && entries[j+1].matchType == mt && entries[j+1].matchValue == mv) {
+        j++
+      }
+      if (this._MatchCondition(mt, mv, selected)) {
+        group := Array()
+        Loop j - i + 1 {
+          group.Push(entries[i + A_Index - 1])
+        }
+        return group
+      }
+      i := j + 1
+    }
+    return Array()
+  }
+
+  /**
+   * 匹配类型判定, 语义同旧 MatchActionRule:
+   * fileExt 只认文件选中, textType 只认文本选中 (多选文件匹配语义在 MatchFileExt 内)
+   */
+  static _MatchCondition(matchType, matchValue, selected) {
+    switch matchType {
+      case "fileExt":
+        return selected.type == "file" && MatchFileExt(matchValue, selected.content)
+      case "textType":
+        return selected.type == "text" && MatchTextType(matchValue, selected.content)
+    }
+    return false
+  }
+
+  /**
+   * 多 entry 无焦点菜单 (InputTipWindow + InputHook):
+   *   - 数字 1-9 列入 EndKeys: 按下立即终止输入并执行对应项 (EndKeys 会被吞掉, 不漏键);
+   *   - Esc 取消; T5 5s 超时取消;
+   *   - 重复按主键取消: 菜单期间先停用主热键 —— 热键线程正阻塞在 Wait,
+   *     MaxThreadsPerHotkey=1 下重复按压不会重入热键回调, 按键只会落入 InputHook,
+   *     故对主键 KeyOpt S+N (吞键+通知), OnKeyDown 里由 _IsMainKey 判定后取消;
+   *   - Suspend 包裹沿用 AbbrInput.StartInputHook 模式, 但尊重进入前的挂起状态
+   *     (已挂起时不再 Suspend(true)/Suspend(false), 避免把「暂停 MyKeymap」误恢复);
+   *   - 淡入淡出经 SetTimer 逐级透明度实现, 窗口 +Disabled + NoActivate 不抢焦点。
+   */
+  static _RunMenu(hotkeyName, entries, selected) {
+    byKey := Map()
+    menuText := ""
+    for e in entries {
+      k := e.key
+      if (k < 1 || k > 9) {
+        continue
+      }
+      byKey[String(k)] := e
+      menuText .= k ". " e.name "`n"
+    }
+    if (byKey.Count == 0) {
+      return
+    }
+
+    waitKey := ExtractWaitKey(hotkeyName)
+    ; 菜单期间停用主热键 (结束后恢复), 让重复主键走 InputHook 通知路径
+    KeymapManager.GlobalKeymap.DisableHotkey(waitKey)
+
+    wasSuspended := A_IsSuspended
+    if not (wasSuspended) {
+      Suspend(true)
+    }
+
+    ; 评审 M2: 窗口创建/InputHook 等易抛语句纳入 try/finally ——
+    ; 任何异常路径 (窗口创建失败/Wait 异常等) 都保证全局状态还原:
+    ; MenuActive/MenuIH 复位、Suspend 按 wasSuspended 还原、主热键 EnableHotkey,
+    ; 不再泄漏「热键停用+全局挂起」状态拖垮后续按键响应。_CancelMenu/代际号逻辑不变。
+    this.MenuSeq++
+    seq := this.MenuSeq
+    ih := ""
+    endReason := ""
+    try {
+      win := InputTipWindow(RTrim(menuText, "`n"), 12, 6, 4, 12, 8)
+      this.MenuWindow := win
+      hwnd := win.gui.Hwnd
+      try WinSetTransparent(0, "ahk_id " hwnd)   ; 先置全透明再 Show, 淡入从 0 开始无闪现
+      win.Show()
+      this._Fade(hwnd, 0, 255, seq)
+
+      ih := InputHook("T5", "{Esc}123456789")
+      this.MenuIH := ih
+      this.MenuActive := true
+      if (waitKey != "") {
+        try ih.KeyOpt("{" waitKey "}", "SN")
+        ih.OnKeyDown := (i, vk, sc) => (SelectedAction._IsMainKey(vk, hotkeyName) ? SelectedAction._CancelMenu() : "")
+      }
+
+      ih.Start()   ; InputHook 必须显式 Start, 否则 Wait 立即以 Stopped 返回 (未开始即视为已终止)
+      endReason := ih.Wait()
+      ih.Stop()
+    } finally {
+      ; 还原段 (含异常路径), 与上方 DisableHotkey/Suspend 对称
+      this.MenuActive := false
+      this.MenuIH := ""
+      if not (wasSuspended) {
+        Suspend(false)
+      }
+      if (waitKey != "") {
+        KeymapManager.GlobalKeymap.EnableHotkey(waitKey)
+      }
+    }
+
+    chosen := ""
+    if (endReason == "EndKey" && byKey.Has(ih.EndKey)) {
+      chosen := byKey[ih.EndKey]
+    }
+    ; EndReason: EndKey(数字)=执行 / Esc / Timeout / Stopped (重复主键) 均为取消
+    this._CloseMenu()
+    if (chosen != "") {
+      this._Execute(chosen, selected)
+    }
+  }
+
+  /**
+   * 判定 OnKeyDown 捕获的按键是否为「重复按下的主键」:
+   * 终止键与主键同名 (vk 相同) 且主键要求的修饰符均处于按下状态
+   * (左右 Ctrl/Win 不严格区分, 方向性只由原热键定义约束)
+   */
+  static _IsMainKey(vk, hotkeyStr) {
+    try {
+      waitKey := ExtractWaitKey(hotkeyStr)
+      if (waitKey == "" || GetKeyVK(waitKey) != vk) {
+        return false
+      }
+      if (InStr(hotkeyStr, "^") && !GetKeyState("Control")) {
+        return false
+      }
+      if (InStr(hotkeyStr, "+") && !GetKeyState("Shift")) {
+        return false
+      }
+      if (InStr(hotkeyStr, "!") && !GetKeyState("Alt")) {
+        return false
+      }
+      if (InStr(hotkeyStr, "#") && !GetKeyState("LWin") && !GetKeyState("RWin")) {
+        return false
+      }
+      return true
+    }
+    catch {
+      return false
+    }
+  }
+
+  /**
+   * 取消正在显示的菜单 (重复主键/重入触发时由其他线程调用):
+   * Stop 后菜单线程 ih.Wait 返回 "Stopped", 由其走取消分支统一清理
+   */
+  static _CancelMenu() {
+    ih := this.MenuIH
+    if (ih != "") {
+      ih.Stop()
+    }
+  }
+
+  /**
+   * 关闭菜单窗口: 淡出 -> 复位透明属性 -> 隐藏并释放引用。
+   * 代际号自增, 让尚未完成的淡入定时器自杀, 避免两个渐变定时器互相拉扯。
+   */
+  static _CloseMenu() {
+    win := this.MenuWindow
+    this.MenuWindow := ""
+    if (win == "") {
+      return
+    }
+    hwnd := win.gui.Hwnd
+    this.MenuSeq++
+    seq := this.MenuSeq
+    done() {
+      try WinSetTransparent("Off", "ahk_id " hwnd)
+      win.Hide()
+    }
+    this._Fade(hwnd, 255, 0, seq, done)
+  }
+
+  /**
+   * 窗口透明度渐变 (淡入 0->255 / 淡出 255->0), SetTimer 逐步执行不阻塞线程。
+   * seq 与当前代际号不符或窗口已不存在时自动停止; onDone 为完成回调 (可选)。
+   * 评审 M3: 淡出被新代际顶替时 (重复主键连按两次触发两次 _CloseMenu 等),
+   * 顶替方已清空 MenuWindow 引用且不会再 Hide —— 若被顶替的淡出不补执行 onDone
+   * (win.Hide()), 窗口将保持可见成为幽灵窗。故 seq 失配且本次为淡出 (alphaTo==0)
+   * 时先补执行 onDone 再自杀; 淡入被顶替维持自杀 (窗口由其关闭方负责)。
+   */
+  static _Fade(hwnd, alphaFrom, alphaTo, seq, onDone := "") {
+    alpha := alphaFrom
+    delta := (alphaTo > alphaFrom) ? 32 : -48
+    step() {
+      if (SelectedAction.MenuSeq != seq || !WinExist("ahk_id " hwnd)) {
+        SetTimer(step, 0)
+        ; 被顶替时淡出的 onDone (win.Hide()) 必须补执行, 否则留幽灵窗;
+        ; try 包裹防窗口已被销毁时 Hide 抛错
+        if (onDone != "" && alphaTo == 0) {
+          try onDone()
+        }
+        return
+      }
+      alpha += delta
+      reached := (delta > 0) ? (alpha >= alphaTo) : (alpha <= alphaTo)
+      if (reached) {
+        SetTimer(step, 0)
+        try WinSetTransparent(alphaTo, "ahk_id " hwnd)
+        if (onDone != "") {
+          onDone()
+        }
+        return
+      }
+      try WinSetTransparent(alpha, "ahk_id " hwnd)
+    }
+    SetTimer(step, 16)
+  }
+
+  /**
+   * 执行一条 entry (8 列契约, action 为生成端展开后的基础动作)
+   * textType 特征的专用行为 (open_url 等) 直接作用于选中内容, 不接受命令模板;
+   * 特征与行为的合法组合见 config-server/internal/script/actionscheme.go 的 textTypeActions。
+   * 执行前广播 selection_action 慢事件 (薄观察层, 隔离兜底, 不影响动作执行;
+   * 方案 D 后事件字段由 schemeId/ruleIndex 调整为 behavior/name/selected)。
+   */
+  static _Execute(entry, selected) {
+    try EventBus.Publish("selection_action", Map("behavior", entry.behavior, "name", entry.name, "selected", selected.content))
+    content := selected.content
+    switch entry.action {
+      case "open_url":
+        ; 默认浏览器打开选中网址 (AHK Run 对 http(s)/ftp URL 自动调用系统默认浏览器)
+        Run(Trim(content))
+      case "open_path":
+        OpenSelectedPaths(content)
+      case "open_folder":
+        OpenSelectedFolder(content)
+      case "magnet_download":
+        DownloadMagnet(content)
+      case "open_registry":
+        OpenRegistryKey(content)
+      case "open":
+        RunReplaced(entry.actionValue, content, entry.workingDir)
+      case "run":
+        RunReplaced(entry.actionValue, content, entry.workingDir)
+      case "search":
+        url := SelectionContext.NormalizeForSearch(entry.actionValue, content)
+        Run(url)
+      case "send_keys":
+        Send(SelectionContext.Normalize(entry.actionValue, content))
+      case "script":
+        RunScriptWithSelected(entry.actionValue, content)
+      case "copy":
+        A_Clipboard := SelectionContext.Normalize(entry.actionValue, content)
+    }
+  }
 }
 
 /**
- * 获取当前选中内容 (阶段2: 实现已迁移到 context/SelectionContext.ahk, 保留函数签名兼容存量调用)
- * @deprecated 新代码请直接用 SelectionContext.Get(); 本壳保留是为兼容用户自定义代码 (data/custom_functions.ahk)
- *             与旧配置中的遗留引用, 勿删除。
+ * 获取当前选中内容 (实现已迁移到 context/SelectionContext.ahk, 保留函数签名兼容存量调用)
+ * @deprecated 新代码请直接用 SelectionContext.Get(); 本壳保留是为兼容用户自定义代码
+ *             (data/custom_functions.ahk) 与旧配置中的遗留引用, 勿删除。
  * @returns {{type: string, content: string}} type: file / text / ""
  */
 GetSelectedContent() {
   return SelectionContext.Get()
-}
-
-/**
- * 判断选中内容是否匹配某条规则
- * @param rule 规则对象
- * @param selected 选中内容 {type, content}
- * @returns {boolean}
- */
-MatchActionRule(rule, selected) {
-  switch rule.matchType {
-    case "fileExt":
-      if selected.type != "file" {
-        return false
-      }
-      return MatchFileExt(rule.matchValue, selected.content)
-    case "textType":
-      if selected.type != "text" {
-        return false
-      }
-      return MatchTextType(rule.matchValue, selected.content)
-  }
-  return false
 }
 
 /**
@@ -144,43 +410,6 @@ MatchTextType(t, content) {
       return not (isURL or isPath or isMagnet)
   }
   return false
-}
-
-/**
- * 执行规则对应的行为
- * textType 特征的专用行为 (open_url 等) 直接作用于选中内容, 不接受命令模板;
- * 特征与行为的合法组合见 config-server/internal/script/actionscheme.go 的 textTypeActions
- * @param rule 规则对象
- * @param selected 选中内容
- */
-ExecuteActionRule(rule, selected) {
-  content := selected.content
-  switch rule.actionType {
-    case "open_url":
-      ; 默认浏览器打开选中网址 (AHK Run 对 http(s)/ftp URL 自动调用系统默认浏览器)
-      Run(Trim(content))
-    case "open_path":
-      OpenSelectedPaths(content)
-    case "open_folder":
-      OpenSelectedFolder(content)
-    case "magnet_download":
-      DownloadMagnet(content)
-    case "open_registry":
-      OpenRegistryKey(content)
-    case "open":
-      RunReplaced(rule.actionValue, content, rule.workingDir)
-    case "run":
-      RunReplaced(rule.actionValue, content, rule.workingDir)
-    case "search":
-      url := SelectionContext.NormalizeForSearch(rule.actionValue, content)
-      Run(url)
-    case "send_keys":
-      Send(SelectionContext.Normalize(rule.actionValue, content))
-    case "script":
-      RunScriptWithSelected(rule.actionValue, content)
-    case "copy":
-      A_Clipboard := SelectionContext.Normalize(rule.actionValue, content)
-  }
 }
 
 /**

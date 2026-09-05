@@ -48,3 +48,114 @@ func TestNilSliceRoundTrip(t *testing.T) {
 		t.Errorf("wire JSON: hotkeys.x 应为 null, 实际为 %v", hotkeys["x"])
 	}
 }
+
+// TestSelectedActionRoundTrip 验证 selectedAction 的 PUT 反序列化 + DTOToConfig →
+// ConfigToDTO 往返: 字段值逐项一致, mappings/entries 空集合恒输出 [],
+// 序列化后 selectedAction 子树与 PUT 输入字节级一致 (GET/PUT wire 契约,
+// 镜像 C# ConfigContractTests 模式)。
+func TestSelectedActionRoundTrip(t *testing.T) {
+	input := `{"keymaps":[],"selectedAction":{"hotkey":">^p","enable":true,"mappings":[
+		{"matchType":"textType","matchValue":"url","entries":[
+			{"behavior":"open_url","options":{"copyToClipboard":false,"clearSelection":false,"confirm":false}},
+			{"behavior":"search","actionValue":"https://www.bing.com/search?q=%selected%","options":{"copyToClipboard":true,"clearSelection":true,"confirm":true}}
+		]},
+		{"matchType":"fileExt","matchValue":"jpg,png","entries":[
+			{"behavior":"open","actionValue":"%selected%","workingDir":"D:\\tools","options":{"copyToClipboard":true,"clearSelection":false,"confirm":false}}
+		]}
+	]}}`
+
+	var dto ConfigDTO
+	if err := json.Unmarshal([]byte(input), &dto); err != nil {
+		t.Fatalf("反序列化 DTO 失败: %v", err)
+	}
+
+	cfg := DTOToConfig(&dto)
+	if cfg.SelectedAction == nil {
+		t.Fatal("DTOToConfig: SelectedAction 不应为 nil")
+	}
+	if cfg.SelectedAction.Hotkey != ">^p" || !cfg.SelectedAction.Enable {
+		t.Errorf("DTOToConfig: hotkey/enable 往返丢失: %+v", cfg.SelectedAction)
+	}
+	if len(cfg.SelectedAction.Mappings) != 2 {
+		t.Fatalf("DTOToConfig: mappings 应有 2 项, 实际 %d", len(cfg.SelectedAction.Mappings))
+	}
+	if len(cfg.SelectedAction.Mappings[0].Entries) != 2 {
+		t.Fatalf("DTOToConfig: entries 应有 2 项, 实际 %d", len(cfg.SelectedAction.Mappings[0].Entries))
+	}
+	e := cfg.SelectedAction.Mappings[0].Entries[1]
+	if e.Behavior != "search" || e.ActionValue != "https://www.bing.com/search?q=%selected%" ||
+		!e.Options.CopyToClipboard || !e.Options.ClearSelection || !e.Options.Confirm {
+		t.Errorf("DTOToConfig: entry 字段往返不一致: %+v", e)
+	}
+	if wd := cfg.SelectedAction.Mappings[1].Entries[0].WorkingDir; wd != `D:\tools` {
+		t.Errorf("DTOToConfig: workingDir 反斜杠往返不一致: %q", wd)
+	}
+
+	// model → DTO → wire JSON, 逐层验证结构契约
+	dto2 := ConfigToDTO(cfg)
+	out, err := json.Marshal(dto2)
+	if err != nil {
+		t.Fatalf("序列化失败: %v", err)
+	}
+	var check map[string]interface{}
+	if err := json.Unmarshal(out, &check); err != nil {
+		t.Fatalf("反序列化验证失败: %v", err)
+	}
+	sa, ok := check["selectedAction"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("wire JSON: selectedAction 应为对象且恒存在, 实际 %v", check["selectedAction"])
+	}
+	if sa["hotkey"] != ">^p" {
+		t.Errorf("wire JSON: hotkey 应为 >^p, 实际 %v", sa["hotkey"])
+	}
+	ms, ok := sa["mappings"].([]interface{})
+	if !ok || len(ms) != 2 {
+		t.Fatalf("wire JSON: mappings 应为数组且 2 项, 实际 %v", sa["mappings"])
+	}
+	m0 := ms[0].(map[string]interface{})
+	if m0["matchValue"] != "url" {
+		t.Errorf("wire JSON: mappings[0].matchValue 应为 url, 实际 %v", m0["matchValue"])
+	}
+	es, ok := m0["entries"].([]interface{})
+	if !ok || len(es) != 2 {
+		t.Fatalf("wire JSON: entries 应为数组且 2 项, 实际 %v", m0["entries"])
+	}
+	e0 := es[0].(map[string]interface{})
+	if _, has := e0["actionValue"]; has {
+		t.Errorf("wire JSON: 空 actionValue 应 omitempty 缺键, 实际 %v", e0["actionValue"])
+	}
+
+	// 字节级契约: selectedAction 子树序列化后与 PUT 输入的子树一致
+	// (两侧都经 map[string]interface{} 归一化, 消除键序差异后按字节比较)
+	var reIn map[string]interface{}
+	if err := json.Unmarshal([]byte(input), &reIn); err != nil {
+		t.Fatal(err)
+	}
+	want, _ := json.Marshal(reIn["selectedAction"])
+	got, _ := json.Marshal(sa)
+	if string(want) != string(got) {
+		t.Errorf("selectedAction 子树往返字节级不一致:\n want %s\n got  %s", want, got)
+	}
+
+	// 空集合恒数组契约: 出厂默认 (空 selectedAction) 时 mappings 恒输出 [] 而非 null/缺键
+	var emptyIn ConfigDTO
+	if err := json.Unmarshal([]byte(`{}`), &emptyIn); err != nil {
+		t.Fatal(err)
+	}
+	out2, err := json.Marshal(ConfigToDTO(DTOToConfig(&emptyIn)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var emptyCheck map[string]interface{}
+	if err := json.Unmarshal(out2, &emptyCheck); err != nil {
+		t.Fatal(err)
+	}
+	sa2, ok := emptyCheck["selectedAction"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("wire JSON: selectedAction 恒为对象, 实际 %v", emptyCheck["selectedAction"])
+	}
+	ms2, ok := sa2["mappings"].([]interface{})
+	if !ok || len(ms2) != 0 {
+		t.Errorf("空 selectedAction 的 mappings 应为 [], 实际 %v", sa2["mappings"])
+	}
+}

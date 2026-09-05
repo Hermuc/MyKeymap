@@ -23,11 +23,11 @@ import (
 const PlanVersion = 1
 
 type Plan struct {
-	PlanVersion   int                 `json:"planVersion"`
-	Keymaps       []PlanKeymap        `json:"keymaps"`
-	Abbr          PlanAbbr            `json:"abbr"`
-	ActionSchemes []PlanActionScheme  `json:"actionSchemes"`
-	WindowGroups  []model.WindowGroup `json:"windowGroups"`
+	PlanVersion    int                 `json:"planVersion"`
+	Keymaps        []PlanKeymap        `json:"keymaps"`
+	Abbr           PlanAbbr            `json:"abbr"`
+	SelectedAction PlanSelectedAction  `json:"selectedAction"` // 旧 actionSchemes 段已随「单键分发」重构改造
+	WindowGroups   []model.WindowGroup `json:"windowGroups"`
 }
 
 type PlanKeymap struct {
@@ -64,11 +64,29 @@ type PlanAbbrEntry struct {
 	Actions []PlanEntry `json:"actions"`
 }
 
-type PlanActionScheme struct {
-	ID     int                `json:"id"`
-	Name   string             `json:"name"`
-	Hotkey string             `json:"hotkey"`
-	Rules  []model.ActionRule `json:"rules"`
+// PlanSelectedAction 选中动作单键分发的计划投影, 与 selectedActionCode 渲染形态镜像:
+// 同一过滤口径 (enable && hotkey 非空才注册; 零 mappings / 超 key cap 的 entry 同口径跳过)、
+// 同一 ResolveRuleAction 展开与显示名回退。
+type PlanSelectedAction struct {
+	Hotkey   string                `json:"hotkey"`
+	Enable   bool                  `json:"enable"`
+	Mappings []PlanSelectedMapping `json:"mappings"` // 空时恒输出 []
+}
+
+type PlanSelectedMapping struct {
+	MatchType  string              `json:"matchType"`
+	MatchValue string              `json:"matchValue"`
+	Entries    []PlanSelectedEntry `json:"entries"` // 空时恒输出 []
+}
+
+// PlanSelectedEntry 字段含义与 selectedActionCode 数据数组一致 (key=菜单序号 1-9)。
+type PlanSelectedEntry struct {
+	Key         int    `json:"key"`
+	Behavior    string `json:"behavior"`
+	Action      string `json:"action"`
+	ActionValue string `json:"actionValue"`
+	WorkingDir  string `json:"workingDir"`
+	Name        string `json:"name"`
 }
 
 // BuildPlan 推导注册计划。调用方必须先执行 script.Preprocess (注入 !f17),
@@ -77,8 +95,8 @@ func BuildPlan(cfg *model.Config) *Plan {
 	return &Plan{
 		PlanVersion:   PlanVersion,
 		Keymaps:       planKeymaps(cfg),
-		Abbr:          planAbbr(cfg),
-		ActionSchemes: planActionSchemes(cfg),
+		Abbr:           planAbbr(cfg),
+		SelectedAction: planSelectedAction(cfg),
 		WindowGroups:  cfg.Options.WindowGroups,
 	}
 }
@@ -182,26 +200,46 @@ func planAbbrEntries(cfg *model.Config, abbrMap map[string][]model.Action) []Pla
 	return res
 }
 
-func planActionSchemes(cfg *model.Config) []PlanActionScheme {
-	// 与 actionSchemesCode 一致: 仅 enable 且 hotkey 非空的方案会被注册
-	res := []PlanActionScheme{}
-	for _, s := range cfg.ActionSchemes {
-		if !s.Enable || s.Hotkey == "" {
-			continue
+func planSelectedAction(cfg *model.Config) PlanSelectedAction {
+	// 与 selectedActionCode 一致: 仅 enable 且 hotkey 非空才注册热键, 禁用/空热键输出
+	// 空结构 (mappings 恒 [])。评审 L5: 零 mappings 时 Hotkey 也记空串 —— AHK 端
+	// SelectedActionInit 对 entries.Length==0 早退不注册热键, 计划必须同口径,
+	// 否则 Oracle 对账出现「计划有热键、运行时无注册」的假阳性。
+	res := PlanSelectedAction{Mappings: []PlanSelectedMapping{}}
+	sa := cfg.SelectedAction
+	if sa == nil || !sa.Enable || sa.Hotkey == "" {
+		return res
+	}
+	res.Hotkey = sa.Hotkey
+	res.Enable = sa.Enable
+	for _, m := range sa.Mappings {
+		pm := PlanSelectedMapping{
+			MatchType:  m.MatchType,
+			MatchValue: m.MatchValue,
+			Entries:    []PlanSelectedEntry{},
 		}
-		// 与 actionSchemesCode 一致: 计划记录解析后的实际注册值 (内置 ID 直通,
-		// 用户行为展开为基础动作+包默认模板), 保证 Oracle 计划与运行时一致
-		rules := make([]model.ActionRule, len(s.Rules))
-		for i, r := range s.Rules {
-			r.ActionType, r.ActionValue, r.WorkingDir = behaviors.ResolveRuleAction(BehaviorCatalog, r.ActionType, r.ActionValue, r.WorkingDir)
-			rules[i] = r
+		for i, e := range m.Entries {
+			// 评审 L2: 与 selectedActionCode 同口径, 超 key cap 的 entry 不进计划
+			if i+1 > selectedActionKeyCap {
+				continue
+			}
+			// 与 selectedActionCode 一致: 计划记录解析后的实际注册值 (内置 ID 直通,
+			// 用户行为展开为基础动作+包默认模板), 保证 Oracle 计划与运行时一致
+			action, actionValue, workingDir := behaviors.ResolveRuleAction(BehaviorCatalog, e.Behavior, e.ActionValue, e.WorkingDir)
+			pm.Entries = append(pm.Entries, PlanSelectedEntry{
+				Key:         i + 1,
+				Behavior:    e.Behavior,
+				Action:      action,
+				ActionValue: actionValue,
+				WorkingDir:  workingDir,
+				Name:        behaviorName(e.Behavior),
+			})
 		}
-		res = append(res, PlanActionScheme{
-			ID:     s.ID,
-			Name:   s.Name,
-			Hotkey: s.Hotkey,
-			Rules:  rules,
-		})
+		res.Mappings = append(res.Mappings, pm)
+	}
+	if len(res.Mappings) == 0 {
+		// 评审 L5: 零 mappings 与渲染器/AHK 端「空串不注册」口径统一
+		res.Hotkey = ""
 	}
 	return res
 }

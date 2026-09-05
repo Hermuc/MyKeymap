@@ -34,40 +34,6 @@ func behaviorDisplayName(cat *behaviors.Catalog, id string) string {
 	return id
 }
 
-// ValidateActionSchemeRules 校验方案规则的组合合法性: 规则引用的行为 (actionType = 行为 ID)
-// 必须存在且其 appliesTo 覆盖规则的匹配前提 —— 统一取代旧 textTypeActions 静态表,
-// 并补上 fileExt 此前无后端校验的缺口 (覆盖语义见 internal/behaviors 包注释)。
-// 同时修复旧实现的短路缺陷: 旧版第一条 textType 规则校验完即 return, 其后规则从未被校验。
-// 未知匹配类型不在保存时拒绝 (沿用 textRegex/fileGroup 移除任务的口径: 不把含遗留规则
-// 的旧配置锁死在 PUT /config), 该规则运行时不命中; cat 为 nil 时跳过覆盖检查仅做词表校验。
-func ValidateActionSchemeRules(s *ActionScheme, cat *behaviors.Catalog) error {
-	for i := range s.Rules {
-		r := &s.Rules[i]
-		var values []string
-		switch r.MatchType {
-		case "fileExt":
-			values = behaviors.RefValues(r.MatchType, r.MatchValue)
-		case "textType":
-			v := strings.ToLower(strings.TrimSpace(r.MatchValue))
-			if !behaviors.KnownTextTypes[v] {
-				return fmt.Errorf("未知的文本特征「%s」, 可选: 链接 / 路径 / 磁力链接 / 纯文本", r.MatchValue)
-			}
-			values = []string{v}
-		default:
-			continue
-		}
-		// 内置基础动作在目录缺失 (异常部署/纯 CLI 场景) 时跳过覆盖检查, 保持旧配置可保存
-		if cat == nil || (behaviors.BuiltinActionIDs[r.ActionType] && cat.Get(r.ActionType) == nil) {
-			continue
-		}
-		if !cat.Covers(r.ActionType, r.MatchType, values) {
-			return fmt.Errorf("规则第 %d 条: 行为「%s」与该%s前提「%s」不匹配",
-				i+1, behaviorDisplayName(cat, r.ActionType), matchTypeName(r.MatchType), r.MatchValue)
-		}
-	}
-	return nil
-}
-
 // ValidateFileGroups 校验文件分组表结构: 名称/显示名非空, 后缀列表非空 (分组为快捷填充数据, 结构非法时拒绝保存)
 func ValidateFileGroups(groups []FileGroup) error {
 	for i := range groups {
@@ -85,17 +51,8 @@ func ValidateFileGroups(groups []FileGroup) error {
 	return nil
 }
 
-// MatchActionScheme 按优先级匹配第一个符合条件的规则, 供模拟测试 API 使用
-func MatchActionScheme(scheme *ActionScheme, isFile bool, content string) *ActionRule {
-	for i := range scheme.Rules {
-		rule := &scheme.Rules[i]
-		if matchActionRule(rule, isFile, content) {
-			return rule
-		}
-	}
-	return nil
-}
-
+// MatchSelectedAction 及其匹配语义已迁至 selectedaction.go (单键分发); 本文件保留
+// matchActionRule/matchFileExt/matchTextType 供其复用。
 func matchActionRule(rule *ActionRule, isFile bool, content string) bool {
 	switch rule.MatchType {
 	case "fileExt":

@@ -11,9 +11,11 @@ namespace MyKeymap.Settings.Models;
 //   2. [JsonPropertyName] 与 Go json tag 逐字对齐 (含大小写);
 //   3. Go 侧 `json:"-"` 的字段 (Config.KeyMapping / Action.RemapInHotIf)
 //      不参与 JSON 序列化, 故本模型不定义;
-//   4. Go 侧带 omitempty 的字段 (如 actionSchemes / fileGroups
+//   4. Go 侧带 omitempty 的字段 (如 fileGroups
 //      以及 Action 的大部分字段) 在 JSON 中可能缺失, 反序列化时落回
-//      C# 属性默认值 (空集合 / 空串 / 0 / false), 模型一律以非空类型容忍缺失。
+//      C# 属性默认值 (空集合 / 空串 / 0 / false), 模型一律以非空类型容忍缺失;
+//   5. selectedAction 在 Go 侧为指针 + omitempty, 但 ParseConfig 读时保证非 nil,
+//      GET/PUT /config 全链路恒为对象 —— C# 侧以非空引用 + 默认 new() 对齐。
 // ============================================================================
 
 /// <summary>对应 Go struct Config。顶层配置, GET/PUT /config 的载荷。</summary>
@@ -25,9 +27,11 @@ public sealed class Config
     [JsonPropertyName("options")]
     public Options Options { get; set; } = new();
 
-    // omitempty: 旧配置文件可能没有此字段, 缺失时为空列表
-    [JsonPropertyName("actionSchemes")]
-    public List<ActionScheme> ActionSchemes { get; set; } = [];
+    // 选中动作单键分发 (方案 D, 2026-09 重构): GET/PUT /config 全链路携带, 恒对象;
+    // 旧 actionSchemes 多方案结构已由 Go ParseConfig 读时一次性迁移 (save 不再输出),
+    // C# 侧不再建模 (迁移仅发生在后端读路径, 前端永远只见 selectedAction)。
+    [JsonPropertyName("selectedAction")]
+    public SelectedAction SelectedAction { get; set; } = new();
 
     // omitempty: 文件分组快捷填充数据, 缺失时为空列表
     [JsonPropertyName("fileGroups")]
@@ -75,32 +79,95 @@ public sealed class Keymap
 }
 
 /// <summary>
-/// 对应 Go struct ActionScheme。选中动作方案: 选中文本/文件后按下快捷键执行预设行为。
-/// 变量约定: 命令或脚本中 %selected% 表示当前选中内容 (多文件用换行分隔)。
+/// 对应 Go struct SelectedAction。选中动作单键分发 (方案 D):
+/// 选中内容后按单一热键触发, 按 mappings 顺序匹配第一个命中的 mapping,
+/// 弹出其 entries 菜单 (最多 9 项) 由用户按数字键选择行为。
 /// </summary>
-public sealed class ActionScheme
+public sealed class SelectedAction
 {
-    [JsonPropertyName("id")]
-    public int Id { get; set; }
-
-    [JsonPropertyName("name")]
-    public string Name { get; set; } = "";
-
     [JsonPropertyName("hotkey")]
     public string Hotkey { get; set; } = "";
 
     [JsonPropertyName("enable")]
     public bool Enable { get; set; }
 
-    [JsonPropertyName("rules")]
-    public List<ActionRule> Rules { get; set; } = [];
+    /// <summary>有序映射列表 (分区组内行序 = 匹配优先级); 后端契约空时恒 []。</summary>
+    [JsonPropertyName("mappings")]
+    public List<SelectedMapping> Mappings { get; set; } = [];
+}
 
-    /// <summary>
-    /// 传输层字段 (不落盘): 保存/新建方案后 Go 侧重启 MyKeymap 失败时随响应置 true。
-    /// C# 侧可空: null 时序列化省略 (WhenWritingNull), 不会写入 PUT /config 载荷与导出 JSON。
-    /// </summary>
-    [JsonPropertyName("restartFailed")]
-    public bool? RestartFailed { get; set; }
+/// <summary>
+/// 对应 Go struct SelectedMapping。一个匹配前提桶: 同 matchType+matchValue 的行为菜单。
+/// 语义对齐旧 ActionRule 的 matchType/matchValue (fileExt=逗号分隔后缀, textType=url/path/magnet/plain)。
+/// </summary>
+public sealed class SelectedMapping
+{
+    [JsonPropertyName("matchType")]
+    public string MatchType { get; set; } = ""; // "fileExt" | "textType"
+
+    [JsonPropertyName("matchValue")]
+    public string MatchValue { get; set; } = "";
+
+    /// <summary>1..9 项, 顺序即菜单序号; 后端契约空时恒 []。</summary>
+    [JsonPropertyName("entries")]
+    public List<SelectedEntry> Entries { get; set; } = [];
+}
+
+/// <summary>
+/// 对应 Go struct SelectedEntry。菜单项: behavior = 行为库 ID (内置 11 个基础动作 ID 或用户行为包 ID)。
+/// actionValue/workingDir 非空时覆盖行为包默认模板, 空则用包默认 (复用 behaviors.ResolveRuleAction 语义);
+/// 空串经 *Json 代理属性省略 (null + WhenWritingNull 整属性跳过), 与 Go json omitempty 缺键字节对齐。
+/// (JsonIgnoreCondition.WhenWritingDefault 对 string 无效: "" 非 default(string)=null)
+/// </summary>
+public sealed class SelectedEntry
+{
+    [JsonPropertyName("behavior")]
+    public string Behavior { get; set; } = "";
+
+    /// <summary>命令模板 / 目标值; 空串 = 用行为包默认。</summary>
+    [JsonIgnore]
+    public string ActionValue { get; set; } = "";
+
+    /// <summary>actionValue 序列化代理: 空串 -> null (整属性省略), 读侧 null 归一 ""。</summary>
+    [JsonPropertyName("actionValue")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ActionValueJson
+    {
+        get => ActionValue.Length == 0 ? null : ActionValue;
+        set => ActionValue = value ?? "";
+    }
+
+    /// <summary>工作目录; 空串 = 不设置。</summary>
+    [JsonIgnore]
+    public string WorkingDir { get; set; } = "";
+
+    /// <summary>workingDir 序列化代理: 空串 -> null (整属性省略), 读侧 null 归一 ""。</summary>
+    [JsonPropertyName("workingDir")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? WorkingDirJson
+    {
+        get => WorkingDir.Length == 0 ? null : WorkingDir;
+        set => WorkingDir = value ?? "";
+    }
+
+    [JsonPropertyName("options")]
+    public RuleOptions Options { get; set; } = new();
+}
+
+/// <summary>
+/// 对应 Go struct RuleOptions。行为执行三开关 (复制到剪贴板 / 清除选区 / 执行前确认),
+/// 方案 D 前挂于旧 ActionRule.Options, 现由 SelectedEntry 携带, 语义与 json tag 不变。
+/// </summary>
+public sealed class RuleOptions
+{
+    [JsonPropertyName("copyToClipboard")]
+    public bool CopyToClipboard { get; set; }
+
+    [JsonPropertyName("clearSelection")]
+    public bool ClearSelection { get; set; }
+
+    [JsonPropertyName("confirm")]
+    public bool Confirm { get; set; }
 }
 
 /// <summary>
@@ -120,54 +187,6 @@ public sealed class FileGroup
     /// <summary>后缀列表 (不含点, 如 ["jpg","jpeg"])。</summary>
     [JsonPropertyName("exts")]
     public List<string> Exts { get; set; } = [];
-}
-
-/// <summary>
-/// 对应 Go struct ActionRule。规则按 Priority 升序匹配, 第一个匹配的规则生效。
-/// MatchType: fileExt / textType;
-/// ActionType: open / search / run / send_keys / script / copy
-///   + textType 专用: open_url / open_path / open_folder / magnet_download / open_registry
-///   (textType 特征与行为的合法组合由 Go 侧 ValidateActionSchemeRules 约束)。
-/// </summary>
-public sealed class ActionRule
-{
-    [JsonPropertyName("priority")]
-    public int Priority { get; set; }
-
-    [JsonPropertyName("matchType")]
-    public string MatchType { get; set; } = "";
-
-    [JsonPropertyName("matchValue")]
-    public string MatchValue { get; set; } = "";
-
-    [JsonPropertyName("actionType")]
-    public string ActionType { get; set; } = "";
-
-    [JsonPropertyName("actionValue")]
-    public string ActionValue { get; set; } = "";
-
-    // omitempty: 仅 run 等动作类型使用
-    [JsonPropertyName("workingDir")]
-    public string WorkingDir { get; set; } = "";
-
-    [JsonPropertyName("options")]
-    public RuleOptions Options { get; set; } = new();
-}
-
-/// <summary>对应 Go struct RuleOptions。</summary>
-public sealed class RuleOptions
-{
-    /// <summary>动作执行后把选中内容保留到剪贴板 (便于执行完成后直接粘贴)。</summary>
-    [JsonPropertyName("copyToClipboard")]
-    public bool CopyToClipboard { get; set; }
-
-    /// <summary>执行后清空选中。</summary>
-    [JsonPropertyName("clearSelection")]
-    public bool ClearSelection { get; set; }
-
-    /// <summary>执行前显示确认提示。</summary>
-    [JsonPropertyName("confirm")]
-    public bool Confirm { get; set; }
 }
 
 /// <summary>对应 Go struct Action。按键绑定的单个动作, 部分字段因动作类型而异。</summary>

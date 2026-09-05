@@ -70,7 +70,7 @@ public static class ConfigReadDefaults
     /// 1. keyboardLayout 为空 -> 默认键盘布局;
     /// 2. language 为空 -> 按当前系统语言环境选 "zh" / "en" (前端按 navigator.language);
     /// 3. windowGroups 首项不是 id=-1 的排除项 -> 头部插入 "🚫 Exclude";
-    /// 4. actionSchemes 缺失 -> 空列表 (属性默认值已保证, 此处显式兜底)。
+    /// 4. selectedAction 缺失 -> 空对象 (恒对象契约; 属性默认值已保证, 此处显式兜底)。
     /// </summary>
     public static Config Apply(Config config)
     {
@@ -99,7 +99,7 @@ public static class ConfigReadDefaults
             });
         }
 
-        config.ActionSchemes ??= [];
+        config.SelectedAction ??= new SelectedAction();
 
         return config;
     }

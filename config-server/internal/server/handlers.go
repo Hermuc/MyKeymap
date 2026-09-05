@@ -111,13 +111,10 @@ func SaveConfigHandler(debug bool) gin.HandlerFunc {
 		// DTO→model 映射在校验与落盘之前
 		config := DTOToConfig(&dto)
 
-		// 校验选中动作方案组合合法性 (规则引用的行为必须存在且覆盖匹配前提), 非法组合拒绝保存
-		behaviorCatalog := loadBehaviorCatalog()
-		for i := range config.ActionSchemes {
-			if err := script.ValidateActionSchemeRules(&config.ActionSchemes[i], behaviorCatalog); err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"message": "保存失败: " + err.Error()})
-				return
-			}
+		// 校验选中动作单键分发组合合法性 (entry 引用的行为必须存在且覆盖匹配前提), 非法组合拒绝保存
+		if err := script.ValidateSelectedAction(config.SelectedAction, loadBehaviorCatalog()); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"message": "保存失败: " + err.Error()})
+			return
 		}
 
 		// 校验文件分组表结构 (名称/显示名/后缀列表非空), 非法分组拒绝保存

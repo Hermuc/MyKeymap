@@ -22,7 +22,7 @@ public sealed class ModelSerializationTests
         using var doc = JsonDocument.Parse(json);
         var keys = doc.RootElement.EnumerateObject().Select(p => p.Name).ToHashSet();
         Assert.Equal(
-            new HashSet<string> { "keymaps", "options", "actionSchemes", "fileGroups", "overviewDocMd" },
+            new HashSet<string> { "keymaps", "options", "selectedAction", "fileGroups", "overviewDocMd" },
             keys);
     }
 
@@ -116,40 +116,55 @@ public sealed class ModelSerializationTests
     }
 
     [Fact]
-    public void ActionScheme_Rule_FileGroup_JsonNames_MatchGoTags()
+    public void SelectedAction_Mapping_Entry_FileGroup_JsonNames_MatchGoTags()
     {
-        var scheme = new ActionScheme
+        var sa = new SelectedAction
         {
-            Id = 1,
-            Name = "方案",
-            Hotkey = "*!s",
+            Hotkey = ">^p",
             Enable = true,
-            Rules =
+            Mappings =
             [
-                new ActionRule
+                new SelectedMapping
                 {
-                    Priority = 1,
                     MatchType = "fileExt",
                     MatchValue = "jpg",
-                    ActionType = "open",
-                    ActionValue = "x.exe",
-                    WorkingDir = "C:\\",
-                    Options = new RuleOptions { CopyToClipboard = true, ClearSelection = true, Confirm = true },
+                    Entries =
+                    [
+                        new SelectedEntry
+                        {
+                            Behavior = "open",
+                            ActionValue = "x.exe",
+                            WorkingDir = "C:\\",
+                            Options = new RuleOptions { CopyToClipboard = true, ClearSelection = true, Confirm = true },
+                        },
+                    ],
                 },
             ],
         };
-        var json = Serialize(scheme);
+        var json = Serialize(sa);
         using var doc = JsonDocument.Parse(json);
         Assert.Equal(
-            new HashSet<string> { "id", "name", "hotkey", "enable", "rules" },
+            new HashSet<string> { "hotkey", "enable", "mappings" },
             doc.RootElement.EnumerateObject().Select(p => p.Name).ToHashSet());
-        var rule = doc.RootElement.GetProperty("rules")[0];
+        var mapping = doc.RootElement.GetProperty("mappings")[0];
         Assert.Equal(
-            new HashSet<string> { "priority", "matchType", "matchValue", "actionType", "actionValue", "workingDir", "options" },
-            rule.EnumerateObject().Select(p => p.Name).ToHashSet());
+            new HashSet<string> { "matchType", "matchValue", "entries" },
+            mapping.EnumerateObject().Select(p => p.Name).ToHashSet());
+        var entry = mapping.GetProperty("entries")[0];
+        // 非空时 actionValue/workingDir 均输出
+        Assert.Equal(
+            new HashSet<string> { "behavior", "actionValue", "workingDir", "options" },
+            entry.EnumerateObject().Select(p => p.Name).ToHashSet());
         Assert.Equal(
             new HashSet<string> { "copyToClipboard", "clearSelection", "confirm" },
-            rule.GetProperty("options").EnumerateObject().Select(p => p.Name).ToHashSet());
+            entry.GetProperty("options").EnumerateObject().Select(p => p.Name).ToHashSet());
+
+        // 空 actionValue/workingDir omitempty 缺键 (对齐 Go dto_test 契约; options 恒输出)
+        var emptyJson = Serialize(new SelectedEntry { Behavior = "open_url" });
+        using var emptyDoc = JsonDocument.Parse(emptyJson);
+        Assert.Equal(
+            new HashSet<string> { "behavior", "options" },
+            emptyDoc.RootElement.EnumerateObject().Select(p => p.Name).ToHashSet());
 
         var fgJson = Serialize(new FileGroup { Name = "image", Label = "图片", Exts = ["jpg"] });
         using var fgDoc = JsonDocument.Parse(fgJson);
@@ -167,7 +182,7 @@ public sealed class ModelSerializationTests
     [Fact]
     public void Deserialize_ToleratesMissingOmitemptyFields()
     {
-        // 模拟旧版 config.json: 缺 actionSchemes / fileGroups, Action 仅带必需字段
+        // 模拟旧版 config.json: 缺 selectedAction / fileGroups, Action 仅带必需字段
         const string minimal = """
         {
           "keymaps": [
@@ -183,7 +198,9 @@ public sealed class ModelSerializationTests
         """;
         var config = JsonSerializer.Deserialize<Config>(minimal, SettingsJson.Options);
         Assert.NotNull(config);
-        Assert.Empty(config!.ActionSchemes);
+        // selectedAction 缺失时反序列化保持恒对象默认值 (C# 侧属性初始化器, 对齐 Go 侧 MigrateSelectedAction)
+        Assert.NotNull(config!.SelectedAction);
+        Assert.Empty(config.SelectedAction.Mappings);
         Assert.Empty(config.FileGroups);
         Assert.Single(config.Keymaps);
         var action = config.Keymaps[0].Hotkeys["a"][0];
@@ -240,12 +257,12 @@ public sealed class ConfigReadDefaultsTests
     }
 
     [Fact]
-    public void Apply_ActionSchemes_NeverNull()
+    public void Apply_SelectedAction_NeverNull()
     {
         var config = EmptyConfig();
-        config.ActionSchemes = null!;
+        config.SelectedAction = null!;
         ConfigReadDefaults.Apply(config);
-        Assert.NotNull(config.ActionSchemes);
-        Assert.Empty(config.ActionSchemes);
+        Assert.NotNull(config.SelectedAction);
+        Assert.Empty(config.SelectedAction.Mappings);
     }
 }

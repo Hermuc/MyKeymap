@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"settings/internal/behaviors"
 	"settings/internal/proc"
-	"settings/internal/script"
+	"settings/internal/script/model"
 )
 
 // 行为包 REST API: 内置包随软件分发 (settings.exe 同级 behaviors/, 只读),
@@ -26,12 +26,17 @@ func loadBehaviorCatalog() *behaviors.Catalog {
 	return behaviors.LoadCatalog(builtinDir, userBehaviorsDir)
 }
 
-// behaviorRuleRefs 把全部方案的规则投影为删除校验所需引用 (避免 behaviors 包反向依赖 model)。
-func behaviorRuleRefs(schemes []script.ActionScheme) []behaviors.RuleRef {
+// behaviorRuleRefs 把 selectedAction.mappings 的 entries 投影为删除校验所需引用
+// (避免 behaviors 包反向依赖 model); RuleRef.ActionType = entry.behavior,
+// 旧实现从 actionSchemes.Rules 收集, 已随「单键分发」重构改造。
+func behaviorRuleRefs(sa *model.SelectedAction) []behaviors.RuleRef {
 	refs := make([]behaviors.RuleRef, 0)
-	for _, s := range schemes {
-		for _, r := range s.Rules {
-			refs = append(refs, behaviors.RuleRef{MatchType: r.MatchType, MatchValue: r.MatchValue, ActionType: r.ActionType})
+	if sa == nil {
+		return refs
+	}
+	for _, m := range sa.Mappings {
+		for _, e := range m.Entries {
+			refs = append(refs, behaviors.RuleRef{MatchType: m.MatchType, MatchValue: m.MatchValue, ActionType: e.Behavior})
 		}
 	}
 	return refs
@@ -103,7 +108,7 @@ func UpdateBehaviorHandler(c *gin.Context) {
 func DeleteBehaviorHandler(c *gin.Context) {
 	id := c.Param("id")
 	catalog := loadBehaviorCatalog()
-	if err := behaviors.ValidateDelete(catalog, id, behaviorRuleRefs(loadActionSchemes())); err != nil {
+	if err := behaviors.ValidateDelete(catalog, id, behaviorRuleRefs(loadSelectedAction())); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}

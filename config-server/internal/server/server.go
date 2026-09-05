@@ -42,13 +42,9 @@ func Run(hasError chan<- struct{}, rainDone <-chan struct{}, debug bool, headles
 	router.POST("/server/command/:id", ServerCommandHandler)
 	router.GET("/shortcuts", GetShortcutsHandler)
 
-	// 选中动作方案 API
-	router.GET("/api/action-schemes", GetActionSchemesHandler)
-	router.GET("/api/action-schemes/:id", GetActionSchemeHandler)
-	router.POST("/api/action-schemes", CreateActionSchemeHandler)
-	router.PUT("/api/action-schemes/:id", UpdateActionSchemeHandler)
-	router.DELETE("/api/action-schemes/:id", DeleteActionSchemeHandler)
-	router.POST("/api/action-schemes/test", TestActionSchemeHandler)
+	// 选中动作单键分发 API (方案 D): 旧 action-schemes CRUD 六路由已随重构移除,
+	// 存量配置经 ParseConfig 读时一次性迁移
+	router.POST("/api/selected-action/test", TestSelectedActionHandler)
 
 	// 行为包 (选中动作「行为库」)
 	router.GET("/api/behaviors", GetBehaviorsHandler)

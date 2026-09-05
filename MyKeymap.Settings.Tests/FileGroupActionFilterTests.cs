@@ -5,12 +5,14 @@ using MyKeymap.Settings.ViewModels;
 namespace MyKeymap.Settings.Tests;
 
 /// <summary>
-/// 「文件后缀 (fileExt)」语境行为下拉按分组过滤 + 分组后缀修改保存写回 的单元测试。
-/// 纯 ViewModel 测试 (无 Avalonia 宿主): RuleEditorVm 为 ObservableObject, 构造链
-/// MainViewModel -> SelectedActionPageViewModel -> SelectedActionEditViewModel 均为
-/// 内存对象 (BackendSession 构造只存参不拉起子进程, Config 直接注入, ISettingsApi 不被触达)。
+/// 「文件后缀 (fileExt)」语境行为下拉按前提过滤 + 分组关联生命周期 + 后缀修改保存写回 的单元测试。
+/// 纯 ViewModel 测试 (无 Avalonia 宿主): 构造链 MainViewModel -> SelectedActionPageViewModel ->
+/// MappingRowVm 均为内存对象 (BackendSession 构造只存参不拉起子进程, Config 直接注入, ISettingsApi 不被触达)。
 /// 行为选项自 2026-09 起由行为包 appliesTo 覆盖推导 (BehaviorCatalog, CONTRACTS §3.9):
-/// 文件语境覆盖集 = 通配内置行为 6 项 (专属排前), default 标记推导纠正默认行为。
+/// 文件语境覆盖集 = 通配内置行为 6 项, 文本专用行为不出现, 脏值恒插首位。
+/// 分组关联语义 (评审 F1/F2, 方案 D): 关联存于行 VM 的 AssociatedGroupName —— 选分组建立 /
+/// 清空值解除 / 初始按值推导 / 手改后缀保持; 写回经 ApplyFileGroupWriteBack (SaveAsync 咽喉调用)。
+/// 行 VM 生命周期 = mapping 生命周期, 无旧编辑器的页面级关联映射 (F5-3 场景由「收起再展开」承接)。
 /// </summary>
 public sealed class FileGroupActionFilterTests
 {
@@ -34,168 +36,181 @@ public sealed class FileGroupActionFilterTests
         ],
     };
 
-    /// <summary>
-    /// 构造编辑页 VM (单条 fileExt 规则: MatchValue=matchValue, ActionType=actionType)。
-    /// 构造完成即选中该规则并自动创建规则编辑器 (OnSelectedRuleChanged -> RuleEditorVm -> ApplyFromRule)。
-    /// </summary>
-    private static (SelectedActionEditViewModel Vm, Config Config) CreateHost(string matchValue, string actionType)
-        => CreateHost(BuildConfig(), matchValue, actionType);
+    /// <summary>构造页面 VM (空 selectedAction + 分组夹具)。</summary>
+    private static (SelectedActionPageViewModel Page, Config Config) CreatePage() => CreatePage(BuildConfig());
 
     /// <summary>重载: 注入自定义 Config (二义同集分组 / 带点存量分组等场景)。</summary>
-    private static (SelectedActionEditViewModel Vm, Config Config) CreateHost(Config config, string matchValue, string actionType)
+    private static (SelectedActionPageViewModel Page, Config Config) CreatePage(Config config)
     {
         EnsureBehaviorCatalog();
         var main = new MainViewModel(new BackendSessionOptions());
         main.Config = config;
-        var page = new SelectedActionPageViewModel(main);
-        var scheme = new ActionScheme
+        return (new SelectedActionPageViewModel(main), config);
+    }
+
+    /// <summary>
+    /// 构造单条 fileExt 行并展开手风琴 (MatchValue=matchValue, 首个行为=behavior, 模板=actionValue)。
+    /// 行挂入 FileMappings 分区 (仲裁/写回均遍历分区集合) 后再展开 (page.ExpandedRow = row)。
+    /// </summary>
+    private static (SelectedActionPageViewModel Page, MappingRowVm Row, EntryRowVm Editor, Config Config) CreateHost(
+        string matchValue, string behavior, string actionValue = "")
+        => CreateHost(BuildConfig(), matchValue, behavior, actionValue);
+
+    private static (SelectedActionPageViewModel Page, MappingRowVm Row, EntryRowVm Editor, Config Config) CreateHost(
+        Config config, string matchValue, string behavior, string actionValue = "")
+    {
+        var (page, cfg) = CreatePage(config);
+        var row = new MappingRowVm(page, new SelectedMapping
         {
-            Name = "测试方案",
-            Hotkey = "*!t",
-            Enable = true,
-            Rules =
-            [
-                new ActionRule
-                {
-                    Priority = 1,
-                    MatchType = "fileExt",
-                    MatchValue = matchValue,
-                    ActionType = actionType,
-                    ActionValue = "",
-                },
-            ],
-        };
-        return (new SelectedActionEditViewModel(main, page, scheme), config);
+            MatchType = "fileExt",
+            MatchValue = matchValue,
+            Entries = [new SelectedEntry { Behavior = behavior, ActionValue = actionValue, Options = new RuleOptions() }],
+        });
+        page.FileMappings.Add(row); // 行必须挂到分区: 手风琴仲裁与 ApplyFileGroupWriteBack 都遍历分区集合
+        page.ExpandedRow = row; // 展开手风琴 -> OpenEditor
+        return (page, row, row.Editors[0], cfg);
     }
 
     /// <summary>行为下拉候选值集合 (无序比较用)。</summary>
-    private static HashSet<string> OptionValues(SelectedActionEditViewModel vm)
-        => vm.Editor!.ActionTypeOptions.Select(o => o.Value).ToHashSet();
+    private static HashSet<string> OptionValues(EntryRowVm editor)
+        => editor.BehaviorOptions.Select(o => o.Value).ToHashSet();
 
-    // ------------------------------------------------------------- ActionTypeOptions 过滤
+    private static readonly HashSet<string> FileCovering =
+        new() { "copy", "open", "open_folder", "open_path", "run", "script" };
+
+    // ------------------------------------------------------------- 行为下拉过滤
 
     /// <summary>关联 image: 文件语境覆盖集 = 通配内置行为 6 项 (专属无), 按目录序排列;
     /// 文本专用行为 (magnet_download/open_url/open_registry/send_keys/search) 不出现。</summary>
     [Fact]
-    public void ActionTypeOptions_With_Image_Association_Shows_Covering_Generic_Set()
+    public void BehaviorOptions_With_Image_Association_Shows_Covering_Generic_Set()
     {
-        var (vm, _) = CreateHost(string.Join(", ", ImageExts), "open");
-        Assert.Equal(new[] { "copy", "open", "open_folder", "open_path", "run", "script" },
-            vm.Editor!.ActionTypeOptions.Select(o => o.Value));
+        var (_, row, editor, _) = CreateHost(string.Join(", ", ImageExts), "open");
+        Assert.Equal(["copy", "open", "open_folder", "open_path", "run", "script"],
+            editor.BehaviorOptions.Select(o => o.Value));
+        Assert.Equal("image", row.AssociatedGroupName); // 值 ≡ image 全集 -> 初始关联成立
     }
 
     /// <summary>关联 code: 覆盖集与 image 相同 (通配行为对任意后缀恒适用, 2026-09 语义)。</summary>
     [Fact]
-    public void ActionTypeOptions_With_Code_Association_Shows_Same_Covering_Set()
+    public void BehaviorOptions_With_Code_Association_Shows_Same_Covering_Set()
     {
-        var (vm, _) = CreateHost(string.Join(", ", CodeExts), "script");
-        Assert.Equal(new HashSet<string> { "copy", "open", "open_folder", "open_path", "run", "script" },
-            OptionValues(vm));
+        var (_, _, editor, _) = CreateHost(string.Join(", ", CodeExts), "script");
+        Assert.Equal(FileCovering, OptionValues(editor));
     }
 
     /// <summary>无关联 (手输后缀): 覆盖集同为通配行为 6 项。</summary>
     [Fact]
-    public void ActionTypeOptions_Without_Association_Shows_Covering_Generic_Set()
+    public void BehaviorOptions_Without_Association_Shows_Covering_Generic_Set()
     {
-        var (vm, _) = CreateHost("abc,xyz", "run");
-        Assert.Equal(new HashSet<string> { "copy", "open", "open_folder", "open_path", "run", "script" },
-            OptionValues(vm));
+        var (_, row, editor, _) = CreateHost("abc,xyz", "run");
+        Assert.Equal(FileCovering, OptionValues(editor));
+        Assert.Null(row.AssociatedGroupName);
     }
 
     /// <summary>
-    /// 存量脏值 (关联 image 但行为是 magnet_download): union 保证脏值恒可见可选,
-    /// 其余仍按分组过滤 (send_keys/open_registry 等文本专用行为不可见)。
+    /// 存量脏值 (关联 image 但行为是 magnet_download): 脏值恒插首位保持可见可选,
+    /// 其余仍按前提过滤 (send_keys/open_registry 等文本专用行为不可见)。
     /// </summary>
     [Fact]
-    public void ActionTypeOptions_Keeps_Dirty_Action_Visible_In_Associated_Group()
+    public void BehaviorOptions_Keeps_Dirty_Action_Visible_In_Associated_Group()
     {
-        var (vm, _) = CreateHost(string.Join(", ", ImageExts), "magnet_download");
-        var values = OptionValues(vm);
-        Assert.Contains("magnet_download", values);
+        var (_, _, editor, _) = CreateHost(string.Join(", ", ImageExts), "magnet_download", "magnet:?xt=1");
+        var values = editor.BehaviorOptions.Select(o => o.Value).ToList();
+        Assert.Equal("magnet_download", values[0]); // 脏值插首位
         Assert.DoesNotContain("send_keys", values);
         Assert.DoesNotContain("open_registry", values);
         Assert.DoesNotContain("search", values);
+        Assert.Equal("magnet_download", editor.Entry.Behavior);
+        Assert.Equal("magnet:?xt=1", editor.ActionValue); // 脏载荷不被构造期清洗
+    }
+
+    /// <summary>textType(url) 行: 覆盖集 = 文本专属 {open_url, search}, 文件行为不可见 (类型过滤)。</summary>
+    [Fact]
+    public void BehaviorOptions_TextType_Url_Shows_TextOnly_Set()
+    {
+        var (page, _) = CreatePage();
+        var row = new MappingRowVm(page, new SelectedMapping
+        {
+            MatchType = "textType",
+            MatchValue = "url",
+            Entries = [new SelectedEntry { Behavior = "open_url", Options = new RuleOptions() }],
+        });
+        page.ExpandedRow = row;
+        Assert.Equal(new HashSet<string> { "open_url", "search" }, OptionValues(row.Editors[0]));
     }
 
     // ------------------------------------------------------------- 分组选择联动
 
-    /// <summary>
-    /// 当前行为 magnet_download (仅覆盖文本特征) 选中 image: 纠正为默认行为 open_path
-    /// (default 标记推导), 清空残留载荷, 填充分组后缀串, 行为下拉联动刷新。
-    /// (2026-09 语义: run 等通配行为对文件前提恒适用, 不再触发纠正。)
-    /// </summary>
+    /// <summary>选分组: 填充分组后缀串并建立关联 (行为与模板不纠正 —— 合法性由保存校验接管)。</summary>
     [Fact]
-    public void OnFileGroupSelected_Corrects_Incompatible_Action_And_Clears_Template()
+    public void OnFileGroupSelected_Fills_ExtList_And_Associates()
     {
-        var (vm, _) = CreateHost("", "magnet_download");
-        var rule = vm.SelectedRule!.Rule;
-        rule.ActionValue = "magnet:?xt=1"; // 残留载荷 (magnet_download 本无模板, 验证纠正时清空)
-        var editor = vm.Editor!;
-        editor.FileGroupSelected = editor.FileGroupOptions.First(o => o.Value == "image");
+        var (_, row, editor, _) = CreateHost("", "open");
+        row.FileGroupSelected = row.FileGroupOptions.First(o => o.Value == "image");
 
-        Assert.Equal("open_path", rule.ActionType); // 行为包 default 标记推导
-        Assert.Equal("", rule.ActionValue);         // 纠正到无参行为时清空残留载荷
-        Assert.Equal(string.Join(", ", ImageExts), rule.MatchValue);
-        // 联动刷新: 选项为文件语境覆盖集
-        Assert.Equal(new HashSet<string> { "copy", "open", "open_folder", "open_path", "run", "script" }, OptionValues(vm));
+        Assert.Equal(string.Join(", ", ImageExts), row.MatchValueDisplay);
+        Assert.Equal("image", row.AssociatedGroupName);
+        Assert.Equal("open", editor.Entry.Behavior); // 行为不被联动纠正
     }
 
-    /// <summary>当前行为 open (分组安全集内): 选中 image 不纠正行为, 仅填充后缀串。</summary>
+    /// <summary>当前行为磁力下载 (仅覆盖文本前提): 选分组不纠正行为、不清空残留载荷
+    /// (2026-09 语义: 纠正职责移交保存校验, 脏值由用户在行为下拉显式处理)。</summary>
     [Fact]
-    public void OnFileGroupSelected_Keeps_Compatible_Action_Untouched()
+    public void OnFileGroupSelected_Keeps_Incompatible_Behavior_And_Payload_Untouched()
     {
-        var (vm, _) = CreateHost("", "open");
-        var rule = vm.SelectedRule!.Rule;
-        var editor = vm.Editor!;
-        editor.FileGroupSelected = editor.FileGroupOptions.First(o => o.Value == "image");
+        var (_, row, editor, _) = CreateHost("", "magnet_download", "magnet:?xt=1");
+        row.FileGroupSelected = row.FileGroupOptions.First(o => o.Value == "image");
 
-        Assert.Equal("open", rule.ActionType);
-        Assert.Equal(string.Join(", ", ImageExts), rule.MatchValue);
+        Assert.Equal("magnet_download", editor.Entry.Behavior);
+        Assert.Equal("magnet:?xt=1", editor.ActionValue);
+        Assert.Equal(string.Join(", ", ImageExts), row.MatchValueDisplay);
+        Assert.Equal("image", row.AssociatedGroupName);
     }
 
     /// <summary>选中「无」: 清空条件值并解除关联 (行为过滤回退全文件集)。</summary>
     [Fact]
     public void OnFileGroupSelected_None_Clears_MatchValue_And_Disassociates()
     {
-        var (vm, _) = CreateHost(string.Join(", ", ImageExts), "open");
-        var editor = vm.Editor!;
-        editor.FileGroupSelected = editor.FileGroupOptions.First(o => o.Value == ""); // 「无」
+        var (_, row, editor, _) = CreateHost(string.Join(", ", ImageExts), "open");
+        row.FileGroupSelected = row.FileGroupOptions.First(o => o.Value == ""); // 「无」
 
-        Assert.Equal("", vm.SelectedRule!.Rule.MatchValue);
-        Assert.Equal(new HashSet<string> { "copy", "open", "open_folder", "open_path", "run", "script" }, OptionValues(vm));
+        Assert.Equal("", row.MatchValueDisplay);
+        Assert.Null(row.AssociatedGroupName);
+        Assert.Null(row.FileGroupSelected); // 下拉回退未选态
+        Assert.Equal(FileCovering, OptionValues(editor));
     }
 
-    // ------------------------------------------------------------- 回填重建关联
+    // ------------------------------------------------------------- 初始关联推导
 
-    /// <summary>条件值 = 分组后缀全集的乱序/大小写变体: 回填时重建关联并选中该分组。</summary>
+    /// <summary>条件值 = 分组后缀全集的乱序/大小写变体: 构造时重建关联 (SameExts 归一化比较)。</summary>
     [Fact]
-    public void ApplyFromRule_Rebuilds_Association_From_Shuffled_Case_Variant()
+    public void Initial_Association_Rebuilt_From_Shuffled_Case_Variant()
     {
-        var (vm, _) = CreateHost("WEBP, svg, ICO, jpg, JPEG, Png, gif, BMP", "open");
-        var editor = vm.Editor!;
-        Assert.Equal("image", editor.FileGroupSelected?.Value);
-        // 乱序大小写变体仍命中 image 词表 -> 选项按 image 过滤
-        Assert.Equal(new HashSet<string> { "copy", "open", "open_folder", "open_path", "run", "script" }, OptionValues(vm));
+        var (_, row, editor, _) = CreateHost("WEBP, svg, ICO, jpg, JPEG, Png, gif, BMP", "open");
+        Assert.Equal("image", row.AssociatedGroupName);
+        Assert.Equal("image", row.FileGroupSelected?.Value); // 下拉回显分组
+        Assert.Equal(FileCovering, OptionValues(editor));
     }
 
     /// <summary>自定义后缀串 (组内子集, 不与任何分组全集一致): 不关联, 快捷填入保持未选。</summary>
     [Fact]
-    public void ApplyFromRule_Does_Not_Associate_Custom_Ext_List()
+    public void Initial_No_Association_For_Custom_Ext_List()
     {
-        var (vm, _) = CreateHost("jpg, png", "open"); // image 组的子集 != 全集
-        Assert.Null(vm.Editor!.FileGroupSelected);
-        Assert.Equal(new HashSet<string> { "copy", "open", "open_folder", "open_path", "run", "script" }, OptionValues(vm));
+        var (_, row, _, _) = CreateHost("jpg, png", "open"); // image 组的子集 != 全集
+        Assert.Null(row.AssociatedGroupName);
+        Assert.Null(row.FileGroupSelected);
     }
 
-    // ------------------------------------------------------------- 保存写回
+    // ------------------------------------------------------------- 保存写回 (F1 咽喉)
 
-    /// <summary>关联 image 后手改条件值: 写回更新 Config.FileGroups[image].Exts (以编辑框当前顺序)。</summary>
+    /// <summary>关联 image 后手改条件值: 写回更新 Config.FileGroups[image].Exts (以当前书写形式归一化)。</summary>
     [Fact]
     public void ApplyFileGroupWriteBack_Saves_Edited_ExtList_To_Group()
     {
-        var (vm, config) = CreateHost(string.Join(", ", ImageExts), "open");
-        vm.Editor!.MatchValue = "jpg, png, webp";
-        vm.ApplyFileGroupWriteBack();
+        var (page, row, _, config) = CreateHost(string.Join(", ", ImageExts), "open");
+        row.MatchValueDisplay = "jpg, png, webp";
+        page.ApplyFileGroupWriteBack();
 
         var group = config.FileGroups.First(g => g.Name == "image");
         Assert.Equal(new[] { "jpg", "png", "webp" }, group.Exts);
@@ -207,9 +222,9 @@ public sealed class FileGroupActionFilterTests
     [Fact]
     public void ApplyFileGroupWriteBack_Empty_MatchValue_Does_Not_Touch_Group()
     {
-        var (vm, config) = CreateHost(string.Join(", ", ImageExts), "open");
-        vm.Editor!.MatchValue = "";
-        vm.ApplyFileGroupWriteBack();
+        var (page, row, _, config) = CreateHost(string.Join(", ", ImageExts), "open");
+        row.MatchValueDisplay = "";
+        page.ApplyFileGroupWriteBack();
 
         Assert.Equal(ImageExts, config.FileGroups.First(g => g.Name == "image").Exts);
     }
@@ -218,8 +233,8 @@ public sealed class FileGroupActionFilterTests
     [Fact]
     public void ApplyFileGroupWriteBack_Without_Association_Does_Not_Touch_Groups()
     {
-        var (vm, config) = CreateHost("custom1, custom2", "open");
-        vm.ApplyFileGroupWriteBack();
+        var (page, _, _, config) = CreateHost("custom1, custom2", "open");
+        page.ApplyFileGroupWriteBack();
 
         Assert.Equal(ImageExts, config.FileGroups.First(g => g.Name == "image").Exts);
         Assert.Equal(CodeExts, config.FileGroups.First(g => g.Name == "code").Exts);
@@ -229,11 +244,121 @@ public sealed class FileGroupActionFilterTests
     [Fact]
     public void ApplyFileGroupWriteBack_Same_Set_Different_Order_Case_Does_Not_Touch_Group()
     {
-        var (vm, config) = CreateHost(string.Join(", ", ImageExts), "open");
-        vm.Editor!.MatchValue = "WEBP, SVG, ICO, JPG, JPEG, PNG, GIF, BMP"; // 同集合, 乱序+大小写
-        vm.ApplyFileGroupWriteBack();
+        var (page, row, _, config) = CreateHost(string.Join(", ", ImageExts), "open");
+        row.MatchValueDisplay = "WEBP, SVG, ICO, JPG, JPEG, PNG, GIF, BMP"; // 同集合, 乱序+大小写
+        page.ApplyFileGroupWriteBack();
 
         Assert.Equal(ImageExts, config.FileGroups.First(g => g.Name == "image").Exts);
+    }
+
+    /// <summary>
+    /// F4 动机: 带点存量分组与归一化条件值视为一致 —— 建立关联且写回不重写 (保留存量书写形式)。
+    /// </summary>
+    [Fact]
+    public void WriteBack_Does_Not_Rewrite_Dotted_Group_When_Normalized_Equal()
+    {
+        var config = BuildConfig();
+        config.FileGroups[0].Exts = [".jpg", ".png"]; // 存量带点书写
+        var (page, row, editor, cfg) = CreateHost(config, "jpg, png", "open");
+
+        // 归一化后一致 -> 建立关联, 行为下拉按前提过滤 (值集与分组一致)
+        Assert.Equal("image", row.AssociatedGroupName);
+        Assert.Equal(FileCovering, OptionValues(editor));
+        page.ApplyFileGroupWriteBack(); // 同集 (归一化意义下) -> 不重写
+        Assert.Equal(new[] { ".jpg", ".png" }, cfg.FileGroups.First(g => g.Name == "image").Exts);
+    }
+
+    /// <summary>
+    /// F5-6: 两组同后缀集二义 —— 无显式关联时按值推导取声明序首个 (FirstOrDefault);
+    /// 显式关联后者后, 关联存于行 VM (生命周期 = mapping), 收起再展开不丢失, 写回指向后者。
+    /// </summary>
+    [Fact]
+    public void Ambiguous_Same_Ext_Groups_Explicit_Association_Wins_WriteBack()
+    {
+        var config = new Config
+        {
+            FileGroups =
+            [
+                new FileGroup { Name = "photo", Label = "照片", Exts = ["jpg", "png"] },
+                new FileGroup { Name = "image2", Label = "图片二", Exts = ["jpg", "png"] },
+            ],
+        };
+        var (page, row, editor, cfg) = CreateHost(config, "jpg, png", "open");
+
+        // 无显式关联: 首次按值推导二义 -> FirstOrDefault 取声明序首个
+        Assert.Equal("photo", row.AssociatedGroupName);
+
+        // 显式关联后者
+        row.FileGroupSelected = row.FileGroupOptions.First(o => o.Value == "image2");
+        Assert.Equal("image2", row.AssociatedGroupName);
+
+        // 收起再展开 (编辑器重建, 行 VM 不销毁): 关联不丢失
+        page.ExpandedRow = null;
+        page.ExpandedRow = row;
+        Assert.Equal("image2", row.AssociatedGroupName);
+        Assert.Equal(FileCovering, OptionValues(row.Editors[0]));
+
+        // 行为断言: 写回指向 image2, photo 不受影响
+        row.MatchValueDisplay = "jpg, png, bmp";
+        page.ApplyFileGroupWriteBack();
+        Assert.Equal(new[] { "jpg", "png", "bmp" }, cfg.FileGroups.First(g => g.Name == "image2").Exts);
+        Assert.Equal(new[] { "jpg", "png" }, cfg.FileGroups.First(g => g.Name == "photo").Exts);
+    }
+
+    // ------------------------------------------------------------- F2 关联生命周期
+
+    /// <summary>
+    /// F5-1: 「无」解除关联后, 手改条件值不再按值重建; 经写回公有行为断言:
+    /// 改条件值后分组内容不变 —— 解除意图不被回滚。
+    /// </summary>
+    [Fact]
+    public void Dissociate_By_None_Survives_Subsequent_Edit_And_WriteBack()
+    {
+        var (page, row, _, config) = CreateHost(string.Join(", ", ImageExts), "open");
+        row.FileGroupSelected = row.FileGroupOptions.First(o => o.Value == ""); // 「无」解除
+        Assert.Null(row.AssociatedGroupName);
+
+        row.MatchValueDisplay = "jpg, png, bmp"; // 手填新值 (不与分组全集一致, 也无人重建关联)
+        page.ApplyFileGroupWriteBack();
+        Assert.Equal(ImageExts, config.FileGroups.First(g => g.Name == "image").Exts);
+    }
+
+    /// <summary>
+    /// F5-2 (1007 承诺): 选分组 → 手改后缀 → 换行为类型 → 写回仍更新分组
+    /// (关联不因「值不再 ≡ 分组」或行为变化被解除)。
+    /// </summary>
+    [Fact]
+    public void Edited_ExtList_Survives_Behavior_Change_WriteBack()
+    {
+        var (page, row, editor, config) = CreateHost("", "open");
+        row.FileGroupSelected = row.FileGroupOptions.First(o => o.Value == "image"); // 建立关联
+        row.MatchValueDisplay = "jpg, png"; // 手改后缀 (不再 ≡ 分组全集)
+        editor.BehaviorSelected = editor.BehaviorOptions.First(o => o.Value == "copy"); // 换行为类型
+
+        page.ApplyFileGroupWriteBack();
+        Assert.Equal(new[] { "jpg", "png" }, config.FileGroups.First(g => g.Name == "image").Exts);
+        Assert.Equal("copy", editor.Entry.Behavior); // 行为切换生效
+    }
+
+    /// <summary>
+    /// F5-3 改造: 显式关联 + 手改后缀 → 收起再展开 (编辑器重建) → 行 VM 关联保持 → 再写回仍生效。
+    /// (方案 D 无页面级关联映射: 行 VM 生命周期 = mapping 生命周期, 天然满足。)
+    /// </summary>
+    [Fact]
+    public void Association_Survives_Editor_Reopen_And_WriteBack()
+    {
+        var (page, row, _, config) = CreateHost("", "open");
+        row.FileGroupSelected = row.FileGroupOptions.First(o => o.Value == "image");
+        row.MatchValueDisplay = "jpg, webp"; // 手改后缀
+
+        page.ExpandedRow = null; // 收起
+        page.ExpandedRow = row;  // 再展开 (OpenEditor 重建编辑行)
+        Assert.Equal("image", row.AssociatedGroupName);
+        Assert.Equal("jpg, webp", row.MatchValueDisplay);
+
+        row.MatchValueDisplay = "jpg, gif";
+        page.ApplyFileGroupWriteBack();
+        Assert.Equal(new[] { "jpg", "gif" }, config.FileGroups.First(g => g.Name == "image").Exts);
     }
 
     // ------------------------------------------------------------- NormalizeExts
@@ -251,89 +376,6 @@ public sealed class FileGroupActionFilterTests
         Assert.Empty(ActionSchemeCatalog.NormalizeExts("  , ., ; "));
     }
 
-    // ------------------------------------------------------------- F2 关联生命周期
-
-    /// <summary>
-    /// F5-1: × 解除关联后, 行为类型变更 (间接触发 ApplyFromRule) 不再按值重建;
-    /// 经写回公有行为断言: 改条件值后分组内容不变 —— 解除意图不被回滚。
-    /// </summary>
-    [Fact]
-    public void Dissociate_By_Clear_Survives_ActionType_Change_And_WriteBack()
-    {
-        var (vm, config) = CreateHost(string.Join(", ", ImageExts), "open");
-        var editor = vm.Editor!;
-        editor.FileGroupSelected = null; // × 解除
-
-        editor.SelectedActionType = editor.ActionTypeOptions.First(o => o.Value == "copy"); // 触发一次回填
-
-        editor.MatchValue = "jpg, png, bmp"; // 手改条件值
-        vm.ApplyFileGroupWriteBack();
-        Assert.Equal(ImageExts, config.FileGroups.First(g => g.Name == "image").Exts);
-        Assert.DoesNotContain(vm.SelectedRule!.Rule, vm.PendingGroupAssociations.Keys);
-    }
-
-    /// <summary>
-    /// F5-2 (1007 承诺): 选分组 → 手改后缀 → 换行为类型 → 写回仍更新分组
-    /// (关联不因「值不再≡分组」被解除)。
-    /// </summary>
-    [Fact]
-    public void Edited_ExtList_Survives_ActionType_Change_WriteBack()
-    {
-        var (vm, config) = CreateHost("", "open");
-        var editor = vm.Editor!;
-        editor.FileGroupSelected = editor.FileGroupOptions.First(o => o.Value == "image"); // 建立关联
-        editor.MatchValue = "jpg, png"; // 手改后缀 (不再≡分组全集)
-        editor.SelectedActionType = editor.ActionTypeOptions.First(o => o.Value == "copy"); // 换行为类型
-
-        vm.ApplyFileGroupWriteBack();
-        Assert.Equal(new[] { "jpg", "png" }, config.FileGroups.First(g => g.Name == "image").Exts);
-    }
-
-    /// <summary>
-    /// F5-3: 显式关联 + 手改后缀 → 编辑器跨规则重建 → 关联经页面级映射恢复 → 再写回仍生效。
-    /// </summary>
-    [Fact]
-    public void Association_Restored_From_Page_Map_After_Editor_Rebuild()
-    {
-        var (vm, config) = CreateHost("", "open");
-        var editor = vm.Editor!;
-        editor.FileGroupSelected = editor.FileGroupOptions.First(o => o.Value == "image");
-        editor.MatchValue = "jpg, webp"; // 手改后缀
-
-        vm.Editor = new RuleEditorVm(vm, vm.SelectedRule!.Rule); // 模拟切走再切回的顶层重建
-
-        // 关联经映射恢复: 行为下拉按 image 过滤
-        Assert.Equal(new HashSet<string> { "copy", "open", "open_folder", "open_path", "run", "script" }, OptionValues(vm));
-        vm.Editor!.MatchValue = "jpg, gif";
-        vm.ApplyFileGroupWriteBack();
-        Assert.Equal(new[] { "jpg", "gif" }, config.FileGroups.First(g => g.Name == "image").Exts);
-    }
-
-    /// <summary>
-    /// F5-4: fileExt 关联 → 切 textType: 关联解除 (映射移除)、条件值重置为 url;
-    /// 切回 fileExt 后行为集回退 FileActions 全文件集且写回不生效。
-    /// </summary>
-    [Fact]
-    public void Switch_MatchType_Away_From_FileExt_Dissociates_And_Blocks_WriteBack()
-    {
-        var (vm, config) = CreateHost(string.Join(", ", ImageExts), "open");
-        var editor = vm.Editor!;
-        editor.SelectedMatchType = editor.MatchTypeOptions.First(o => o.Value == "textType");
-
-        Assert.Equal("url", vm.SelectedRule!.Rule.MatchValue); // textType 默认特征
-        // url 词表 (textType 语境无分组过滤, image 词表不再生效; textType 组合不 union 展示,
-        // 由后端校验与文本特征联动纠正), image 专属的 open_path/open_folder/copy 均不可见
-        Assert.Equal(new HashSet<string> { "open_url", "search" }, OptionValues(vm));
-        Assert.DoesNotContain(vm.SelectedRule.Rule, vm.PendingGroupAssociations.Keys);
-
-        editor.SelectedMatchType = editor.MatchTypeOptions.First(o => o.Value == "fileExt"); // 切回
-        Assert.Equal(new HashSet<string> { "copy", "open", "open_folder", "open_path", "run", "script" }, OptionValues(vm)); // 回退文件语境覆盖集
-        vm.ApplyFileGroupWriteBack();
-        Assert.Equal(ImageExts, config.FileGroups.First(g => g.Name == "image").Exts); // 写回不生效
-    }
-
-    // ------------------------------------------------------------- F4 归一化
-
     /// <summary>F4: NormalizeExts 两端去点 (含尾点+尾随空格); SameExts 双侧归一化。</summary>
     [Fact]
     public void NormalizeExts_Trims_Both_Ends_And_SameExts_Normalizes_Both_Sides()
@@ -344,58 +386,5 @@ public sealed class FileGroupActionFilterTests
         Assert.True(ActionSchemeCatalog.SameExts(new[] { "jpg", "png" }, new[] { ".jpg", "png." }));
         Assert.True(ActionSchemeCatalog.SameExts(new[] { ".jpg." }, new[] { "jpg" }));
         Assert.False(ActionSchemeCatalog.SameExts(new[] { "jpg" }, new[] { "png" }));
-    }
-
-    /// <summary>
-    /// F4 动机: 带点存量分组与归一化条件值视为一致 —— 建立关联且写回不重写 (保留存量书写形式)。
-    /// </summary>
-    [Fact]
-    public void WriteBack_Does_Not_Rewrite_Dotted_Group_When_Normalized_Equal()
-    {
-        var config = BuildConfig();
-        config.FileGroups[0].Exts = [".jpg", ".png"]; // 存量带点书写
-        var (vm, _) = CreateHost(config, "jpg, png", "open");
-
-        // 归一化后一致 -> 建立关联, 行为下拉按 image 分组过滤
-        Assert.Equal("image", vm.Editor!.FileGroupSelected?.Value);
-        vm.ApplyFileGroupWriteBack(); // 同集 (归一化意义下) -> 不重写
-        Assert.Equal(new[] { ".jpg", ".png" }, config.FileGroups.First(g => g.Name == "image").Exts);
-    }
-
-    // ------------------------------------------------------------- F3 二义
-
-    /// <summary>
-    /// F5-6: 两组同后缀集二义 —— 无显式关联时按值推导取声明序首个 (FirstOrDefault);
-    /// 显式关联后者后, 编辑器重建经页面级映射恢复后者 (映射优先级压过二义), 写回指向后者。
-    /// </summary>
-    [Fact]
-    public void Ambiguous_Same_Ext_Groups_Map_Priority_Keeps_Explicit_Association()
-    {
-        var config = new Config
-        {
-            FileGroups =
-            [
-                new FileGroup { Name = "photo", Label = "照片", Exts = ["jpg", "png"] },
-                new FileGroup { Name = "image2", Label = "图片二", Exts = ["jpg", "png"] },
-            ],
-        };
-        var (vm, cfg) = CreateHost(config, "jpg, png", "open");
-
-        // 无显式关联: 首次按值推导二义 -> FirstOrDefault 取声明序首个
-        Assert.Equal("photo", vm.Editor!.FileGroupSelected?.Value);
-
-        // 显式关联后者
-        vm.Editor.FileGroupSelected = vm.Editor.FileGroupOptions.First(o => o.Value == "image2");
-        Assert.Equal("image2", vm.Editor.FileGroupSelected?.Value);
-
-        // 编辑器重建 (切走再切回同路径): 映射恢复 image2, 不被二义推导拉回 photo
-        vm.Editor = new RuleEditorVm(vm, vm.SelectedRule!.Rule);
-        Assert.Equal("image2", vm.Editor!.FileGroupSelected?.Value);
-
-        // 行为断言: 写回指向 image2, photo 不受影响
-        vm.Editor.MatchValue = "jpg, png, bmp";
-        vm.ApplyFileGroupWriteBack();
-        Assert.Equal(new[] { "jpg", "png", "bmp" }, cfg.FileGroups.First(g => g.Name == "image2").Exts);
-        Assert.Equal(new[] { "jpg", "png" }, cfg.FileGroups.First(g => g.Name == "photo").Exts);
     }
 }

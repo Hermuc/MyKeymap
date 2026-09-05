@@ -21,8 +21,11 @@ public sealed class I18nResourceTests
     /// <summary>外置前 C# 字典的键数: 307 个数字键 + 301err / 301hint 两个非数字键;
     /// 2026-09 移除 default 匹配类型相关 4 键后为 303 数字键 + 2 非数字键;
     /// 2026-09 行为库新增 20 个数字键 (1083-1100 与 1103/1104) + 4 个非数字键 (1101_applied/1102_deleted/1103_only/1104_any)。
-    /// 2026-09 移除方案卡片「编辑」按钮词条 966 (点卡片即编辑, 按钮冗余)。</summary>
-    private const int ExpectedKeyCount = 328;
+    /// 2026-09 移除方案卡片「编辑」按钮词条 966 (点卡片即编辑, 按钮冗余) -> 328;
+    /// 2026-09 方案 D 重构: 删 52 键 (多方案列表/方案名/导入导出/两级导航 959-1028 段 +
+    /// 旧静态行为词表 1037-1058), 增 10 键 (1105-1114 选中动作单屏页) -> 286;
+    /// 2026-09 复核恢复 1025 (热键冲突提示, 保留控件 HotkeyCapture 仍引用, 重构误删) -> 287。</summary>
+    private const int ExpectedKeyCount = 287;
 
     private const string LabelPrefix = "label:";
 
@@ -205,13 +208,12 @@ public sealed class I18nResourceTests
     {
         var map = RawMap();
 
-        // 969 / 1023 由调用方 string.Format 填充, 占位符必须原样保留
-        Assert.Contains("{0}", map["969"].Zh!);
-        Assert.Contains("{0}", map["969"].En!);
-        Assert.Contains("{0}", map["1023"].Zh!);
-        Assert.Contains("{1}", map["1023"].Zh!);
-        Assert.Contains("{2}", map["1023"].Zh!);
-        Assert.Contains("{2}", map["1023"].En!);
+        // 1109 (方案 D 删除映射确认) / 1102_deleted (行为库删除回显) 由调用方
+        // string.Format 填充, 占位符必须原样保留 (969/1023 已随方案 D 删除)
+        Assert.Contains("{0}", map["1109"].Zh!);
+        Assert.Contains("{0}", map["1109"].En!);
+        Assert.Contains("{0}", map["1102_deleted"].Zh!);
+        Assert.Contains("{0}", map["1102_deleted"].En!);
 
         // 两条含转义最长的文案: \" 与 \\ (反斜杠路径) 必须还原成真实字符
         Assert.Contains("\"Exclude\"", map["612"].En!);

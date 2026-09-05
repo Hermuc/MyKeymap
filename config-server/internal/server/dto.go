@@ -6,15 +6,35 @@ import "settings/internal/script/model"
 // 与 model 包结构体逐字段对应, JSON tag 完全一致。
 // 差异: 排除 json:"-" 的计算态字段 (Config.KeyMapping, Action.RemapInHotIf),
 // 它们永不出现在 HTTP wire 上。
-// RestartFailed 保留在 DTO (纯传输字段, 仅 HTTP 响应使用);
-// 同时保守保留在 model 中 (action-scheme 端点仍直接序列化 model, 见报告说明)。
+// 旧 ActionSchemeDTO/ActionRuleDTO 已随「单键分发」重构移除 (action-schemes 端点不再存在)。
 
 type ConfigDTO struct {
-	Keymaps       []KeymapDTO       `json:"keymaps"`
-	Options       OptionsDTO        `json:"options,omitempty"`
-	ActionSchemes []ActionSchemeDTO `json:"actionSchemes"`
-	FileGroups    []FileGroupDTO    `json:"fileGroups"`
-	OverviewDocMd string            `json:"overviewDocMd,omitempty"`
+	Keymaps        []KeymapDTO        `json:"keymaps"`
+	Options        OptionsDTO         `json:"options,omitempty"`
+	SelectedAction SelectedActionDTO  `json:"selectedAction"`
+	FileGroups     []FileGroupDTO     `json:"fileGroups"`
+	OverviewDocMd  string             `json:"overviewDocMd,omitempty"`
+}
+
+// 选中动作单键分发 (方案 D): 与 model.SelectedAction 逐字段对应。
+// 空集合恒数组契约: mappings 为空恒输出 [] (entries 同理), 不随配置内容漂移。
+type SelectedActionDTO struct {
+	Hotkey   string               `json:"hotkey"`
+	Enable   bool                 `json:"enable"`
+	Mappings []SelectedMappingDTO `json:"mappings"`
+}
+
+type SelectedMappingDTO struct {
+	MatchType  string             `json:"matchType"`
+	MatchValue string             `json:"matchValue"`
+	Entries    []SelectedEntryDTO `json:"entries"`
+}
+
+type SelectedEntryDTO struct {
+	Behavior    string         `json:"behavior"`
+	ActionValue string         `json:"actionValue,omitempty"`
+	WorkingDir  string         `json:"workingDir,omitempty"`
+	Options     RuleOptionsDTO `json:"options"`
 }
 
 type KeymapDTO struct {
@@ -28,32 +48,10 @@ type KeymapDTO struct {
 	Hotkeys   map[string][]ActionDTO `json:"hotkeys"`
 }
 
-type ActionSchemeDTO struct {
-	ID     int              `json:"id"`
-	Name   string           `json:"name"`
-	Hotkey string           `json:"hotkey"`
-	Enable bool             `json:"enable"`
-	Rules  []ActionRuleDTO  `json:"rules"`
-
-	// 传输层字段 (不落盘): 保存/新建方案后重启 MyKeymap 失败时由 handler 置 true 随响应返回;
-	// omitempty 保证 false 时不序列化, config.json 落盘与导入导出均不受影响
-	RestartFailed bool `json:"restartFailed,omitempty"`
-}
-
 type FileGroupDTO struct {
 	Name  string   `json:"name"`
 	Label string   `json:"label"`
 	Exts  []string `json:"exts"`
-}
-
-type ActionRuleDTO struct {
-	Priority    int             `json:"priority"`
-	MatchType   string          `json:"matchType"`
-	MatchValue  string          `json:"matchValue"`
-	ActionType  string          `json:"actionType"`
-	ActionValue string          `json:"actionValue"`
-	WorkingDir  string          `json:"workingDir,omitempty"`
-	Options     RuleOptionsDTO  `json:"options"`
 }
 
 type RuleOptionsDTO struct {
@@ -163,14 +161,6 @@ func ConfigToDTO(cfg *model.Config) *ConfigDTO {
 	}
 	// 空集合恒输出 [] 而非缺键/	null: GET /config 的结构契约保证前端与测试可无条件取数组
 	// (工厂默认配置可以没有选中动作方案与文件分组, 但响应结构不随配置内容漂移)
-	if cfg.ActionSchemes != nil {
-		dto.ActionSchemes = make([]ActionSchemeDTO, len(cfg.ActionSchemes))
-		for i, s := range cfg.ActionSchemes {
-			dto.ActionSchemes[i] = actionSchemeToDTO(s)
-		}
-	} else {
-		dto.ActionSchemes = []ActionSchemeDTO{}
-	}
 	if cfg.FileGroups != nil {
 		dto.FileGroups = make([]FileGroupDTO, len(cfg.FileGroups))
 		for i, fg := range cfg.FileGroups {
@@ -179,6 +169,7 @@ func ConfigToDTO(cfg *model.Config) *ConfigDTO {
 	} else {
 		dto.FileGroups = []FileGroupDTO{}
 	}
+	dto.SelectedAction = selectedActionToDTO(cfg.SelectedAction)
 	return dto
 }
 
@@ -228,35 +219,46 @@ func actionToDTO(a model.Action) ActionDTO {
 	}
 }
 
-func actionSchemeToDTO(s model.ActionScheme) ActionSchemeDTO {
-	dto := ActionSchemeDTO{
-		ID:            s.ID,
-		Name:          s.Name,
-		Hotkey:        s.Hotkey,
-		Enable:        s.Enable,
-		RestartFailed: s.RestartFailed,
+func selectedActionToDTO(sa *model.SelectedAction) SelectedActionDTO {
+	dto := SelectedActionDTO{Mappings: []SelectedMappingDTO{}}
+	if sa == nil {
+		return dto // nil (理论上不会出现, ParseConfig 保证非 nil) → 空结构 + mappings: []
 	}
-	if s.Rules != nil {
-		dto.Rules = make([]ActionRuleDTO, len(s.Rules))
-		for i, r := range s.Rules {
-			dto.Rules[i] = actionRuleToDTO(r)
+	dto.Hotkey = sa.Hotkey
+	dto.Enable = sa.Enable
+	if sa.Mappings != nil {
+		dto.Mappings = make([]SelectedMappingDTO, len(sa.Mappings))
+		for i := range sa.Mappings {
+			dto.Mappings[i] = selectedMappingToDTO(&sa.Mappings[i])
 		}
 	}
 	return dto
 }
 
-func actionRuleToDTO(r model.ActionRule) ActionRuleDTO {
-	return ActionRuleDTO{
-		Priority:    r.Priority,
-		MatchType:   r.MatchType,
-		MatchValue:  r.MatchValue,
-		ActionType:  r.ActionType,
-		ActionValue: r.ActionValue,
-		WorkingDir:  r.WorkingDir,
+func selectedMappingToDTO(m *model.SelectedMapping) SelectedMappingDTO {
+	dto := SelectedMappingDTO{
+		MatchType:  m.MatchType,
+		MatchValue: m.MatchValue,
+		Entries:    []SelectedEntryDTO{},
+	}
+	if m.Entries != nil {
+		dto.Entries = make([]SelectedEntryDTO, len(m.Entries))
+		for i := range m.Entries {
+			dto.Entries[i] = selectedEntryToDTO(&m.Entries[i])
+		}
+	}
+	return dto
+}
+
+func selectedEntryToDTO(e *model.SelectedEntry) SelectedEntryDTO {
+	return SelectedEntryDTO{
+		Behavior:    e.Behavior,
+		ActionValue: e.ActionValue,
+		WorkingDir:  e.WorkingDir,
 		Options: RuleOptionsDTO{
-			CopyToClipboard: r.Options.CopyToClipboard,
-			ClearSelection:  r.Options.ClearSelection,
-			Confirm:         r.Options.Confirm,
+			CopyToClipboard: e.Options.CopyToClipboard,
+			ClearSelection:  e.Options.ClearSelection,
+			Confirm:         e.Options.Confirm,
 		},
 	}
 }
@@ -330,19 +332,14 @@ func optionsToDTO(o model.Options) OptionsDTO {
 
 func DTOToConfig(dto *ConfigDTO) *model.Config {
 	cfg := &model.Config{
-		OverviewDocMd: dto.OverviewDocMd,
-		Options:       dtoToOptions(dto.Options),
+		OverviewDocMd:  dto.OverviewDocMd,
+		Options:        dtoToOptions(dto.Options),
+		SelectedAction: dtoToSelectedAction(&dto.SelectedAction),
 	}
 	if dto.Keymaps != nil {
 		cfg.Keymaps = make([]model.Keymap, len(dto.Keymaps))
 		for i, km := range dto.Keymaps {
 			cfg.Keymaps[i] = dtoToKeymap(km)
-		}
-	}
-	if dto.ActionSchemes != nil {
-		cfg.ActionSchemes = make([]model.ActionScheme, len(dto.ActionSchemes))
-		for i, s := range dto.ActionSchemes {
-			cfg.ActionSchemes[i] = dtoToActionScheme(s)
 		}
 	}
 	if dto.FileGroups != nil {
@@ -400,35 +397,42 @@ func dtoToAction(a ActionDTO) model.Action {
 	}
 }
 
-func dtoToActionScheme(s ActionSchemeDTO) model.ActionScheme {
-	m := model.ActionScheme{
-		ID:            s.ID,
-		Name:          s.Name,
-		Hotkey:        s.Hotkey,
-		Enable:        s.Enable,
-		RestartFailed: s.RestartFailed,
+func dtoToSelectedAction(sa *SelectedActionDTO) *model.SelectedAction {
+	m := &model.SelectedAction{
+		Hotkey:   sa.Hotkey,
+		Enable:   sa.Enable,
+		Mappings: []model.SelectedMapping{},
 	}
-	if s.Rules != nil {
-		m.Rules = make([]model.ActionRule, len(s.Rules))
-		for i, r := range s.Rules {
-			m.Rules[i] = dtoToActionRule(r)
+	if sa.Mappings != nil {
+		m.Mappings = make([]model.SelectedMapping, len(sa.Mappings))
+		for i := range sa.Mappings {
+			md := &sa.Mappings[i]
+			nm := model.SelectedMapping{
+				MatchType:  md.MatchType,
+				MatchValue: md.MatchValue,
+				Entries:    []model.SelectedEntry{},
+			}
+			if md.Entries != nil {
+				nm.Entries = make([]model.SelectedEntry, len(md.Entries))
+				for j := range md.Entries {
+					nm.Entries[j] = dtoToSelectedEntry(&md.Entries[j])
+				}
+			}
+			m.Mappings[i] = nm
 		}
 	}
 	return m
 }
 
-func dtoToActionRule(r ActionRuleDTO) model.ActionRule {
-	return model.ActionRule{
-		Priority:    r.Priority,
-		MatchType:   r.MatchType,
-		MatchValue:  r.MatchValue,
-		ActionType:  r.ActionType,
-		ActionValue: r.ActionValue,
-		WorkingDir:  r.WorkingDir,
+func dtoToSelectedEntry(e *SelectedEntryDTO) model.SelectedEntry {
+	return model.SelectedEntry{
+		Behavior:    e.Behavior,
+		ActionValue: e.ActionValue,
+		WorkingDir:  e.WorkingDir,
 		Options: model.RuleOptions{
-			CopyToClipboard: r.Options.CopyToClipboard,
-			ClearSelection:  r.Options.ClearSelection,
-			Confirm:         r.Options.Confirm,
+			CopyToClipboard: e.Options.CopyToClipboard,
+			ClearSelection:  e.Options.ClearSelection,
+			Confirm:         e.Options.Confirm,
 		},
 	}
 }

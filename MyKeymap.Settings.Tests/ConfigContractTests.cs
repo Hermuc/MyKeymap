@@ -4,99 +4,110 @@ using MyKeymap.Settings.Tests.Infrastructure;
 
 namespace MyKeymap.Settings.Tests;
 
-/// <summary>共享测试数据构造器 (合法/非法方案)。</summary>
+/// <summary>共享测试数据构造器 (合法/非法 selectedAction 快照; 行为 ID 与 bin/behaviors 内置包一致)。</summary>
 internal static class TestData
 {
-    /// <summary>合法方案: fileExt(jpg,png)->open, textType(url)->open_url, fileExt(*)->copy。</summary>
-    public static ActionScheme ValidScheme(string name = "契约测试方案") => new()
+    /// <summary>合法快照: textType(url)->[open_url, search] + fileExt(jpg,png)->[open]。</summary>
+    public static SelectedAction ValidSnapshot(string hotkey = ">^p") => new()
     {
-        Name = name,
-        Hotkey = "*!s",
+        Hotkey = hotkey,
         Enable = true,
-        Rules =
+        Mappings =
         [
-            new ActionRule
+            new SelectedMapping
             {
-                Priority = 1,
+                MatchType = "textType",
+                MatchValue = "url",
+                Entries =
+                [
+                    new SelectedEntry { Behavior = "open_url" },
+                    // 带 %selected% 占位符模板, 便于在 /test 预览断言替换结果
+                    new SelectedEntry { Behavior = "search", ActionValue = "https://www.bing.com/search?q=%selected%" },
+                ],
+            },
+            new SelectedMapping
+            {
                 MatchType = "fileExt",
                 MatchValue = "jpg,png",
-                ActionType = "open",
-                // 含 %selected% 占位符, 便于在 /test 预览断言替换结果 (PreviewAction 默认分支)
-                ActionValue = "notepad.exe \"%selected%\"",
-            },
-            new ActionRule
-            {
-                Priority = 2,
-                MatchType = "textType",
-                MatchValue = "url",
-                ActionType = "open_url",
-                ActionValue = "",
-            },
-            new ActionRule
-            {
-                Priority = 3,
-                MatchType = "fileExt",
-                MatchValue = "*",
-                ActionType = "copy",
-                ActionValue = "",
-                Options = new RuleOptions { CopyToClipboard = true },
+                Entries =
+                [
+                    new SelectedEntry { Behavior = "open", ActionValue = "notepad.exe \"%selected%\"" },
+                ],
             },
         ],
     };
 
-    /// <summary>非法方案: textType(url) 配 open_registry (特征与行为语义不匹配, Go 词表禁止)。</summary>
-    public static ActionScheme InvalidTextTypeComboScheme(string name = "非法组合方案") => new()
+    /// <summary>非法快照: textType(url) 配 open (open 为文件专属行为, 不覆盖 url 前提, 保存/测试均 400)。</summary>
+    public static SelectedAction MismatchedBehaviorSnapshot() => new()
     {
-        Name = name,
-        Hotkey = "*!x",
+        Hotkey = ">^x",
         Enable = true,
-        Rules =
+        Mappings =
         [
-            new ActionRule
+            new SelectedMapping
             {
-                Priority = 1,
                 MatchType = "textType",
                 MatchValue = "url",
-                ActionType = "open_registry",
-                ActionValue = "",
+                Entries = [new SelectedEntry { Behavior = "open" }],
             },
         ],
     };
 
-    /// <summary>非法方案: 未知的文本特征值 (词表仅 url/path/magnet/plain)。</summary>
-    public static ActionScheme UnknownTextFeatureScheme() => new()
+    /// <summary>非法快照: 未知的文本特征值 (词表仅 url/path/magnet/plain)。</summary>
+    public static SelectedAction UnknownTextFeatureSnapshot() => new()
     {
-        Name = "未知特征方案",
-        Hotkey = "*!y",
+        Hotkey = ">^y",
         Enable = true,
-        Rules =
+        Mappings =
         [
-            new ActionRule
+            new SelectedMapping
             {
-                Priority = 1,
                 MatchType = "textType",
                 MatchValue = "regex",
-                ActionType = "search",
-                ActionValue = "https://www.bing.com/search?q=%selected%",
+                Entries = [new SelectedEntry { Behavior = "search" }],
             },
         ],
     };
 
-    /// <summary>仅 fileExt 规则的方案 (验证 isFile 语义用)。</summary>
-    public static ActionScheme FileExtOnlyScheme() => new()
+    /// <summary>非法快照: 启用但热键为空 (仅启用态要求非空)。</summary>
+    public static SelectedAction EnabledEmptyHotkeySnapshot() => new()
     {
-        Name = "仅文件后缀方案",
-        Hotkey = "*!f",
+        Hotkey = "",
         Enable = true,
-        Rules =
+        Mappings =
         [
-            new ActionRule
+            new SelectedMapping
             {
-                Priority = 1,
                 MatchType = "fileExt",
                 MatchValue = "jpg",
-                ActionType = "open",
-                ActionValue = "notepad.exe",
+                Entries = [new SelectedEntry { Behavior = "open" }],
+            },
+        ],
+    };
+
+    /// <summary>非法快照: 空 entries (每 mapping 至少一个行为)。</summary>
+    public static SelectedAction EmptyEntriesSnapshot() => new()
+    {
+        Hotkey = ">^e",
+        Enable = true,
+        Mappings =
+        [
+            new SelectedMapping { MatchType = "textType", MatchValue = "url", Entries = [] },
+        ],
+    };
+
+    /// <summary>仅 fileExt 映射的快照 (验证 isFile 双语义用)。</summary>
+    public static SelectedAction FileExtOnlySnapshot() => new()
+    {
+        Hotkey = ">^f",
+        Enable = true,
+        Mappings =
+        [
+            new SelectedMapping
+            {
+                MatchType = "fileExt",
+                MatchValue = "jpg",
+                Entries = [new SelectedEntry { Behavior = "open", ActionValue = "notepad.exe" }],
             },
         ],
     };
@@ -121,7 +132,14 @@ public sealed class ConfigContractTests : ServerTestBase
         Assert.Equal(JsonValueKind.Array, root.GetProperty("keymaps").ValueKind);
         Assert.True(root.GetProperty("keymaps").GetArrayLength() > 0, "种子配置应有 keymaps");
         Assert.Equal(JsonValueKind.Object, root.GetProperty("options").ValueKind);
-        Assert.Equal(JsonValueKind.Array, root.GetProperty("actionSchemes").ValueKind);
+        // selectedAction (方案 D 单键分发): 恒对象且恒携带, mappings 恒数组 (空也输出 [])
+        Assert.Equal(JsonValueKind.Object, root.GetProperty("selectedAction").ValueKind);
+        var sa = root.GetProperty("selectedAction");
+        foreach (var prop in new[] { "hotkey", "enable", "mappings" })
+        {
+            Assert.True(sa.TryGetProperty(prop, out _), $"selectedAction 缺少字段 {prop}");
+        }
+        Assert.Equal(JsonValueKind.Array, sa.GetProperty("mappings").ValueKind);
         Assert.Equal(JsonValueKind.Array, root.GetProperty("fileGroups").ValueKind);
 
         // Keymap 字段 (对照 Go struct Keymap)

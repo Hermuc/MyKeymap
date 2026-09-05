@@ -803,25 +803,13 @@
     "zh": "此处修改",
     "en": "Edit here"
   },
-  "959": {
-    "zh": "新建方案",
-    "en": "New Scheme"
-  },
   "960": {
     "zh": "在任意窗口选中文本或文件后按下方案的快捷键, 即可触发预设行为。变量 %selected% 表示当前选中的内容。",
     "en": "Select text or files in any window, then press the scheme's hotkey to trigger its action. %selected% stands for the selection."
   },
-  "961": {
-    "zh": "(未命名)",
-    "en": "(Untitled)"
-  },
   "962": {
     "zh": "(未设置快捷键)",
     "en": "(No hotkey)"
-  },
-  "963": {
-    "zh": "条规则",
-    "en": "rule(s)"
   },
   "964": {
     "zh": "启用",
@@ -835,77 +823,17 @@
     "zh": "删除",
     "en": "Delete"
   },
-  "968": {
-    "zh": "删除方案",
-    "en": "Delete Scheme"
-  },
-  "969": {
-    "zh": "确定删除方案「{0}」吗? 此操作会立即保存并重启 MyKeymap。",
-    "en": "Delete scheme \"{0}\"? This saves immediately and restarts MyKeymap."
-  },
   "970": {
     "zh": "取消",
     "en": "Cancel"
-  },
-  "971": {
-    "zh": "还没有选中动作方案",
-    "en": "No selected-action schemes yet"
-  },
-  "972": {
-    "zh": "点击右上角「新建方案」创建第一个方案",
-    "en": "Click \"New Scheme\" at the top right to create the first one"
-  },
-  "973": {
-    "zh": "创建失败, 请确认设置程序正在运行: ",
-    "en": "Create failed, make sure the settings server is running: "
-  },
-  "974": {
-    "zh": "创建失败",
-    "en": "Create failed"
-  },
-  "975": {
-    "zh": "方案名称",
-    "en": "Scheme name"
   },
   "976": {
     "zh": "尚未设置快捷键, 保存后方案不会生效。",
     "en": "No hotkey is set; the scheme won't take effect after saving."
   },
-  "977": {
-    "zh": "规则列表",
-    "en": "Rules"
-  },
   "978": {
     "zh": "匹配优先级: 从上到下, 第一个命中的规则生效",
     "en": "Matching priority: top to bottom, first match wins"
-  },
-  "980": {
-    "zh": "添加规则",
-    "en": "Add Rule"
-  },
-  "981": {
-    "zh": "暂无规则",
-    "en": "No rules"
-  },
-  "982": {
-    "zh": "点击左侧「添加规则」开始配置",
-    "en": "Click \"Add Rule\" on the left to start"
-  },
-  "983": {
-    "zh": "保存",
-    "en": "Save"
-  },
-  "984": {
-    "zh": "导出",
-    "en": "Export"
-  },
-  "985": {
-    "zh": "导入",
-    "en": "Import"
-  },
-  "986": {
-    "zh": "返回",
-    "en": "Back"
   },
   "987": {
     "zh": "模拟测试",
@@ -950,22 +878,6 @@
   "999": {
     "zh": "(未设置)",
     "en": "(not set)"
-  },
-  "1000": {
-    "zh": "搜索: ",
-    "en": "Search: "
-  },
-  "1001": {
-    "zh": "按键: ",
-    "en": "Keys: "
-  },
-  "1002": {
-    "zh": "复制: ",
-    "en": "Copy: "
-  },
-  "1003": {
-    "zh": "(未设置行为)",
-    "en": "(no action)"
   },
   "1004": {
     "zh": "匹配类型",
@@ -1027,30 +939,6 @@
     "zh": "执行前显示确认提示",
     "en": "Show a confirmation prompt before running"
   },
-  "1019": {
-    "zh": "导入规则",
-    "en": "Import Rules"
-  },
-  "1020": {
-    "zh": "粘贴导出的方案 JSON, 将替换当前方案的规则集 (方案名称与快捷键保持不变)。",
-    "en": "Paste an exported scheme JSON to replace the current rules (name and hotkey stay unchanged)."
-  },
-  "1021": {
-    "zh": "方案 JSON",
-    "en": "Scheme JSON"
-  },
-  "1022": {
-    "zh": "JSON 格式不正确: 缺少 rules 数组",
-    "en": "Invalid JSON: missing rules array"
-  },
-  "1023": {
-    "zh": "第 {0} 条规则: 文本特征「{1}」与行为「{2}」不匹配, 无法导入",
-    "en": "Rule {0}: text feature \"{1}\" cannot combine with action \"{2}\", import rejected"
-  },
-  "1024": {
-    "zh": "JSON 解析失败: ",
-    "en": "JSON parse failed: "
-  },
   "1025": {
     "zh": "该快捷键与现有设置冲突",
     "en": "This hotkey conflicts with an existing one"
@@ -1062,10 +950,6 @@
   "1027": {
     "zh": "点击后按下快捷键",
     "en": "Click, then press the hotkey"
-  },
-  "1028": {
-    "zh": "新的选中动作",
-    "en": "New Selected Action"
   },
   "1031": {
     "zh": "文件后缀",
@@ -1082,94 +966,6 @@
   "1035": {
     "zh": "url (链接) / path (路径) / magnet (磁力链接) / plain (纯文本)",
     "en": "url / path / magnet / plain"
-  },
-  "1037": {
-    "zh": "默认浏览器打开网址",
-    "en": "Open URL in Default Browser"
-  },
-  "1038": {
-    "zh": "打开文件/程序 (系统关联)",
-    "en": "Open File (System Association)"
-  },
-  "1039": {
-    "zh": "打开文件夹",
-    "en": "Open Folder"
-  },
-  "1040": {
-    "zh": "磁力链接下载",
-    "en": "Magnet Download"
-  },
-  "1041": {
-    "zh": "注册表定位",
-    "en": "Locate in Registry"
-  },
-  "1042": {
-    "zh": "程序打开",
-    "en": "Open with Program"
-  },
-  "1043": {
-    "zh": "搜索",
-    "en": "Search"
-  },
-  "1044": {
-    "zh": "执行命令",
-    "en": "Run Command"
-  },
-  "1045": {
-    "zh": "发送按键",
-    "en": "Send Keys"
-  },
-  "1046": {
-    "zh": "AHK 脚本",
-    "en": "AHK Script"
-  },
-  "1047": {
-    "zh": "复制",
-    "en": "Copy"
-  },
-  "1048": {
-    "zh": "用系统默认浏览器打开选中的网址, 不硬编码具体浏览器",
-    "en": "Open the selected URL with the system default browser"
-  },
-  "1049": {
-    "zh": "按系统关联程序打开选中的路径, 等同资源管理器双击",
-    "en": "Open the path with its associated program, like double-clicking in Explorer"
-  },
-  "1050": {
-    "zh": "用系统默认文件管理器打开选中路径所在文件夹",
-    "en": "Open the containing folder with the default file manager"
-  },
-  "1051": {
-    "zh": "用系统默认 BT 下载工具下载选中磁力链接 (走 magnet: 协议关联, 不依赖具体软件)",
-    "en": "Download with the system default BT client via the magnet: protocol"
-  },
-  "1052": {
-    "zh": "打开注册表编辑器并自动定位到选中的键路径",
-    "en": "Open regedit and jump to the selected key path"
-  },
-  "1053": {
-    "zh": "用指定程序打开选中文件, 如 code.exe %selected%",
-    "en": "Open the selected file with a program, e.g. code.exe %selected%"
-  },
-  "1054": {
-    "zh": "把 %selected% 作为关键词搜索, 如 https://www.google.com/search?q=%selected%",
-    "en": "Use %selected% as the search keyword"
-  },
-  "1055": {
-    "zh": "执行命令, 支持 %selected% 变量, 如 notepad.exe %selected%",
-    "en": "Run a command with %selected% substituted"
-  },
-  "1056": {
-    "zh": "向当前窗口发送按键序列, 如 ^c; 含选中内容时建议用 {text}%selected% 包裹, 否则内容中的 {Enter} 等会被解析为按键",
-    "en": "Send keys to the current window; wrap %selected% with {text} so braces aren't parsed as keys"
-  },
-  "1057": {
-    "zh": "执行一段 AutoHotkey 脚本片段, %selected% 会替换为字符串字面量",
-    "en": "Run an AHK snippet; %selected% becomes a string literal"
-  },
-  "1058": {
-    "zh": "把 %selected% 替换后的文本写入剪贴板",
-    "en": "Write the substituted text to the clipboard"
   },
   "1059": {
     "zh": "链接",
@@ -1310,5 +1106,45 @@
   "1104_any": {
     "zh": "任意文件",
     "en": "Any file"
+  },
+  "1105": {
+    "zh": "添加映射",
+    "en": "Add Mapping"
+  },
+  "1106": {
+    "zh": "添加行为",
+    "en": "Add Action"
+  },
+  "1107": {
+    "zh": "每个映射最多 9 个行为",
+    "en": "Up to 9 actions per mapping"
+  },
+  "1108": {
+    "zh": "至少保留一个行为",
+    "en": "Keep at least one action"
+  },
+  "1109": {
+    "zh": "确定删除映射「{0}」吗? 删除后会立即保存。",
+    "en": "Delete mapping \"{0}\"? This saves immediately."
+  },
+  "1110": {
+    "zh": "菜单键位",
+    "en": "Menu keys"
+  },
+  "1111": {
+    "zh": "选择类型、填写条件值, 再勾选要放进菜单的行为 (按勾选顺序编号, 最多 9 个)。",
+    "en": "Pick a type, fill in the value, then check the actions for the menu (numbered by check order, up to 9)."
+  },
+  "1112": {
+    "zh": "还没有映射",
+    "en": "No mappings yet"
+  },
+  "1113": {
+    "zh": "点击「添加映射」创建第一个映射",
+    "en": "Click \"Add Mapping\" to create the first one"
+  },
+  "1114": {
+    "zh": "添加",
+    "en": "Add"
   }
 }

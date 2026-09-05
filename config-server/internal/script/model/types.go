@@ -8,7 +8,8 @@ const RemapKey = 5
 type Config struct {
 	Keymaps       []Keymap       `json:"keymaps,omitempty"`
 	Options       Options        `json:"options,omitempty"`
-	ActionSchemes []ActionScheme `json:"actionSchemes,omitempty"`
+	SelectedAction *SelectedAction `json:"selectedAction,omitempty"` // 选中动作单键分发 (方案 D); 迁移后由 ParseConfig 保证非 nil, save 恒输出
+	ActionSchemes []ActionScheme `json:"actionSchemes,omitempty"`  // 旧多方案结构: 仅迁移读取用, ParseConfig 迁移后置 nil, save 不再输出
 	FileGroups    []FileGroup    `json:"fileGroups,omitempty"` // 文件分组: 前端「文件后缀」条件值的快捷填充数据, 非独立匹配类型
 	OverviewDocMd string         `json:"overviewDocMd,omitempty"` // 自定义总览页 Markdown, 设置界面优先展示; 为空时展示默认 config_doc.md
 	KeyMapping    string         `json:"-"`
@@ -25,8 +26,35 @@ type Keymap struct {
 	Hotkeys   map[string][]Action `json:"hotkeys"`
 }
 
-// 选中动作方案: 选中文本/文件后按下快捷键执行预设行为
-// 参考 RunAny 的「选中内容 + 快捷键触发预设行为」能力
+// 选中动作单键分发 (方案 D): 选中内容后按单一热键触发, 按 mappings 顺序匹配第一个命中的
+// mapping, 弹出其 entries 菜单 (最多 9 项) 由用户按数字键选择行为。
+// 旧多方案 ActionScheme 结构于 2026-09 重构为单键分发, 存量配置由 ParseConfig 读时一次性迁移。
+type SelectedAction struct {
+	Hotkey   string            `json:"hotkey"`
+	Enable   bool              `json:"enable"`
+	Mappings []SelectedMapping `json:"mappings"` // 有序 = 匹配优先级
+}
+
+// SelectedMapping 一个匹配前提桶: 同 matchType+matchValue 的行为菜单。
+// 语义对齐旧 ActionRule 的 matchType/matchValue (fileExt=逗号分隔后缀, textType=url/path/magnet/plain)。
+type SelectedMapping struct {
+	MatchType  string          `json:"matchType"` // "fileExt" | "textType"
+	MatchValue string          `json:"matchValue"`
+	Entries    []SelectedEntry `json:"entries"` // 1..9 项, 顺序即菜单序号
+}
+
+// SelectedEntry 菜单项: behavior = 行为库 ID (内置 11 个基础动作 ID 或用户行为包 ID)。
+// actionValue/workingDir 非空时覆盖行为包默认模板, 空则用包默认 (复用 behaviors.ResolveRuleAction 语义)。
+// options 沿用旧 rule 的三开关 (确认/复制/清空), 渲染数据数组暂不消费, 语义由 AHK 端 (任务 #30) 定义。
+type SelectedEntry struct {
+	Behavior    string      `json:"behavior"`
+	ActionValue string      `json:"actionValue,omitempty"`
+	WorkingDir  string      `json:"workingDir,omitempty"`
+	Options     RuleOptions `json:"options"`
+}
+
+// 选中动作方案 (旧多方案结构, 已于 2026-09 重构为单键分发 SelectedAction):
+// 仅保留供 ParseConfig 存量迁移读取, 不再渲染与校验。
 // 变量约定: 在命令或脚本中使用 %selected% 表示当前选中的文本或文件路径(多文件用换行分隔)
 type ActionScheme struct {
 	ID     int          `json:"id"`

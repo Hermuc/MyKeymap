@@ -15,7 +15,7 @@ class IKeyEventBus {
   ; eventType 词表(冻结):
   ;   "mode_enter" / "mode_exit"     模式进栈/出栈, eventData: {name}
   ;   "abbr_submit"                  缩写命令提交,  eventData: {source: "caps"|"semi", command, matched, fuzzy: bool}
-  ;   "selection_action"             选中动作触发,  eventData: {schemeId, ruleIndex, selected}
+  ;   "selection_action"             选中动作触发,  eventData: {behavior, name, selected} (方案 D 单键分发后不再有 schemeId/ruleIndex)
   ;   "plugin_loaded" / "plugin_error"  插件生命周期, eventData: {pluginId, message?}
   static EVENT_TYPES := ["mode_enter", "mode_exit", "abbr_submit", "selection_action", "plugin_loaded", "plugin_error"]
 

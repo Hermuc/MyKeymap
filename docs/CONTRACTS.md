@@ -90,7 +90,7 @@ class IKeyEventBus {
   ; eventType 词表(冻结):
   ;   "mode_enter" / "mode_exit"     模式进栈/出栈, eventData: {name}
   ;   "abbr_submit"                  缩写命令提交,  eventData: {source: "caps"|"semi", command, matched, fuzzy: bool}
-  ;   "selection_action"             选中动作触发,  eventData: {schemeId, ruleIndex, selected}
+  ;   "selection_action"             选中动作触发,  eventData: {behavior, name, selected} (2026-09 方案 D 起; 旧 schemeId/ruleIndex 已废弃)
   ;   "plugin_loaded" / "plugin_error"  插件生命周期, eventData: {pluginId, message?}
   Subscribe(eventType, callback) => 0   ; 返回订阅 ID
   Unsubscribe(subId) {}
@@ -105,7 +105,7 @@ class IKeyEventBus {
 发布点接入 5 处:① `KeymapManager.Activate` 进/出栈 → `mode_enter`/`mode_exit`;
 ② `KeymapManager._lock`/`Unlock` 锁定切换 → 同两事件;③ `CommandResolver.Resolve`
 提交即报 `abbr_submit`(命中与否都报, `source` 由 scope 映射 "caps"|"semi");
-④ `SelectedAction.RunActionScheme` 规则命中后执行前 → `selection_action`;
+④ `SelectedAction._Execute` 规则命中后执行前 → `selection_action` (方案 D: Trigger 命中 entry 后统一经 _Execute 发布, 载荷 {behavior, name, selected});
 ⑤ `PluginManager` 注册成功/拒绝 → `plugin_loaded`/`plugin_error`(`ActionRegistry`
 重复注册同报 `plugin_error`)。所有发布点均 `try` 包裹 + 总线自身静默兜底,
 零订阅者时为空遍历, 行为不变。模板新增 2 行 include, 生成脚本仅多此 2 行(已验证),
@@ -379,7 +379,7 @@ class ConfigProvider {
 |---|---|---|
 | `GET /config` | model → `ConfigToDTO` → DTO → gin JSON | DTO 排除 `json:"-"` 计算态字段 |
 | `PUT /config` | gin JSON → DTO → `DTOToConfig` → model → 校验 → 落盘 | 落盘仍走 model, 生成器输入不变 |
-| `GET/POST/PUT/DELETE /api/action-schemes*` | **直接序列化 model** (未经 DTO) | 后续项: 统一走 DTO |
+| `POST /api/selected-action/test` | **直接序列化 model** (未经 DTO) | 方案 D 后仅剩模拟测试端点 (旧 action-schemes CRUD 六路由已移除, 存量配置读时一次性迁移为顶层 selectedAction) |
 | `GET /shortcuts` | 内联结构体, 无 model 依赖 | 无需 DTO |
 
 **改 json tag 须同时改两处**: `internal/script/model/types.go` (存储模型) 与 `internal/server/dto.go` (传输 DTO);
@@ -441,3 +441,4 @@ action-scheme 端点直接在 model 上设置该字段后序列化返回, 未经
 | 2026-09-04 | 移除选中动作「默认 (兜底)」匹配类型: ① Go `matchActionRule` 删 `case "default": return true` (仅剩 fileExt/textType, 落空 return false), AHK `MatchActionRule` 同步删 case; ② 前端 MATCH_TYPES 词条、default→\* 条件值分支、RuleList default→「任意内容」展示分支、兜底规则不在末尾警示 (DefaultRuleNotLast/RefreshDefaultWarning + axaml 警示 Border) 全清; ③ i18n 删 4 键 (979/998/1033/1036) 键数守卫 309→305; ④ 存量 default 规则将不再命中 (历史规则在编辑器中回退显示为第一项, 用户重新选择即完成迁移); ⑤ golden 夹具删两条 default 规则并重刷基线 (仅 matchType: "default" 渲染行消失); readme/readme.en 匹配类型改两类表述 |
 | 2026-09-05 | 行为包体系一期落地 (§3.9 冻结): 11 个内置行为打包为只读内置包 (bin/behaviors 入库), 规则 ActionType 语义升级为行为 ID (内置 ID 直通=存量零迁移), internal/behaviors 包 (加载/覆盖/删除约束), 保存校验统一为覆盖检查 (取代 textTypeActions 静态表+修复首条短路缺陷), API 5 端点 (GET/POST/PUT/DELETE /api/behaviors + apply 显式重启), 生成期展开 (渲染+plan 镜像); 行为库前端窗口与 C# 目录服务为二期提交 |
 | 2026-09-05 | 行为库前端落地 (一期收口): C# BehaviorCatalog (GET /api/behaviors 快照+覆盖/默认/显示名推导), 旧五张静态词表 (ActionTypes/TextTypeActions/TextTypeDefaultAction/TextActions/FileGroupActions/FileGroupDefaultAction/FileActions/DefaultSearchUrl) 全部退役, 行为库窗口+编辑表单窗口 (新建/编辑/删除/立即生效), 编辑页「管理行为…」入口; i18n +24 键 (守卫 305→329); 行为目录测试夹具+7 个 BehaviorCatalogTests, 测试服务器补 behaviors staging; dotnet 154/154, 部署 beta33 (后端+UI+内置包) 并 API 冒烟通过 |
+| 2026-09-06 | 方案 D 重构落地 (选中动作单键分发): ① **§3.1 `selection_action` 事件载荷变更 (对插件作者破坏性)**: `{schemeId, ruleIndex, selected}` → `{behavior, name, selected}` (schemeId/ruleIndex 随多方案模型退役, behavior=行为库 ID, name=显示名), 订阅该事件的插件须改读新字段; 发布点迁至 `SelectedAction._Execute`; ② §5.2 旧 action-schemes CRUD 六路由移除, 新增 `POST /api/selected-action/test`; 存量配置读时一次性迁移为顶层 `selectedAction` (actionSchemes 键不再输出); ③ 生成端渲染函数 `actionSchemesCode`→`selectedActionCode` (generators/actionscheme.go), AHK 端 `InitActionScheme`→`SelectedActionInit` / `MatchActionScheme`→`MatchSelectedAction` (bin/lib/rules/SelectedAction.ahk 重写入口与分发层, 匹配原语与执行辅助原样保留) |

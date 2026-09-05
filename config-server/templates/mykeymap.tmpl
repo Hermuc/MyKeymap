@@ -66,7 +66,7 @@ InitKeymap()
 {{ .WindowGroups }}
   KeymapManager.GlobalKeymap.DisabledAt := {{ GroupDisableMyKeymap .Options.WindowGroups }}
 {{range .EnabledKeymaps}}{{renderKeymap .}}{{end}}
-{{ actionSchemesCode .ActionSchemes }}
+{{ selectedActionCode .SelectedAction }}
 
   KeymapManager.GlobalKeymap.Enable()
 }

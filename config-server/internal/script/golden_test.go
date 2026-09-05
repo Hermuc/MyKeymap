@@ -121,9 +121,11 @@ func TestSyntheticConfigCoversMatrix(t *testing.T) {
 		{`windowGroup 多行 value ahk_group 分支`, `ahk_group MY_WINDOW_GROUP_2`},
 		{`windowGroup 多行 GroupAdd 展开`, `GroupAdd("MY_WINDOW_GROUP_2", "ahk_exe chrome.exe")`},
 		{`keymap 多行 disableAt -> GROUP_DISABLE_KEYMAP`, `ahk_group GROUP_DISABLE_KEYMAP_6`},
-		// actionSchemes
-		{`actionSchemes 渲染 + InitActionScheme`, `InitActionScheme(ActionSchemeList)`},
-		{`actionSchemes 规则字段透传 (matchType/actionType)`, `matchType: "fileExt"`},
+		// selectedAction (方案 D 单键分发)
+		{`selectedActionCode 渲染 + SelectedActionInit`, `SelectedActionInit(">^p", SelectedActionData)`},
+		{`selectedAction 数据列 key/behavior 透传 (菜单序号 1..9)`, `key: 2, behavior: "search"`},
+		{`selectedAction 规则字段透传 (matchType/matchValue)`, `matchType: "fileExt", matchValue: "jpg,png"`},
+		{`selectedAction 显示名 (目录缺失回退 behavior ID)`, `name: "open_url"`},
 		// pathVariables: 普通值 vs ahk-expression 前缀
 		{`pathVariable 普通值 (AhkString)`, `editor := "D:\tools\edit.exe"`},
 		{`pathVariable ahk-expression 前缀原样输出`, `desktop := A_Desktop`},
@@ -332,17 +334,24 @@ func syntheticConfig() *Config {
 				{Name: "   ", Value: "ignored-space-name"},
 			},
 		},
-		// >=1 个 Enable 且 Hotkey 非空、含多规则; 另一个 disable+空 hotkey 走 actionSchemesCode 的跳过分支。
-		ActionSchemes: []ActionScheme{
-			{
-				ID: 1, Name: "搜索选中", Hotkey: "#f", Enable: true,
-				Rules: []ActionRule{
-					{Priority: 1, MatchType: "textType", MatchValue: "url", ActionType: "open_url", ActionValue: "", WorkingDir: "", Options: RuleOptions{CopyToClipboard: false, ClearSelection: false, Confirm: false}},
-					{Priority: 2, MatchType: "fileExt", MatchValue: "jpg,png", ActionType: "open", ActionValue: "%selected%", WorkingDir: "", Options: RuleOptions{CopyToClipboard: true, ClearSelection: false, Confirm: true}},
+		// 选中动作 (方案 D 单键分发): textType/fileExt 两类匹配; entry 覆盖空 actionValue
+		// (内置 ID 直通) 与显式 actionValue (展开后透传) 两种形态; 目录缺失时显示名回退 ID。
+		SelectedAction: &SelectedAction{
+			Hotkey: ">^p", Enable: true,
+			Mappings: []SelectedMapping{
+				{
+					MatchType: "textType", MatchValue: "url",
+					Entries: []SelectedEntry{
+						{Behavior: "open_url", Options: RuleOptions{}},
+						{Behavior: "search", ActionValue: "https://www.bing.com/search?q=%selected%", Options: RuleOptions{CopyToClipboard: true}},
+					},
 				},
-			},
-			{
-				ID: 2, Name: "禁用方案", Hotkey: "", Enable: false, // 2026-09 移除 default 夹具后不挂规则
+				{
+					MatchType: "fileExt", MatchValue: "jpg,png",
+					Entries: []SelectedEntry{
+						{Behavior: "open", ActionValue: "%selected%", Options: RuleOptions{Confirm: true}},
+					},
+				},
 			},
 		},
 	}

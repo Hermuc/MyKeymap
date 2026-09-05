@@ -15,6 +15,9 @@ type (
 	Config           = model.Config
 	Keymap           = model.Keymap
 	Action           = model.Action
+	SelectedAction   = model.SelectedAction
+	SelectedMapping  = model.SelectedMapping
+	SelectedEntry    = model.SelectedEntry
 	ActionScheme     = model.ActionScheme
 	ActionRule       = model.ActionRule
 	FileGroup        = model.FileGroup
@@ -53,6 +56,9 @@ func ParseConfig(file string) (*Config, error) {
 	if config.Options.CommandInputSkin == (CommandInputSkin{}) {
 		config.Options.CommandInputSkin = DefaultCommandInputSkin()
 	}
+	// 存量迁移: 旧 actionSchemes → selectedAction 单键分发 (读时一次性, 硬切不回写;
+	// 迁移后 ActionSchemes 置 nil, save 序列化不再输出旧段)
+	MigrateSelectedAction(&config)
 
 	return &config, nil
 }

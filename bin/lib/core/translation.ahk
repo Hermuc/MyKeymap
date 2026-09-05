@@ -15,6 +15,7 @@ class DefaultTranslation {
   menu_window_spy := "Window Spy"
 
   no_items_selected := "no items selected"
+  no_matching_type := "no matching type for the selection"
   always_on_top_on := "Always-on-top: On"
   always_on_top_off := "Always-on-top: Off"
   copy_failed := " Copy: fail "
@@ -38,6 +39,7 @@ class ChineseTranslation extends DefaultTranslation {
   menu_window_spy := "查看窗口标识符"
 
   no_items_selected := "没有选中的文本或文件"
+  no_matching_type := "未识别的类型"
   always_on_top_on := "置顶当前窗口"
   always_on_top_off := "取消置顶"
   copy_failed := "复制失败"

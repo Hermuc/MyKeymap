@@ -5,8 +5,9 @@ using MyKeymap.Settings.Tests.Infrastructure;
 namespace MyKeymap.Settings.Tests;
 
 /// <summary>
-/// PUT /config 的 400 校验契约 (对照 Go ValidateActionSchemeRules / ValidateFileGroups)。
+/// PUT /config 的 400 校验契约 (对照 Go ValidateSelectedAction / ValidateFileGroups)。
 /// 要点: 校验失败必须拒绝写盘 (配置文件保持不变), message 以「保存失败」开头。
+/// 选中动作校验: 行为不覆盖前提 / 未知文本特征 / 启用空热键 / 空 entries / entries 超 9。
 /// </summary>
 public sealed class ConfigValidationTests : ServerTestBase
 {
@@ -17,15 +18,15 @@ public sealed class ConfigValidationTests : ServerTestBase
     }
 
     [Fact]
-    public async Task Put_InvalidTextTypeCombo_Returns400_WithMessage_AndFileUnchanged()
+    public async Task Put_MismatchedBehaviorCombo_Returns400_WithMessage_AndFileUnchanged()
     {
         var before = Sha256Of(Server.ConfigPath);
 
         var get = await Client.GetConfigAsync();
         Assert.True(get.Success, get.ErrorMessage);
 
-        // textType(url) + open_registry 是 Go textTypeActions 词表禁止的组合
-        get.Value!.ActionSchemes.Add(TestData.InvalidTextTypeComboScheme());
+        // textType(url) 配 open: open 是文件专属行为, 不覆盖 url 前提 (行为包 appliesTo 语义)
+        get.Value!.SelectedAction = TestData.MismatchedBehaviorSnapshot();
 
         var put = await Client.SaveConfigAsync(get.Value);
         Assert.False(put.Success, "非法组合不应保存成功");
@@ -41,13 +42,41 @@ public sealed class ConfigValidationTests : ServerTestBase
     {
         var get = await Client.GetConfigAsync();
         Assert.True(get.Success, get.ErrorMessage);
-        get.Value!.ActionSchemes.Add(TestData.UnknownTextFeatureScheme());
+        get.Value!.SelectedAction = TestData.UnknownTextFeatureSnapshot();
 
         var put = await Client.SaveConfigAsync(get.Value);
         Assert.False(put.Success);
         Assert.Equal(400, put.StatusCode);
         Assert.Contains("保存失败", put.ErrorMessage);
         Assert.Contains("未知的文本特征", put.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task Put_EnabledEmptyHotkey_Returns400()
+    {
+        var get = await Client.GetConfigAsync();
+        Assert.True(get.Success, get.ErrorMessage);
+        get.Value!.SelectedAction = TestData.EnabledEmptyHotkeySnapshot();
+
+        var put = await Client.SaveConfigAsync(get.Value);
+        Assert.False(put.Success);
+        Assert.Equal(400, put.StatusCode);
+        Assert.Contains("保存失败", put.ErrorMessage);
+        Assert.Contains("热键为空", put.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task Put_EmptyEntries_Returns400()
+    {
+        var get = await Client.GetConfigAsync();
+        Assert.True(get.Success, get.ErrorMessage);
+        get.Value!.SelectedAction = TestData.EmptyEntriesSnapshot();
+
+        var put = await Client.SaveConfigAsync(get.Value);
+        Assert.False(put.Success);
+        Assert.Equal(400, put.StatusCode);
+        Assert.Contains("保存失败", put.ErrorMessage);
+        Assert.Contains("没有行为", put.ErrorMessage);
     }
 
     [Fact]

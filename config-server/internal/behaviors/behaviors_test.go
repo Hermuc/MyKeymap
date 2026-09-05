@@ -177,6 +177,9 @@ func TestValidateDelete(t *testing.T) {
 	writePack(t, user, "png_viewer", pngOnlyManifest) // 前提 png
 	c := LoadCatalog(builtin, user)
 
+	// refs 手构造 RuleRef: 生产环境中这些引用由 server.behaviorRuleRefs 从
+	// config.selectedAction.mappings.entries 投影而来 (MatchType/MatchValue 取自 mapping,
+	// ActionType 取自 entry.Behavior); 本测试直接给等价引用以隔离行为目录逻辑。
 	refs := func(rr ...RuleRef) []RuleRef { return rr }
 
 	// 1. 内置不可删

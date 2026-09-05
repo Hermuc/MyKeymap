@@ -119,14 +119,15 @@ InitKeymap()
   km.Map("m6", _ => MyKeymapOpenSettings())
   km.Map("m7", _ => ToggleCapslock())
 
-  ; ===== 选中动作方案 =====
-  ActionSchemeList := Array(
-    {id: 1, name: "搜索选中", hotkey: "#f", rules: Array(
-      {priority: 1, matchType: "textType", matchValue: "url", actionType: "open_url", actionValue: "", workingDir: "", options: {copyToClipboard: false, clearSelection: false, confirm: false}},
-      {priority: 2, matchType: "fileExt", matchValue: "jpg,png", actionType: "open", actionValue: "%selected%", workingDir: "", options: {copyToClipboard: true, clearSelection: false, confirm: true}},
-    )},
+  ; ===== 选中动作 (单键分发) =====
+  ; SelectedActionData 每项字段: matchType (匹配类型, 输出顺序 = 匹配优先级) / matchValue (条件值) / key (菜单序号 1-9) /
+  ;   behavior (行为库 ID) / action (展开后基础动作) / actionValue (展开后模板) / workingDir (工作目录) / name (显示名)
+  SelectedActionData := Array(
+    {matchType: "textType", matchValue: "url", key: 1, behavior: "open_url", action: "open_url", actionValue: "", workingDir: "", name: "open_url"},
+    {matchType: "textType", matchValue: "url", key: 2, behavior: "search", action: "search", actionValue: "https://www.bing.com/search?q=%selected%", workingDir: "", name: "search"},
+    {matchType: "fileExt", matchValue: "jpg,png", key: 1, behavior: "open", action: "open", actionValue: "%selected%", workingDir: "", name: "open"},
   )
-  InitActionScheme(ActionSchemeList)
+  SelectedActionInit(">^p", SelectedActionData)
 
 
   KeymapManager.GlobalKeymap.Enable()

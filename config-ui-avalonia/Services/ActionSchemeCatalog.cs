@@ -3,7 +3,7 @@ using MyKeymap.Settings.Models;
 namespace MyKeymap.Settings.Services;
 
 // ============================================================================
-// 选中动作系统常量 (匹配类型/文本特征词表 + 工厂方法; 复刻 config-ui constants.ts)。
+// 选中动作系统常量 (匹配类型/文本特征词表 + 共享工具; 复刻 config-ui constants.ts)。
 //
 // 词表纪律: 合法性裁决永远以后端 400 为准。
 // 行为类型词表 (2026-09 起) 不再是静态副本 —— 由 BehaviorCatalog 从行为包 appliesTo
@@ -16,7 +16,7 @@ namespace MyKeymap.Settings.Services;
 /// <summary>下拉选项条目 (Value 为配置值, Label 为显示文案; record 值相等便于 ComboBox 选中匹配)。</summary>
 public sealed record ComboOption(string Value, string Label);
 
-/// <summary>选中动作常量与工厂方法。</summary>
+/// <summary>选中动作常量与共享工具方法 (2026-09 方案 D: 多方案 CRUD 工厂已随 ActionScheme 退役)。</summary>
 public static class ActionSchemeCatalog
 {
     // 匹配条件类型 (复刻 MATCH_TYPES; 「文本正则」与「文件分组」已按 2026-08 改造移除,
@@ -107,28 +107,4 @@ public static class ActionSchemeCatalog
 
     /// <summary>行为提示: 由 BehaviorCatalog 按包 description 推导 (未知 ID 回退空串)。</summary>
     public static string ActionTypeHint(string value) => BehaviorCatalog.HintFor(value);
-
-    // ------------------------------------------------------------- 工厂方法
-
-    /// <summary>新建一个空规则 (复刻 createRule, priority 由外部指定)。</summary>
-    public static ActionRule CreateRule(int priority) => new()
-    {
-        Priority = priority,
-        MatchType = "fileExt",
-        MatchValue = "",
-        ActionType = "open",
-        ActionValue = "",
-        WorkingDir = "",
-        Options = new RuleOptions(),
-    };
-
-    /// <summary>新建一个默认方案 (复刻 createScheme, id 由后端分配)。</summary>
-    public static ActionScheme CreateScheme() => new()
-    {
-        Id = 0,
-        Name = I18n.T("1028"),
-        Hotkey = "",
-        Enable = true,
-        Rules = [CreateRule(1)],
-    };
 }
