@@ -61,7 +61,7 @@ func ValidateActionSchemeRules(s *ActionScheme, cat *behaviors.Catalog) error {
 			continue
 		}
 		if !cat.Covers(r.ActionType, r.MatchType, values) {
-			return fmt.Errorf("规则第 %d 条: 行为「%s」不适用于该%s前提「%s」",
+			return fmt.Errorf("规则第 %d 条: 行为「%s」与该%s前提「%s」不匹配",
 				i+1, behaviorDisplayName(cat, r.ActionType), matchTypeName(r.MatchType), r.MatchValue)
 		}
 	}

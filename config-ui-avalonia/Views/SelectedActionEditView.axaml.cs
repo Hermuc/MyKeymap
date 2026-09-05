@@ -17,7 +17,35 @@ namespace MyKeymap.Settings.Views;
 /// </summary>
 public partial class SelectedActionEditView : UserControl
 {
-    public SelectedActionEditView() => InitializeComponent();
+    public SelectedActionEditView()
+    {
+        InitializeComponent();
+        // 行为目录懒加载 (CONTRACTS §3.9): 首次进入编辑页时拉取, 供行为下拉覆盖推导
+        Loaded += async (_, _) =>
+        {
+            if (BehaviorCatalog.Loaded) return;
+            if (DataContext is SelectedActionEditViewModel vm && vm.Main.Session.Api is ISettingsApi api)
+            {
+                await BehaviorCatalog.LoadAsync(api);
+                vm.Editor?.RefreshBehaviorOptions();
+                vm.OnLanguageChanged();
+            }
+        };
+    }
+
+    /// <summary>打开行为库窗口; 关闭后刷新目录快照与行为下拉/规则展示。</summary>
+    private async void OnManageBehaviorsClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not SelectedActionEditViewModel vm) return;
+        if (vm.Main.Session.Api is not ISettingsApi api) return;
+        if (TopLevel.GetTopLevel(this) is not Window owner) return;
+
+        var dialog = new BehaviorLibraryWindow { DataContext = new BehaviorLibraryViewModel(vm.Main) };
+        await dialog.ShowDialog(owner);
+        await BehaviorCatalog.LoadAsync(api);
+        vm.Editor?.RefreshBehaviorOptions();
+        vm.OnLanguageChanged();
+    }
 
     private async void OnExportClick(object? sender, RoutedEventArgs e)
     {

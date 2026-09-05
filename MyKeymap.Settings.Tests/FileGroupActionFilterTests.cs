@@ -9,13 +9,21 @@ namespace MyKeymap.Settings.Tests;
 /// 纯 ViewModel 测试 (无 Avalonia 宿主): RuleEditorVm 为 ObservableObject, 构造链
 /// MainViewModel -> SelectedActionPageViewModel -> SelectedActionEditViewModel 均为
 /// 内存对象 (BackendSession 构造只存参不拉起子进程, Config 直接注入, ISettingsApi 不被触达)。
-/// 选项顺序按词表 ActionTypes 原序 (open_url, open_path, open_folder, ..., copy) 断言。
+/// 行为选项自 2026-09 起由行为包 appliesTo 覆盖推导 (BehaviorCatalog, CONTRACTS §3.9):
+/// 文件语境覆盖集 = 通配内置行为 6 项 (专属排前), default 标记推导纠正默认行为。
 /// </summary>
 public sealed class FileGroupActionFilterTests
 {
     /// <summary>与 data/config.json 默认分组一致的夹具 (image/code 两组足够覆盖过滤与写回)。</summary>
     private static readonly string[] ImageExts = ["jpg", "jpeg", "png", "gif", "bmp", "webp", "svg", "ico"];
     private static readonly string[] CodeExts = ["c", "cpp", "h", "py", "go", "rs", "json"];
+
+    /// <summary>行为目录种子 (CONTRACTS §3.9): 内置 11 包由共享夹具构造, 一次性注入。</summary>
+    private static void EnsureBehaviorCatalog()
+    {
+        if (BehaviorCatalog.Loaded) return;
+        BehaviorCatalog.SeedForTests(BehaviorFixtures.Builtin(), []);
+    }
 
     private static Config BuildConfig() => new()
     {
@@ -36,6 +44,7 @@ public sealed class FileGroupActionFilterTests
     /// <summary>重载: 注入自定义 Config (二义同集分组 / 带点存量分组等场景)。</summary>
     private static (SelectedActionEditViewModel Vm, Config Config) CreateHost(Config config, string matchValue, string actionType)
     {
+        EnsureBehaviorCatalog();
         var main = new MainViewModel(new BackendSessionOptions());
         main.Config = config;
         var page = new SelectedActionPageViewModel(main);
@@ -65,30 +74,32 @@ public sealed class FileGroupActionFilterTests
 
     // ------------------------------------------------------------- ActionTypeOptions 过滤
 
-    /// <summary>关联 image: 选项收敛为分组词表 4 项, 且保持 ActionTypes 原序。</summary>
+    /// <summary>关联 image: 文件语境覆盖集 = 通配内置行为 6 项 (专属无), 按目录序排列;
+    /// 文本专用行为 (magnet_download/open_url/open_registry/send_keys/search) 不出现。</summary>
     [Fact]
-    public void ActionTypeOptions_With_Image_Association_Filters_To_Group_Wordlist_Order()
+    public void ActionTypeOptions_With_Image_Association_Shows_Covering_Generic_Set()
     {
         var (vm, _) = CreateHost(string.Join(", ", ImageExts), "open");
-        Assert.Equal(new[] { "open_path", "open_folder", "open", "copy" },
+        Assert.Equal(new[] { "copy", "open", "open_folder", "open_path", "run", "script" },
             vm.Editor!.ActionTypeOptions.Select(o => o.Value));
     }
 
-    /// <summary>关联 code: 额外放开 script/run, 共 6 项。</summary>
+    /// <summary>关联 code: 覆盖集与 image 相同 (通配行为对任意后缀恒适用, 2026-09 语义)。</summary>
     [Fact]
-    public void ActionTypeOptions_With_Code_Association_Allows_Six_Actions()
+    public void ActionTypeOptions_With_Code_Association_Shows_Same_Covering_Set()
     {
         var (vm, _) = CreateHost(string.Join(", ", CodeExts), "script");
-        Assert.Equal(new HashSet<string> { "open_path", "open", "open_folder", "copy", "script", "run" },
+        Assert.Equal(new HashSet<string> { "copy", "open", "open_folder", "open_path", "run", "script" },
             OptionValues(vm));
     }
 
-    /// <summary>无关联 (手输后缀): 回退 FileActions 全文件集 (按词表原序 6 项)。</summary>
+    /// <summary>无关联 (手输后缀): 覆盖集同为通配行为 6 项。</summary>
     [Fact]
-    public void ActionTypeOptions_Without_Association_Falls_Back_To_FileActions()
+    public void ActionTypeOptions_Without_Association_Shows_Covering_Generic_Set()
     {
         var (vm, _) = CreateHost("abc,xyz", "run");
-        Assert.Equal(new HashSet<string>(ActionSchemeCatalog.FileActions), OptionValues(vm));
+        Assert.Equal(new HashSet<string> { "copy", "open", "open_folder", "open_path", "run", "script" },
+            OptionValues(vm));
     }
 
     /// <summary>
@@ -109,23 +120,24 @@ public sealed class FileGroupActionFilterTests
     // ------------------------------------------------------------- 分组选择联动
 
     /// <summary>
-    /// 当前行为 run (带模板) 选中 image: 纠正为分组默认行为 open_path,
-    /// 清空残留命令模板, 填充分组后缀串, 行为下拉联动刷新。
+    /// 当前行为 magnet_download (仅覆盖文本特征) 选中 image: 纠正为默认行为 open_path
+    /// (default 标记推导), 清空残留载荷, 填充分组后缀串, 行为下拉联动刷新。
+    /// (2026-09 语义: run 等通配行为对文件前提恒适用, 不再触发纠正。)
     /// </summary>
     [Fact]
     public void OnFileGroupSelected_Corrects_Incompatible_Action_And_Clears_Template()
     {
-        var (vm, _) = CreateHost("", "run");
+        var (vm, _) = CreateHost("", "magnet_download");
         var rule = vm.SelectedRule!.Rule;
-        rule.ActionValue = "%selected%"; // run 行为带命令模板
+        rule.ActionValue = "magnet:?xt=1"; // 残留载荷 (magnet_download 本无模板, 验证纠正时清空)
         var editor = vm.Editor!;
         editor.FileGroupSelected = editor.FileGroupOptions.First(o => o.Value == "image");
 
-        Assert.Equal(ActionSchemeCatalog.FileGroupDefaultAction, rule.ActionType);
-        Assert.Equal("", rule.ActionValue); // 纠正到无参行为时清空残留模板
+        Assert.Equal("open_path", rule.ActionType); // 行为包 default 标记推导
+        Assert.Equal("", rule.ActionValue);         // 纠正到无参行为时清空残留载荷
         Assert.Equal(string.Join(", ", ImageExts), rule.MatchValue);
-        // 联动刷新: 选项收敛为 image 词表
-        Assert.Equal(new HashSet<string> { "open_path", "open", "open_folder", "copy" }, OptionValues(vm));
+        // 联动刷新: 选项为文件语境覆盖集
+        Assert.Equal(new HashSet<string> { "copy", "open", "open_folder", "open_path", "run", "script" }, OptionValues(vm));
     }
 
     /// <summary>当前行为 open (分组安全集内): 选中 image 不纠正行为, 仅填充后缀串。</summary>
@@ -150,7 +162,7 @@ public sealed class FileGroupActionFilterTests
         editor.FileGroupSelected = editor.FileGroupOptions.First(o => o.Value == ""); // 「无」
 
         Assert.Equal("", vm.SelectedRule!.Rule.MatchValue);
-        Assert.Equal(new HashSet<string>(ActionSchemeCatalog.FileActions), OptionValues(vm));
+        Assert.Equal(new HashSet<string> { "copy", "open", "open_folder", "open_path", "run", "script" }, OptionValues(vm));
     }
 
     // ------------------------------------------------------------- 回填重建关联
@@ -163,7 +175,7 @@ public sealed class FileGroupActionFilterTests
         var editor = vm.Editor!;
         Assert.Equal("image", editor.FileGroupSelected?.Value);
         // 乱序大小写变体仍命中 image 词表 -> 选项按 image 过滤
-        Assert.Equal(new HashSet<string> { "open_path", "open", "open_folder", "copy" }, OptionValues(vm));
+        Assert.Equal(new HashSet<string> { "copy", "open", "open_folder", "open_path", "run", "script" }, OptionValues(vm));
     }
 
     /// <summary>自定义后缀串 (组内子集, 不与任何分组全集一致): 不关联, 快捷填入保持未选。</summary>
@@ -172,7 +184,7 @@ public sealed class FileGroupActionFilterTests
     {
         var (vm, _) = CreateHost("jpg, png", "open"); // image 组的子集 != 全集
         Assert.Null(vm.Editor!.FileGroupSelected);
-        Assert.Equal(new HashSet<string>(ActionSchemeCatalog.FileActions), OptionValues(vm));
+        Assert.Equal(new HashSet<string> { "copy", "open", "open_folder", "open_path", "run", "script" }, OptionValues(vm));
     }
 
     // ------------------------------------------------------------- 保存写回
@@ -291,7 +303,7 @@ public sealed class FileGroupActionFilterTests
         vm.Editor = new RuleEditorVm(vm, vm.SelectedRule!.Rule); // 模拟切走再切回的顶层重建
 
         // 关联经映射恢复: 行为下拉按 image 过滤
-        Assert.Equal(new HashSet<string> { "open_path", "open", "open_folder", "copy" }, OptionValues(vm));
+        Assert.Equal(new HashSet<string> { "copy", "open", "open_folder", "open_path", "run", "script" }, OptionValues(vm));
         vm.Editor!.MatchValue = "jpg, gif";
         vm.ApplyFileGroupWriteBack();
         Assert.Equal(new[] { "jpg", "gif" }, config.FileGroups.First(g => g.Name == "image").Exts);
@@ -315,7 +327,7 @@ public sealed class FileGroupActionFilterTests
         Assert.DoesNotContain(vm.SelectedRule.Rule, vm.PendingGroupAssociations.Keys);
 
         editor.SelectedMatchType = editor.MatchTypeOptions.First(o => o.Value == "fileExt"); // 切回
-        Assert.Equal(new HashSet<string>(ActionSchemeCatalog.FileActions), OptionValues(vm)); // 回退全文件集
+        Assert.Equal(new HashSet<string> { "copy", "open", "open_folder", "open_path", "run", "script" }, OptionValues(vm)); // 回退文件语境覆盖集
         vm.ApplyFileGroupWriteBack();
         Assert.Equal(ImageExts, config.FileGroups.First(g => g.Name == "image").Exts); // 写回不生效
     }

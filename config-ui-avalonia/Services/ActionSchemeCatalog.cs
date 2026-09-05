@@ -3,12 +3,12 @@ using MyKeymap.Settings.Models;
 namespace MyKeymap.Settings.Services;
 
 // ============================================================================
-// 选中动作系统常量 (复刻 config-ui/src/components/action/constants.ts)。
+// 选中动作系统常量 (匹配类型/文本特征词表 + 工厂方法; 复刻 config-ui constants.ts)。
 //
-// 词表纪律: 合法性裁决永远以后端 400 为准 ——
-//   TEXT_TYPE_ACTIONS / TEXT_TYPE_DEFAULT_ACTION 均为副本,
-//   真源在 Go: config-server/internal/script/actionscheme.go 的 textTypeActions。
-//   C# 侧词表仅用于展示候选与前端联动, 非法组合由后端保存/测试校验拦截。
+// 词表纪律: 合法性裁决永远以后端 400 为准。
+// 行为类型词表 (2026-09 起) 不再是静态副本 —— 由 BehaviorCatalog 从行为包 appliesTo
+// 推导 (后端 GET /api/behaviors 下发, 真源 = 内置包 bin/behaviors + 用户包 data/behaviors,
+// 见 CONTRACTS §3.9), 本文件只保留匹配类型/文本特征词表与共享工具方法。
 //
 // 文案键走 I18n (959+ 为移植新增编号), 语言切换时由页面 ViewModel 重建。
 // ============================================================================
@@ -28,22 +28,11 @@ public static class ActionSchemeCatalog
         ("textType", "1032", "1035"),
     ];
 
-    // 行为类型 (复刻 ACTION_TYPES; textType 下可选行为受 TextTypeActions 联动约束)
-    // (Value, LabelKey, HintKey)
-    public static readonly (string Value, string LabelKey, string HintKey)[] ActionTypes =
-    [
-        ("open_url", "1037", "1048"),
-        ("open_path", "1038", "1049"),
-        ("open_folder", "1039", "1050"),
-        ("magnet_download", "1040", "1051"),
-        ("open_registry", "1041", "1052"),
-        ("open", "1042", "1053"),
-        ("search", "1043", "1054"),
-        ("run", "1044", "1055"),
-        ("send_keys", "1045", "1056"),
-        ("script", "1046", "1057"),
-        ("copy", "1047", "1058"),
-    ];
+    // 行为类型词表已于 2026-09 迁移至 BehaviorCatalog: 由后端 GET /api/behaviors 下发的
+    // 行为包 appliesTo 推导覆盖与默认 (CONTRACTS §3.9)。旧五张静态表
+    // (ActionTypes / TextTypeActions / TextTypeDefaultAction / TextActions /
+    //  FileGroupActions / FileGroupDefaultAction / FileActions / DefaultSearchUrl) 全部退役,
+    // 覆盖语义: 行为前提 ⊇ 规则前提 (专属前提排前、通配排后), 合法性仍以后端 400 为准。
 
     // 文本特征 (复刻 TEXT_TYPES)
     public static readonly (string Value, string LabelKey)[] TextTypes =
@@ -54,60 +43,22 @@ public static class ActionSchemeCatalog
         ("plain", "1062"),
     ];
 
-    /// <summary>
-    /// 文本特征 -> 可选行为类型 映射。
-    /// 副本, 真源在 Go actionscheme.go 的 textTypeActions; 联动规则: 特征与行为必须语义匹配。
-    /// </summary>
-    public static readonly IReadOnlyDictionary<string, string[]> TextTypeActions =
-        new Dictionary<string, string[]>
-        {
-            ["url"] = ["open_url", "search"],
-            ["path"] = ["open_path", "open_folder"],
-            ["magnet"] = ["magnet_download"],
-            ["plain"] = ["open_registry", "search", "run", "send_keys", "script", "copy"],
-        };
+    // (textType / fileExt 的可选行为与默认推荐全部由 BehaviorCatalog 从行为包 appliesTo 推导,
+    //  见文件顶部说明; 此处不再保留任何静态词表副本。)
 
-    /// <summary>切换文本特征时的默认行为。副本, 真源语义对齐 Go textTypeActions 键集。</summary>
-    public static readonly IReadOnlyDictionary<string, string> TextTypeDefaultAction =
-        new Dictionary<string, string>
-        {
-            ["url"] = "open_url",
-            ["path"] = "open_path",
-            ["magnet"] = "magnet_download",
-            ["plain"] = "search",
-        };
-
-    /// <summary>文本特征专用行为集合 (无命令模板, actionValue 恒为空; 复刻 TEXT_ACTIONS)。</summary>
-    public static readonly HashSet<string> TextActions =
-        ["open_url", "open_path", "open_folder", "magnet_download", "open_registry"];
+    /// <summary>切换文本特征时的默认行为: 由 BehaviorCatalog 按 default 标记推导。</summary>
+    public static string? TextTypeDefaultAction(string textType) => BehaviorCatalog.DefaultFor("textType", textType);
 
     // ---- 文件后缀 (fileExt) 语境行为过滤 ----
     // 展示层过滤副本; 后端不校验 fileExt; 未知分组回退 FileActions。
     // 背景: fileExt 规则的组合合法性 Go 侧 ValidateActionSchemeRules 不裁决 (仅校验 textType),
     // 若不过滤会出现「图片分组 -> 磁力链接下载」等语义错配选项 (2026-09-15 修复)。
 
-    /// <summary>
-    /// 文件分组 -> 可选行为类型。展示层过滤副本 (分组名对齐 config.json fileGroups 默认六组),
-    /// 后端不校验 fileExt 组合; 未列出的分组 (用户自建) 回退 <see cref="FileActions"/>。
-    /// </summary>
-    public static readonly IReadOnlyDictionary<string, string[]> FileGroupActions =
-        new Dictionary<string, string[]>
-        {
-            // 图片/文档/视频/音频/压缩包: 文件语境安全行为 (默认程序打开 / 指定路径打开 / 所在目录 / 复制)
-            ["image"] = ["open_path", "open", "open_folder", "copy"],
-            ["doc"] = ["open_path", "open", "open_folder", "copy"],
-            ["video"] = ["open_path", "open", "open_folder", "copy"],
-            ["audio"] = ["open_path", "open", "open_folder", "copy"],
-            ["archive"] = ["open_path", "open", "open_folder", "copy"],
-            // 代码文件: 额外允许以脚本执行 / 运行命令处理
-            ["code"] = ["open_path", "open", "open_folder", "copy", "script", "run"],
-        };
+    /// <summary>文件语境 (fileExt) 的默认行为: 由 BehaviorCatalog 按 default 标记推导。</summary>
+    public static string? FileGroupDefaultAction => BehaviorCatalog.DefaultFor("fileExt", "*");
 
-    /// <summary>选中分组且当前行为不可选时的默认行为 (镜像 TextTypeDefaultAction 的联动纠正)。</summary>
-    public const string FileGroupDefaultAction = "open_path";
-
-    /// <summary>文件语境通用安全行为集 (无关联分组的手输后缀 / 未知分组的回退)。</summary>
-    public static readonly string[] FileActions = ["open", "open_path", "open_folder", "run", "script", "copy"];
+    /// <summary>切换行为/分组时的旧硬编码默认 (search 补搜索模板 / run 补 %selected%) 现由
+    /// 行为包 entry.params 声明, 见 BehaviorCatalog.DefaultTemplateFor。</summary>
 
     /// <summary>
     /// 归一化后缀串: 按逗号/顿号/分号 (含全角) 分割、Trim、去空、去两端点
@@ -137,18 +88,14 @@ public static class ActionSchemeCatalog
                NormalizeExts(string.Join(',', a)), StringComparer.OrdinalIgnoreCase)
             .SetEquals(NormalizeExts(string.Join(',', b)));
 
-    /// <summary>默认搜索模板 (复刻 DEFAULT_SEARCH_URL)。</summary>
-    public const string DefaultSearchUrl = "https://www.google.com/search?q=%selected%";
-
     // ------------------------------------------------------------- 标签查询
 
     public static string MatchTypeLabel(string value)
         => MatchTypes.FirstOrDefault(x => x.Value == value) is var t && t.Value is not null
             ? I18n.T(t.LabelKey) : value;
 
-    public static string ActionTypeLabel(string value)
-        => ActionTypes.FirstOrDefault(x => x.Value == value) is var t && t.Value is not null
-            ? I18n.T(t.LabelKey) : value;
+    /// <summary>行为显示名: 由 BehaviorCatalog 按包名推导 (按语言 name/nameEn, 未知 ID 回退原值)。</summary>
+    public static string ActionTypeLabel(string value) => BehaviorCatalog.LabelFor(value);
 
     public static string TextTypeLabel(string value)
         => TextTypes.FirstOrDefault(x => x.Value == value) is var t && t.Value is not null
@@ -158,9 +105,8 @@ public static class ActionSchemeCatalog
         => MatchTypes.FirstOrDefault(x => x.Value == value) is var t && t.Value is not null
             ? I18n.T(t.HintKey) : "";
 
-    public static string ActionTypeHint(string value)
-        => ActionTypes.FirstOrDefault(x => x.Value == value) is var t && t.Value is not null
-            ? I18n.T(t.HintKey) : "";
+    /// <summary>行为提示: 由 BehaviorCatalog 按包 description 推导 (未知 ID 回退空串)。</summary>
+    public static string ActionTypeHint(string value) => BehaviorCatalog.HintFor(value);
 
     // ------------------------------------------------------------- 工厂方法
 

@@ -112,6 +112,13 @@ public interface ISettingsApi
     Task<ApiResponse<ActionScheme>> UpdateActionSchemeAsync(int id, ActionScheme scheme, CancellationToken ct = default);
     Task<ApiResponse<MessageBody>> DeleteActionSchemeAsync(int id, CancellationToken ct = default);
     Task<ApiResponse<ActionSchemeTestResult>> TestActionSchemeAsync(ActionSchemeTestRequest request, CancellationToken ct = default);
+
+    // 行为包 (选中动作「行为库」, CONTRACTS §3.9)
+    Task<ApiResponse<BehaviorCatalogResponse>> GetBehaviorsAsync(CancellationToken ct = default);
+    Task<ApiResponse<BehaviorPack>> CreateBehaviorAsync(BehaviorPack pack, CancellationToken ct = default);
+    Task<ApiResponse<BehaviorPack>> UpdateBehaviorAsync(string id, BehaviorPack pack, CancellationToken ct = default);
+    Task<ApiResponse<MessageBody>> DeleteBehaviorAsync(string id, CancellationToken ct = default);
+    Task<ApiResponse<MessageBody>> ApplyBehaviorsAsync(CancellationToken ct = default);
 }
 
 /// <summary>
@@ -171,6 +178,21 @@ public sealed class SettingsApiClient : ISettingsApi, IDisposable
 
     public Task<ApiResponse<ActionSchemeTestResult>> TestActionSchemeAsync(ActionSchemeTestRequest request, CancellationToken ct = default)
         => SendAsync<ActionSchemeTestResult>(HttpMethod.Post, "api/action-schemes/test", request, ct);
+
+    public Task<ApiResponse<BehaviorCatalogResponse>> GetBehaviorsAsync(CancellationToken ct = default)
+        => SendAsync<BehaviorCatalogResponse>(HttpMethod.Get, "api/behaviors", content: null, ct);
+
+    public Task<ApiResponse<BehaviorPack>> CreateBehaviorAsync(BehaviorPack pack, CancellationToken ct = default)
+        => SendAsync<BehaviorPack>(HttpMethod.Post, "api/behaviors", pack, ct);
+
+    public Task<ApiResponse<BehaviorPack>> UpdateBehaviorAsync(string id, BehaviorPack pack, CancellationToken ct = default)
+        => SendAsync<BehaviorPack>(HttpMethod.Put, $"api/behaviors/{id}", pack, ct);
+
+    public Task<ApiResponse<MessageBody>> DeleteBehaviorAsync(string id, CancellationToken ct = default)
+        => SendAsync<MessageBody>(HttpMethod.Delete, $"api/behaviors/{id}", content: null, ct);
+
+    public Task<ApiResponse<MessageBody>> ApplyBehaviorsAsync(CancellationToken ct = default)
+        => SendAsync<MessageBody>(HttpMethod.Post, "api/behaviors/apply", content: null, ct);
 
     /// <summary>
     /// 非契约端点的便捷原始文本 GET (如 Home 页的 /config_doc.html 静态资源)。

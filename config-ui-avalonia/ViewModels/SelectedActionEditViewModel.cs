@@ -62,9 +62,9 @@ public sealed partial class RuleItemVm : ObservableObject
         if (Rule.ActionType == "search") return I18n.T("1000") + Rule.ActionValue;
         if (Rule.ActionType == "send_keys") return I18n.T("1001") + Rule.ActionValue;
         if (Rule.ActionType == "copy") return I18n.T("1002") + Rule.ActionValue;
-        if (ActionSchemeCatalog.TextActions.Contains(Rule.ActionType))
+        if (BehaviorCatalog.IsNoValue(Rule.ActionType))
         {
-            return ActionSchemeCatalog.ActionTypeLabel(Rule.ActionType);
+            return BehaviorCatalog.LabelFor(Rule.ActionType);
         }
         return Rule.ActionValue;
     }
@@ -202,15 +202,15 @@ public sealed partial class RuleEditorVm : ObservableObject
     partial void OnSelectedTextTypeChanged(ComboOption value)
     {
         if (_applying || value.Value == Rule.MatchValue) return;
-        var allowed = ActionSchemeCatalog.TextTypeActions.GetValueOrDefault(value.Value) ?? [];
+        var allowed = BehaviorCatalog.Covering("textType", value.Value).Select(p => p.Id).ToHashSet();
         var actionType = Rule.ActionType;
         if (!allowed.Contains(actionType))
         {
-            actionType = ActionSchemeCatalog.TextTypeDefaultAction.GetValueOrDefault(value.Value) ?? "";
+            actionType = BehaviorCatalog.DefaultFor("textType", value.Value) ?? "";
         }
         Rule.MatchValue = value.Value;
         Rule.ActionType = actionType;
-        if (ActionSchemeCatalog.TextActions.Contains(actionType))
+        if (BehaviorCatalog.IsNoValue(actionType))
         {
             Rule.ActionValue = ""; // 避免残留模板误导
         }
@@ -258,13 +258,12 @@ public sealed partial class RuleEditorVm : ObservableObject
         MatchValue = string.Join(", ", group.Exts); // 填充条件值
         _associatedGroupName = group.Name;          // 记录关联 (驱动行为下拉按分组过滤)
         MarkAssociationResolved(group.Name);        // F2: 显式建立 (映射记录 + 置 resolved)
-        // 镜像 textType 联动: 当前行为不在该分组可选范围 -> 落到分组默认行为
-        var allowed = ActionSchemeCatalog.FileGroupActions.GetValueOrDefault(group.Name)
-                      ?? ActionSchemeCatalog.FileActions;
+        // 镜像 textType 联动: 当前行为不在该前提覆盖范围 -> 落到默认行为 (default 标记推导)
+        var allowed = BehaviorCatalog.Covering("fileExt", MatchValue).Select(p => p.Id).ToHashSet();
         if (!allowed.Contains(Rule.ActionType))
         {
-            Rule.ActionType = ActionSchemeCatalog.FileGroupDefaultAction;
-            if (ActionSchemeCatalog.TextActions.Contains(Rule.ActionType))
+            Rule.ActionType = BehaviorCatalog.DefaultFor("fileExt", MatchValue) ?? "open_path";
+            if (BehaviorCatalog.IsNoValue(Rule.ActionType))
             {
                 Rule.ActionValue = ""; // 纠正到无参行为时清空残留模板 (复刻 onTextTypeChange)
             }
@@ -286,32 +285,25 @@ public sealed partial class RuleEditorVm : ObservableObject
     {
         get
         {
-            var all = ActionSchemeCatalog.ActionTypes;
-            if (Rule.MatchType == "textType")
+            // 行为选项由行为包 appliesTo 覆盖推导 (CONTRACTS §3.9): 专属前提在前、通配在后;
+            // 目录未加载 (页面初始) 时为空列表, Loaded 后经 RefreshBehaviorOptions 刷新
+            if (!BehaviorCatalog.Loaded) return [];
+            var list = BehaviorCatalog.Covering(Rule.MatchType, Rule.MatchValue)
+                .Select(p => new ComboOption(p.Id, BehaviorCatalog.LabelFor(p.Id)))
+                .ToList();
+            // fileExt: union 当前行为, 保证存量脏值可见可选、回填不脱靶;
+            // textType: 不 union (沿用 2026-09 联动纠正口径, 非法组合由特征切换纠正+后端校验兜底)
+            if (string.Equals(Rule.MatchType, "fileExt", StringComparison.OrdinalIgnoreCase)
+                && list.All(o => o.Value != Rule.ActionType) && !string.IsNullOrEmpty(Rule.ActionType))
             {
-                var textAllowed = ActionSchemeCatalog.TextTypeActions.GetValueOrDefault(Rule.MatchValue) ?? [];
-                return all.Where(t => textAllowed.Contains(t.Value))
-                    .Select(t => new ComboOption(t.Value, I18n.T(t.LabelKey))).ToList();
+                list.Add(new ComboOption(Rule.ActionType, BehaviorCatalog.LabelFor(Rule.ActionType)));
             }
-            if (Rule.MatchType == "fileExt")
-            {
-                var allowed = _associatedGroupName is not null
-                    ? ActionSchemeCatalog.FileGroupActions.GetValueOrDefault(_associatedGroupName)
-                      ?? ActionSchemeCatalog.FileActions
-                    : ActionSchemeCatalog.FileActions;
-                var values = new HashSet<string>(allowed) { Rule.ActionType }; // union 保证脏值恒可见
-                var list = all.Where(t => values.Contains(t.Value))
-                    .Select(t => new ComboOption(t.Value, I18n.T(t.LabelKey))).ToList();
-                // 词表外的脏值 (理论上不存在) 追加兜底, 维持「当前行为恒可选」
-                if (list.All(o => o.Value != Rule.ActionType) && !string.IsNullOrEmpty(Rule.ActionType))
-                {
-                    list.Add(new ComboOption(Rule.ActionType, ActionSchemeCatalog.ActionTypeLabel(Rule.ActionType)));
-                }
-                return list;
-            }
-            return all.Select(t => new ComboOption(t.Value, I18n.T(t.LabelKey))).ToList();
+            return list;
         }
     }
+
+    /// <summary>行为目录变化后 (行为库窗口关闭/语言切换) 刷新下拉候选。</summary>
+    public void RefreshBehaviorOptions() => OnPropertyChanged(nameof(ActionTypeOptions));
 
     [ObservableProperty]
     private ComboOption _selectedActionType = new("open", "");
@@ -321,17 +313,14 @@ public sealed partial class RuleEditorVm : ObservableObject
     {
         if (_applying || value.Value == Rule.ActionType) return;
         var v = Rule.ActionValue;
-        if (ActionSchemeCatalog.TextActions.Contains(value.Value))
+        if (BehaviorCatalog.IsNoValue(value.Value))
         {
             v = "";
         }
-        else if (value.Value == "search" && v == "")
+        else if (string.IsNullOrEmpty(v))
         {
-            v = ActionSchemeCatalog.DefaultSearchUrl;
-        }
-        else if (value.Value == "run" && v == "")
-        {
-            v = "%selected%";
+            // 默认模板由行为包 entry.params 声明 (search→搜索 URL / run→%selected% 等)
+            v = BehaviorCatalog.DefaultTemplateFor(value.Value);
         }
         Rule.ActionType = value.Value;
         Rule.ActionValue = v;
@@ -340,7 +329,7 @@ public sealed partial class RuleEditorVm : ObservableObject
     }
 
     /// <summary>是否文本特征专用行为 (无命令模板, 复刻 isTextAction)。</summary>
-    public bool IsTextAction => ActionSchemeCatalog.TextActions.Contains(Rule.ActionType);
+    public bool IsTextAction => BehaviorCatalog.IsNoValue(Rule.ActionType);
 
     public bool ShowActionValue => !IsTextAction;
 
@@ -364,7 +353,7 @@ public sealed partial class RuleEditorVm : ObservableObject
 
     // ------------------------------------------------------------- 工作目录与选项
 
-    public bool ShowWorkingDir => Rule.ActionType == "run";
+    public bool ShowWorkingDir => BehaviorCatalog.BaseActionOf(Rule.ActionType) == "run";
 
     public string WorkingDir
     {
@@ -878,8 +867,8 @@ public sealed partial class SelectedActionEditViewModel : ObservableObject
         {
             var r = rules[i];
             if (r.MatchType != "textType") continue;
-            var allowed = ActionSchemeCatalog.TextTypeActions.GetValueOrDefault(r.MatchValue) ?? [];
-            if (!allowed.Contains(r.ActionType))
+            if (!BehaviorCatalog.Loaded) continue; // 目录未就绪跳过预检 (后端保存校验仍拦截)
+            if (!BehaviorCatalog.Covering("textType", r.MatchValue).Any(p => p.Id == r.ActionType))
             {
                 return string.Format(I18n.T("1023"), i + 1,
                     ActionSchemeCatalog.TextTypeLabel(r.MatchValue),

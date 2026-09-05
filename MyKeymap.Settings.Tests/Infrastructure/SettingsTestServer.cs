@@ -75,6 +75,9 @@ public sealed class SettingsTestServer : IAsyncLifetime
         // templates (GenerateAHK 等脚本生成依赖)
         CopyDirectory(Path.Combine(RepoRoot, "config-server", "templates"), Path.Combine(BinDir, "templates"));
 
+        // 内置行为包 (CONTRACTS §3.9): 保存校验覆盖检查与脚本生成展开的运行时依赖
+        CopyDirectory(Path.Combine(RepoRoot, "bin", "behaviors"), Path.Combine(BinDir, "behaviors"));
+
         // 最小站点占位 (NoRoute 静态服务指向 ./site)
         File.WriteAllText(Path.Combine(BinDir, "site", "index.html"), "<!doctype html><title>mk-test</title>\n");
 

@@ -3,6 +3,7 @@
              xmlns:vm="using:MyKeymap.Settings.ViewModels"
              xmlns:controls="using:MyKeymap.Settings.Controls"
              xmlns:services="using:MyKeymap.Settings.Services"
+        xmlns:views="using:MyKeymap.Settings.Views"
              x:Class="MyKeymap.Settings.Views.SelectedActionEditView"
              x:DataType="vm:SelectedActionEditViewModel">
 
@@ -217,6 +218,13 @@
                           </DataTemplate>
                         </ComboBox.ItemTemplate>
                       </ComboBox>
+
+                        <Button HorizontalAlignment="Left" Padding="10,4" CornerRadius="6"
+                                Background="Transparent" BorderBrush="#4169E1" BorderThickness="1"
+                                Foreground="#4169E1" Click="OnManageBehaviorsClick">
+                          <TextBlock FontSize="12"
+                                     Text="{Binding $parent[views:SelectedActionEditView].((vm:SelectedActionEditViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=1083}" />
+                        </Button>
 
                       <!-- 命令模板 (非无参行为) -->
                       <StackPanel Spacing="4" IsVisible="{Binding ShowActionValue}">
