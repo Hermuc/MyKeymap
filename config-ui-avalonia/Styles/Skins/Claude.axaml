@@ -98,23 +98,26 @@
               ClaudeSandBrush / ClaudeNearBlackBrush / ClaudeCharcoalWarmBrush /
               ClaudeOliveGrayBrush / ClaudeStoneGrayBrush / ClaudeDarkWarmBrush /
               ClaudeTerracottaBrush / ClaudeCoralBrush / ClaudeCoralLightBrush / ClaudeErrorBrush /
-              ClaudeMutedGreenBrush / ClaudeMutedGreenSoftBrush /
+              ClaudeMutedGreenBrush / ClaudeMutedGreenSoftBrush / ClaudeTerracottaSoftBrush /
               ClaudeBorderCreamBrush / ClaudeBorderWarmBrush /
               ClaudeRingWarmBrush / ClaudeRingDeepBrush /
               ClaudeWindowSurfaceBrush   ← 亚克力画布 (半透明 Parchment, 铺在窗口根)
               ClaudeSidebarSurfaceBrush  ← 侧栏面 (半透明 Ivory)
               暗色桩 (定义但不接线): ClaudeDarkSurfaceBrush / ClaudeDeepDarkBrush /
               ClaudeWarmSilverBrush / ClaudeBorderDarkBrush
-    阴影 (7):  ClaudeShadowHoverRing / ClaudeShadowCtaRing /
+    阴影 (8):  ClaudeShadowHoverRing / ClaudeShadowCtaRing /
               ClaudeShadowPressedInset / ClaudeShadowFocusRing / ClaudeShadowWhisper /
-              ClaudeShadowCard / ClaudeShadowCardHover
+              ClaudeShadowCard / ClaudeShadowCardHover / ClaudeShadowCardDeep
     尺寸 (4):  ClaudeRadiusSm / ClaudeRadiusMd / ClaudeRadiusLg / ClaudeRadiusXl
               ⚠ 类型必须是 CornerRadius (不是 x:Double) —— 历史事故: 曾定义成 Double,
                 构建 0 错误但所有窗口加载即抛 InvalidCastException。
     字体 (1):  ClaudeSerifFont
+    动效 (4):  C# 真源 ViewModels/ClaudeMotion.cs (Press/Micro/Standard/Enter, TimeSpan)
+              ⚠ XAML 引用一律 {x:Static vm:ClaudeMotion.*}, 勿写散落字面量
     类样式:    TextBlock.claude{Title,Subtitle,Body,Muted,Dim} /
               Border.claudeCard / Button.claude{Cta,Sand,Ghost,Danger} /
-              ToggleSwitch.claudeCompact / TextBox·ComboBox.claudeInput
+              ToggleSwitch.claudeCompact / TextBox·ComboBox.claudeInput /
+              ControlTheme ChipRadio (芯片单选, 契约 = 键存在且 TargetType=RadioButton)
 
   【本皮肤仍需遵守的设计约束 (来自 DESIGN.md, 换肤时按新皮肤规范替换)】
     · 不得引入高饱和色 (仅允许品牌色做强调)
@@ -133,7 +136,8 @@
   ############################################################################
 -->
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:KeyFlux.Settings.ViewModels">
 
   <!-- ===================== 令牌 (Styles.Resources) ===================== -->
   <Styles.Resources>
@@ -154,6 +158,7 @@
     <SolidColorBrush x:Key="ClaudeErrorBrush"        Color="#b53333" />
     <SolidColorBrush x:Key="ClaudeMutedGreenBrush"   Color="#5e7d5a" />
     <SolidColorBrush x:Key="ClaudeMutedGreenSoftBrush" Color="#e7ebe3" />
+    <SolidColorBrush x:Key="ClaudeTerracottaSoftBrush" Color="#f6e4da" />
     <SolidColorBrush x:Key="ClaudeBorderCreamBrush"  Color="#f0eee6" />
     <SolidColorBrush x:Key="ClaudeBorderWarmBrush"   Color="#e8e6dc" />
     <SolidColorBrush x:Key="ClaudeRingWarmBrush"     Color="#d1cfc5" />
@@ -178,6 +183,9 @@
     <BoxShadows x:Key="ClaudeShadowWhisper">0 4 24 0 #0d000000</BoxShadows>
     <BoxShadows x:Key="ClaudeShadowCard">0 2 4 0 #1c000000, 0 6 18 0 #14000000</BoxShadows>
     <BoxShadows x:Key="ClaudeShadowCardHover">0 0 0 1 #d1cfc5, 0 6 20 0 #1a000000</BoxShadows>
+    <!-- ClaudeShadowCardHover 去环版 (2026-09-13): 描边走实体 BorderThickness 机制的消费方
+         (设置页 settingsCard 悬停灰描边/聚焦橙描边) 的强影档 —— 环会与 2px 描边叠成双线 -->
+    <BoxShadows x:Key="ClaudeShadowCardDeep">0 6 20 0 #1a000000</BoxShadows>
 
     <!-- 尺寸 (4) · CornerRadius 类型
          注意: 令牌被赋给 CornerRadius 属性, 必须用 CornerRadius 类型。
@@ -190,6 +198,14 @@
 
     <!-- 字体 (1) · FontFamily -->
     <FontFamily x:Key="ClaudeSerifFont">Georgia, Microsoft YaHei UI</FontFamily>
+
+    <!-- ── 动效时长令牌 (4) ── C# 强类型真源 = ViewModels/ClaudeMotion.cs (与色值真源
+         ClaudePalette.cs 同一先例; TimeSpan 无法作 XAML 资源元素实例化, AVLN2000 实测),
+         XAML 一律经 {x:Static vm:ClaudeMotion.*} 引用。皮肤动效个性的单一真源:
+         新皮肤按自身气质整组替换 (例: 高效皮肤整体减半)。
+         基线取生产率工具档 (design-motion-principles): 全部 ≤300ms;
+         频率闸门 = 按压/悬停 (高频) 最短, 页面级 (低频) 最长。
+         减少动效: 环境变量 KEYFLUX_NO_MOTION=1 时设置页整体跳过入场/展开 (MotionPreferences)。 -->
 
     <!-- ── 窗口面 (亚克力用) ──
          Parchment 带 alpha, 供无边框窗口的根 Border 作底色, 让底层模糊透出。
@@ -235,6 +251,75 @@
         </Border>
       </ControlTemplate>
     </Setter>
+  </ControlTheme>
+
+  <!-- ── 芯片单选 (ChipRadio, 2026-09-13) ──
+       行为选择器的卡片式单选 (对齐 Semi CardRadioButton 模式): 整块可点 (热区=整个芯片,
+       替代裸圆圈单选的小热区), 悬停暖灰描边+Ivory 底, 选中 Terracotta 软底+Terracotta 描边,
+       键盘焦点 Coral 描边, 按下下沉 1px。完整自绘模板 (只有自 Border, 不依赖 Fluent 模板
+       部件 —— 规避「模板部件压属性须逐状态覆盖」坑)。消费方 = ActionEditorPanel 枚举单选;
+       用法: <RadioButton Theme="{StaticResource ChipRadio}" GroupName="..."/> -->
+  <ControlTheme x:Key="ChipRadio" TargetType="RadioButton">
+    <Setter Property="Background" Value="{StaticResource ClaudeWhiteBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource ClaudeBorderWarmBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource ClaudeRadiusMd}" />
+    <Setter Property="Padding" Value="12,6" />
+    <Setter Property="MinHeight" Value="34" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Foreground" Value="{StaticResource ClaudeCharcoalWarmBrush}" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="RenderTransform" Value="translateY(0px)" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="{x:Static vm:ClaudeMotion.Press}" Easing="QuadraticEaseOut" />
+        <BrushTransition Property="Background" Duration="{x:Static vm:ClaudeMotion.Micro}" />
+        <BrushTransition Property="BorderBrush" Duration="{x:Static vm:ClaudeMotion.Micro}" />
+        <BrushTransition Property="Foreground" Duration="{x:Static vm:ClaudeMotion.Micro}" />
+      </Transitions>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="PART_Root"
+                Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}"
+                CornerRadius="{TemplateBinding CornerRadius}"
+                Padding="{TemplateBinding Padding}">
+          <ContentPresenter Name="PART_ContentPresenter"
+                            Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            Foreground="{TemplateBinding Foreground}"
+                            VerticalAlignment="Center" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="Background" Value="{StaticResource ClaudeIvoryBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ClaudeRingDeepBrush}" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="RenderTransform" Value="translateY(1px)" />
+    </Style>
+    <Style Selector="^:checked">
+      <Setter Property="Background" Value="{StaticResource ClaudeTerracottaSoftBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ClaudeTerracottaBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource ClaudeDarkWarmBrush}" />
+    </Style>
+    <!-- 选中态悬停保持选中外观 (仅描边加深一档), 避免态间来回闪跳 -->
+    <Style Selector="^:checked:pointerover">
+      <Setter Property="Background" Value="{StaticResource ClaudeTerracottaSoftBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ClaudeTerracottaBrush}" />
+    </Style>
+    <Style Selector="^:focus-visible">
+      <Setter Property="BorderBrush" Value="{StaticResource ClaudeCoralBrush}" />
+    </Style>
+    <Style Selector="^:checked:focus-visible">
+      <Setter Property="BorderBrush" Value="{StaticResource ClaudeCoralBrush}" />
+    </Style>
+    <Style Selector="^:disabled">
+      <Setter Property="Opacity" Value="0.4" />
+    </Style>
   </ControlTheme>
 </Styles.Resources>
 
@@ -287,9 +372,23 @@
     <Setter Property="CornerRadius" Value="{StaticResource ClaudeRadiusMd}" />
     <Setter Property="Padding" Value="14,7" />
     <Setter Property="RenderTransform" Value="translate(0px, 0px)" />
+    <!-- 三态微动效: 按压下沉 80ms / 悬停变色 120ms (时长令牌见 Styles.Resources 动效组) -->
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="{x:Static vm:ClaudeMotion.Press}" Easing="QuadraticEaseOut" />
+        <BrushTransition Property="Foreground" Duration="{x:Static vm:ClaudeMotion.Micro}" />
+        <BrushTransition Property="BorderBrush" Duration="{x:Static vm:ClaudeMotion.Micro}" />
+      </Transitions>
+    </Setter>
   </Style>
   <Style Selector="Button.claudeCta /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="BoxShadow" Value="{StaticResource ClaudeShadowCtaRing}" />
+    <!-- 悬停底色 Terracotta→Coral 平滑过渡 (可见的是模板部件底色, 必须在部件上挂过渡) -->
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="{x:Static vm:ClaudeMotion.Micro}" />
+      </Transitions>
+    </Setter>
   </Style>
   <Style Selector="Button.claudeCta:pointerover">
     <Setter Property="Background" Value="{StaticResource ClaudeCoralBrush}" />
@@ -319,6 +418,13 @@
     <Setter Property="BorderBrush" Value="{StaticResource ClaudeBorderWarmBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="RenderTransform" Value="translate(0px, 0px)" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="{x:Static vm:ClaudeMotion.Press}" Easing="QuadraticEaseOut" />
+        <BrushTransition Property="Foreground" Duration="{x:Static vm:ClaudeMotion.Micro}" />
+        <BrushTransition Property="BorderBrush" Duration="{x:Static vm:ClaudeMotion.Micro}" />
+      </Transitions>
+    </Setter>
   </Style>
   <Style Selector="Button.claudeSand:pointerover">
     <Setter Property="BorderBrush" Value="{StaticResource ClaudeRingWarmBrush}" />
@@ -345,6 +451,13 @@
     <Setter Property="BorderBrush" Value="{StaticResource ClaudeBorderWarmBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="RenderTransform" Value="translate(0px, 0px)" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="{x:Static vm:ClaudeMotion.Press}" Easing="QuadraticEaseOut" />
+        <BrushTransition Property="Foreground" Duration="{x:Static vm:ClaudeMotion.Micro}" />
+        <BrushTransition Property="BorderBrush" Duration="{x:Static vm:ClaudeMotion.Micro}" />
+      </Transitions>
+    </Setter>
   </Style>
   <Style Selector="Button.claudeGhost:pointerover">
     <Setter Property="Foreground" Value="{StaticResource ClaudeDarkWarmBrush}" />
@@ -368,6 +481,12 @@
     <Setter Property="Padding" Value="14,7" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="RenderTransform" Value="translate(0px, 0px)" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="{x:Static vm:ClaudeMotion.Press}" Easing="QuadraticEaseOut" />
+        <BrushTransition Property="Foreground" Duration="{x:Static vm:ClaudeMotion.Micro}" />
+      </Transitions>
+    </Setter>
   </Style>
   <Style Selector="Button.claudeDanger:pointerover">
     <Setter Property="BorderBrush" Value="{StaticResource ClaudeErrorBrush}" />
@@ -394,17 +513,19 @@
     <Setter Property="OffContent" Value="{x:Null}" />
   </Style>
 
-  <!-- 输入框 / 下拉: Ivory 底 + Cream 边 + 焦点 Coral 环。
+  <!-- 输入框 / 下拉: White 底 + Cream 边 + 焦点 Coral 环 (2026-09-13 底色 Ivory→White:
+       消费方是 Ivory 卡片上的面板输入区, White 底与卡面拉开层次, Fluent 默认 TextBox
+       亦是 White 底, 面板内未挂类的 AutoCompleteBox 观感自然一致)。
        TextBox/ComboBox 均无 BoxShadow 属性:
        - TextBox 焦点环阴影设在模板 Border#PART_BorderElement 上 (Fluent 实测部件名)。
        - ComboBox 模板无 PART_Border 部件, 无法挂 BoxShadow 环; 焦点态改用
          BorderBrush 变 Coral (模板 Border 经 TemplateBinding 继承), 给出可见焦点指示。
        BorderBrush 均设在控件自身 (经 TemplateBinding 继承到模板 Border)。 -->
   <Style Selector="TextBox.claudeInput">
-    <Setter Property="Background" Value="{StaticResource ClaudeIvoryBrush}" />
+    <Setter Property="Background" Value="{StaticResource ClaudeWhiteBrush}" />
     <Setter Property="Foreground" Value="{StaticResource ClaudeNearBlackBrush}" />
     <Setter Property="BorderBrush" Value="{StaticResource ClaudeBorderCreamBrush}" />
-    <Setter Property="CornerRadius" Value="{StaticResource ClaudeRadiusLg}" />
+    <Setter Property="CornerRadius" Value="{StaticResource ClaudeRadiusMd}" />
   </Style>
   <Style Selector="TextBox.claudeInput:focus-visible">
     <Setter Property="BorderBrush" Value="{StaticResource ClaudeCoralBrush}" />
@@ -413,10 +534,10 @@
     <Setter Property="BoxShadow" Value="{StaticResource ClaudeShadowFocusRing}" />
   </Style>
   <Style Selector="ComboBox.claudeInput">
-    <Setter Property="Background" Value="{StaticResource ClaudeIvoryBrush}" />
+    <Setter Property="Background" Value="{StaticResource ClaudeWhiteBrush}" />
     <Setter Property="Foreground" Value="{StaticResource ClaudeNearBlackBrush}" />
     <Setter Property="BorderBrush" Value="{StaticResource ClaudeBorderCreamBrush}" />
-    <Setter Property="CornerRadius" Value="{StaticResource ClaudeRadiusLg}" />
+    <Setter Property="CornerRadius" Value="{StaticResource ClaudeRadiusMd}" />
   </Style>
   <Style Selector="ComboBox.claudeInput:focus-visible">
     <Setter Property="BorderBrush" Value="{StaticResource ClaudeCoralBrush}" />
@@ -428,6 +549,15 @@
   <Style Selector="ToggleSwitch">
     <Setter Property="OnContent" Value="ON" />
     <Setter Property="OffContent" Value="OFF" />
+  </Style>
+
+  <!-- 下拉弹层项: 选中/悬停高亮内缩为圆角块 (2026-09-13 用户报弹层方正违和)。
+       Fluent 默认 CornerRadius=0 + Margin=0 → 整行色带顶满弹层边缘;
+       ComboBoxItem 模板无 Border, 高亮画在 PART_ContentPresenter 上,
+       其 CornerRadius 经 TemplateBinding 绑定控件值 (headless 实证)。 -->
+  <Style Selector="ComboBoxItem">
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Margin" Value="6,3" />
   </Style>
 
 </Styles>

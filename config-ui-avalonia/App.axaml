@@ -22,6 +22,23 @@
          主题模板内的 {DynamicResource ScrollBarSize} 沿逻辑树查找资源, 不经过样式集合资源. -->
     <x:Double x:Key="ScrollBarSize">10</x:Double>
 
+    <!-- ===================== 系统强调色暖色化 (2026-09-13 全局冷蓝清零) =====================
+         Fluent 的 RadioButton 选中圆 / CheckBox 勾选框 / Slider 轨道填充 / AutoCompleteBox
+         下拉选中等所有「强调色态」都引用 SystemAccentColor 系 (默认取 OS 强调色 = 蓝 #0078d7),
+         此前只逐键覆盖了 ToggleSwitch/ComboBox/TextBox 三家, RadioButton 一族仍冷蓝
+         (用户报: 行为选择器与整体 UI 不匹配)。headless 实证: 在此覆盖 7 个 Color 即全部转暖,
+         派生画刷 (SystemControlBackgroundAccentBrush 等) 自动跟随; 类型必须是 Color 不是 Brush。
+         值 = Terracotta 主阶 + Coral/CoralLight 亮阶 + 三个加深阶 (悬停/按下变体用)。
+         >> 换肤须知: 以下值属于皮肤配色, 新增皮肤时需同步替换 <<
+         守护 = SkinContractTests.Skin_Contract_SystemAccent_Family_Is_Warm -->
+    <Color x:Key="SystemAccentColor">#c96442</Color>
+    <Color x:Key="SystemAccentColorDark1">#a8522f</Color>
+    <Color x:Key="SystemAccentColorDark2">#8f4426</Color>
+    <Color x:Key="SystemAccentColorDark3">#75351c</Color>
+    <Color x:Key="SystemAccentColorLight1">#d97757</Color>
+    <Color x:Key="SystemAccentColorLight2">#e1957a</Color>
+    <Color x:Key="SystemAccentColorLight3">#f0b49e</Color>
+
     <!-- ===================== 皮肤可替换资源 · Fluent 模板覆盖 =====================
          Fluent 的 ToggleSwitch 模板用 {DynamicResource ToggleSwitchFillOn/StrokeOn/KnobFillOn}
          取开启态配色, 默认取系统强调色 (本机为蓝) —— 与暖色体系冲突。
@@ -66,6 +83,17 @@
     <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedPressed">#d97757</SolidColorBrush>
     <SolidColorBrush x:Key="ComboBoxItemBackgroundPointerOver">#f0eee6</SolidColorBrush>
     <SolidColorBrush x:Key="ComboBoxItemBackgroundPressed">#e8e2d4</SolidColorBrush>
+
+    <!-- ===================== ComboBox 弹层容器暖色化 (2026-09-13 用户报弹层方正违和) =====================
+         Fluent 弹层容器默认冷灰底 #f2f2f2 + 深灰边; 改暖 Ivory 底 + Warm 边。
+         圆角见下方 OverlayCornerRadius (弹层 Border 实证经该资源驱动)。
+         >> 换肤须知: 以下值属于皮肤配色, 新增皮肤时需同步替换 << -->
+    <SolidColorBrush x:Key="ComboBoxDropdownBackground">#faf9f5</SolidColorBrush>
+    <SolidColorBrush x:Key="ComboBoxDropdownBorderBrush">#e8e6dc</SolidColorBrush>
+
+    <!-- 弹层统一圆角 (2026-09-13): ComboBox 下拉容器 Border 实证经 OverlayCornerRadius 驱动
+         (Fluent 默认 4, 皮肤 ToolTip 主题亦引用此键); 取 RadiusMd=8 与卡片圆角呼应 -->
+    <CornerRadius x:Key="OverlayCornerRadius">8,8,8,8</CornerRadius>
 
     <!-- ===================== TextBox 聚焦边框/选中文本高亮 (2026-09-13 用户报蓝色) =====================
          弹窗 (WindowGroupDialogWindow 等) 的 TextBox 未挂 claudeInput class, 聚焦边框与

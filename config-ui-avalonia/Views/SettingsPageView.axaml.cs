@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
+using KeyFlux.Settings.Services;
 using KeyFlux.Settings.ViewModels;
 
 namespace KeyFlux.Settings.Views;
@@ -13,7 +14,16 @@ namespace KeyFlux.Settings.Views;
 /// </summary>
 public partial class SettingsPageView : UserControl
 {
-    public SettingsPageView() => InitializeComponent();
+    public SettingsPageView()
+    {
+        InitializeComponent();
+        // 动效闸门: 设 KEYFLUX_NO_MOTION=1 时不上 .motion 类, 页内入场级联/分区展开动画
+        // 整体跳过 (XAML 里动画选择器均以 .motion 开头); 默认播放 (裁定见 MotionPreferences)
+        if (MotionPreferences.AnimationsEnabled)
+        {
+            Classes.Add("motion");
+        }
+    }
 
     /// <summary>
     /// Viewbox 占宽钳制 (最小缩放限制): 下限 893 = 测量宽 1132 x 0.8 (快捷键方案卡

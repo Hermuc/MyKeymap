@@ -20,7 +20,11 @@ namespace KeyFlux.Settings.Services;
 // ============================================================================
 public static class MarkdownRenderer
 {
-    private const string LinkColor = ClaudePalette.DarkWarm;
+    // 链接色 (2026-09-13 用户指定绿色, 色值裁定 = 调色板既有低饱和暖绿 MutedGreen):
+    // Claude 体系的正向语义色 (保存成功提示/状态点同源), 与暖底和谐且和正文 (NearBlack)、
+    // 行内代码 (Coral) 形成清晰语义区分; 链接带下划线+手型光标, 不单靠颜色承载可点性。
+    // 仅作用于链接 (文字+下划线), 列表序号仍用 DarkWarm (结构标记非链接)
+    private const string LinkColor = ClaudePalette.MutedGreen;
     private const string CodeColor = ClaudePalette.Coral;
     private const string CodeFont = "Consolas";
 

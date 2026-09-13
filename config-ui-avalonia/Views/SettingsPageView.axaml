@@ -8,12 +8,13 @@
              x:DataType="vm:SettingsPageViewModel">
 
   <UserControl.Resources>
-    <!-- 右列卡片阴影走效果管线 (DropShadowDirectionEffect, 四边均匀):
-         Border 的 BoxShadow 在 Viewbox 渲染变换下左右竖段不可靠 (两轮实证) -->
-    <DropShadowDirectionEffect x:Key="CardShadowRest" BlurRadius="12" Direction="0" ShadowDepth="4"
-                               Opacity="0.10" Color="#000000" />
-    <DropShadowDirectionEffect x:Key="CardShadowStrong" BlurRadius="16" Direction="0" ShadowDepth="4"
-                               Opacity="0.18" Color="#000000" />
+    <!-- 阴影说明 (2026-09-13 与插件页统一): 卡片阴影由 DropShadowDirectionEffect 四周均匀环境影
+         改为插件卡同款 BoxShadow 令牌 (ClaudeShadowCard / 悬停聚焦强影 ClaudeShadowCardDeep)。
+         历史改用 Effect 管线的理由是「Viewbox 渲染变换下 BoxShadow 环竖段不可靠」——
+         2026-09-13 在设置页真实条件 (Viewbox ≈0.9 缩小档, 软件 Skia) 下 headless 探针实证:
+         偏移影与环影均渲染完整 (左 216/右 216), 当年现象应为坑 15 的列表裁剪而非 Viewbox;
+         故回归 BoxShadow 令牌与插件页观感一致。描边仍走实体 BorderThickness 2 换色机制
+         (用户已验收), 故悬停强影用去环版 ClaudeShadowCardDeep 而非 ClaudeShadowCardHover -->
   </UserControl.Resources>
 
   <UserControl.Styles>
@@ -23,20 +24,20 @@
       <Setter Property="Padding" Value="0" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     </Style>
-    <!-- 右列组件框: 插件卡同款三态 (静态柔影 / 悬停灰描边+强影 / 单击聚焦橙描边+强影)。
+    <!-- 右列组件框: 插件卡同款三态 (静态双层下坠影 / 悬停灰描边+强影 / 单击聚焦橙描边+强影)。
          描边 = 实体 BorderThickness 2 换色 (用户确认过此机制侧边可见);
-         阴影 = DropShadowDirectionEffect (BoxShadow 环在 Viewbox 变换下竖段不可靠, 勿用) -->
+         阴影 = 插件页同款 BoxShadow 令牌 (2026-09-13 统一, 见 Resources 注释) -->
     <Style Selector="Border.settingsCard">
-      <Setter Property="Effect" Value="{StaticResource CardShadowRest}" />
+      <Setter Property="BoxShadow" Value="{StaticResource ClaudeShadowCard}" />
       <Setter Property="BorderThickness" Value="2" />
       <Setter Property="BorderBrush" Value="{StaticResource ClaudeBorderCreamBrush}" />
     </Style>
     <Style Selector="Border.settingsCard:pointerover">
-      <Setter Property="Effect" Value="{StaticResource CardShadowStrong}" />
+      <Setter Property="BoxShadow" Value="{StaticResource ClaudeShadowCardDeep}" />
       <Setter Property="BorderBrush" Value="#c9c7bd" />
     </Style>
     <Style Selector="Border.settingsCard:focus-within">
-      <Setter Property="Effect" Value="{StaticResource CardShadowStrong}" />
+      <Setter Property="BoxShadow" Value="{StaticResource ClaudeShadowCardDeep}" />
       <Setter Property="BorderBrush" Value="{StaticResource ClaudeCoralBrush}" />
     </Style>
     <!-- 分区标题按钮: 压制 Fluent 模板部件基态/悬停/按下的自带灰底 (坑13/18) ——
@@ -56,6 +57,152 @@
       <Setter Property="OnContent" Value="{x:Null}" />
       <Setter Property="OffContent" Value="{x:Null}" />
     </Style>
+
+    <!-- 页内输入方框圆角统一 = ClaudeRadiusMd(8) (2026-09-13 用户报: 快捷键方案表格的
+         TextBox/ComboBox 是 Fluent 默认小圆角, 与动作编辑面板 claudeInput(8) 不一致)。
+         页面级裸类型样式覆盖左表 + 右列全部分区 (鼠标参数/布局/延时/皮肤/路径变量/自定义热键),
+         圆角值来自同一令牌, 与 claudeInput 恒等; 模板 Border 均 TemplateBinding 绑定
+         控件 CornerRadius (图2 实证), 页面内无 AutoCompleteBox 无误伤 -->
+    <Style Selector="TextBox">
+      <Setter Property="CornerRadius" Value="{StaticResource ClaudeRadiusMd}" />
+    </Style>
+    <Style Selector="ComboBox">
+      <Setter Property="CornerRadius" Value="{StaticResource ClaudeRadiusMd}" />
+    </Style>
+
+    <!-- ===================== 动效 (2026-09-13) =====================
+         .motion 类由 code-behind 挂载, 设环境变量 KEYFLUX_NO_MOTION=1 可整体关闭
+         (默认播放; 不查系统 SPI 动画标志的裁定见 MotionPreferences):
+         下面全部入场/展开动画失配跳过, 界面保持即时刻。
+         原则: 只动 Opacity / RenderTransform / 画刷 (渲染层属性, 零布局参与);
+         卡片级联刻意只做淡入、不做位移 —— TopFlareWings 与几何守护测试走 TranslatePoint,
+         RenderTransform 会进变换链, 位移值会污染几何断言 -->
+    <!-- ① 左列大卡: 页面挂载时随首批卡片淡入 -->
+    <Style Selector="UserControl.motion Border.leftPanel">
+      <Style.Animations>
+        <Animation Duration="0:0:0.25" Easing="CubicEaseOut">
+          <KeyFrame Cue="0%">
+            <Setter Property="Opacity" Value="0" />
+          </KeyFrame>
+          <KeyFrame Cue="100%">
+            <Setter Property="Opacity" Value="1" />
+          </KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <!-- ② 右列卡片入场级联: 页面每次挂载 (导航进入设置页) 播一次。右列首子元素是标题
+         TextBlock (=1), 10 张卡为第 2..11 个子元素, 依次延迟 30ms 逐张浮现;
+         FillMode=Backward 让延迟期保持首帧透明, 否则卡片先可见、动画起始再闪没 -->
+    <Style Selector="UserControl.motion Border.settingsCard:nth-child(2)">
+      <Style.Animations>
+        <Animation Duration="{x:Static vm:ClaudeMotion.Enter}" Easing="CubicEaseOut" FillMode="Backward">
+          <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <Style Selector="UserControl.motion Border.settingsCard:nth-child(3)">
+      <Style.Animations>
+        <Animation Duration="{x:Static vm:ClaudeMotion.Enter}" Delay="0:0:0.03" Easing="CubicEaseOut" FillMode="Backward">
+          <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <Style Selector="UserControl.motion Border.settingsCard:nth-child(4)">
+      <Style.Animations>
+        <Animation Duration="{x:Static vm:ClaudeMotion.Enter}" Delay="0:0:0.06" Easing="CubicEaseOut" FillMode="Backward">
+          <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <Style Selector="UserControl.motion Border.settingsCard:nth-child(5)">
+      <Style.Animations>
+        <Animation Duration="{x:Static vm:ClaudeMotion.Enter}" Delay="0:0:0.09" Easing="CubicEaseOut" FillMode="Backward">
+          <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <Style Selector="UserControl.motion Border.settingsCard:nth-child(6)">
+      <Style.Animations>
+        <Animation Duration="{x:Static vm:ClaudeMotion.Enter}" Delay="0:0:0.12" Easing="CubicEaseOut" FillMode="Backward">
+          <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <Style Selector="UserControl.motion Border.settingsCard:nth-child(7)">
+      <Style.Animations>
+        <Animation Duration="{x:Static vm:ClaudeMotion.Enter}" Delay="0:0:0.15" Easing="CubicEaseOut" FillMode="Backward">
+          <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <Style Selector="UserControl.motion Border.settingsCard:nth-child(8)">
+      <Style.Animations>
+        <Animation Duration="{x:Static vm:ClaudeMotion.Enter}" Delay="0:0:0.18" Easing="CubicEaseOut" FillMode="Backward">
+          <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <Style Selector="UserControl.motion Border.settingsCard:nth-child(9)">
+      <Style.Animations>
+        <Animation Duration="{x:Static vm:ClaudeMotion.Enter}" Delay="0:0:0.21" Easing="CubicEaseOut" FillMode="Backward">
+          <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <Style Selector="UserControl.motion Border.settingsCard:nth-child(10)">
+      <Style.Animations>
+        <Animation Duration="{x:Static vm:ClaudeMotion.Enter}" Delay="0:0:0.24" Easing="CubicEaseOut" FillMode="Backward">
+          <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <Style Selector="UserControl.motion Border.settingsCard:nth-child(11)">
+      <Style.Animations>
+        <Animation Duration="{x:Static vm:ClaudeMotion.Enter}" Delay="0:0:0.27" Easing="CubicEaseOut" FillMode="Backward">
+          <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <!-- ③ 分区展开入场: Classes.open 随 ShowX 绑定同步翻转 (手风琴), 展开淡入 + 8px 上滑收位
+         (从标题下方"展开"的读感)。收起 = IsVisible 立即 false, 无退场 —— IsVisible 不可动画,
+         做退场需常驻占位, 违背手风琴布局语义, 保留瞬时收起 -->
+    <Style Selector="UserControl.motion StackPanel.sectionBody.open">
+      <Style.Animations>
+        <Animation Duration="{x:Static vm:ClaudeMotion.Standard}" Easing="CubicEaseOut">
+          <KeyFrame Cue="0%">
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="RenderTransform" Value="translateY(-8px)" />
+          </KeyFrame>
+          <KeyFrame Cue="100%">
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="RenderTransform" Value="none" />
+          </KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <!-- ④ 左列键位表行悬停底色 (扫描引导, 与侧栏导航同一 Sand 高亮语汇), 100ms 画刷过渡 -->
+    <Style Selector="Border.keymapRow">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="CornerRadius" Value="{StaticResource ClaudeRadiusSm}" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="{x:Static vm:ClaudeMotion.Micro}" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Border.keymapRow:pointerover">
+      <Setter Property="Background" Value="{StaticResource ClaudeSandBrush}" />
+    </Style>
   </UserControl.Styles>
 
   <!-- 整页内容包 Viewbox Uniform 等比缩放 (2026-09-12 重构: 移除外层 ScrollViewer):
@@ -70,7 +217,7 @@
     <Grid ColumnDefinitions="560,*" Margin="24,20,24,28">
 
       <!-- ===================== 左列: 快捷键方案 (label:915, 复刻 Settings.vue 表格) ===================== -->
-      <Border Grid.Column="0" Background="{StaticResource ClaudeIvoryBrush}" CornerRadius="{StaticResource ClaudeRadiusLg}" Padding="16"
+      <Border Grid.Column="0" Classes="leftPanel" Background="{StaticResource ClaudeIvoryBrush}" CornerRadius="{StaticResource ClaudeRadiusLg}" Padding="16"
               Height="624" VerticalAlignment="Top" Margin="0,0,16,0">
         <!-- LayoutTransform 等比放大卡内全部内容 (字号/输入框/开关随框一起变大):
              1.12 = 加宽后内容区 528 / 原内容区 468; 卡高 624 = 528x1.12 + Padding 32 -->
@@ -104,7 +251,9 @@
             <ItemsControl ItemsSource="{Binding KeymapRows}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:KeymapRowViewModel">
-                  <Grid ColumnDefinitions="124,120,128,52,*" Margin="0,2">
+                  <!-- 行体包 Border: 悬停 Sand 底 (keymapRow 样式), 行距 Margin 从 Grid 移到 Border -->
+                  <Border Classes="keymapRow" Margin="0,2">
+                    <Grid ColumnDefinitions="124,120,128,52,*">
                     <!-- 名称 (失焦复刻 checkKeymapData) -->
                     <TextBox Text="{Binding Name}" LostFocus="OnRowFieldLostFocus"
                              Margin="0,0,6,0" Padding="6,4" FontSize="13" />
@@ -128,12 +277,13 @@
                                   VerticalAlignment="Center" />
                     <!-- 删除 (启用中/被依赖时禁用, 复刻 disabledKeymapOption) -->
                     <Button Grid.Column="4" Content="✕" FontWeight="Bold"
-                            IsEnabled="{Binding CanDelete}"
-                            ToolTip.Tip="{Binding DeleteTip}"
-                            Command="{Binding #Root.((vm:SettingsPageViewModel)DataContext).RemoveKeymapRowCommand}"
-                            CommandParameter="{Binding}"
-                            Background="Transparent" Foreground="{StaticResource ClaudeErrorBrush}" Padding="6,3" />
-                  </Grid>
+                              IsEnabled="{Binding CanDelete}"
+                              ToolTip.Tip="{Binding DeleteTip}"
+                              Command="{Binding #Root.((vm:SettingsPageViewModel)DataContext).RemoveKeymapRowCommand}"
+                              CommandParameter="{Binding}"
+                              Background="Transparent" Foreground="{StaticResource ClaudeErrorBrush}" Padding="6,3" />
+                    </Grid>
+                  </Border>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
@@ -174,10 +324,11 @@
         </Canvas>
         <!-- 呼吸距离必须用 StackPanel 的 Margin 而非 ScrollViewer 的 Padding:
              Padding 会把 ScrollContentPresenter 的裁剪边界一起内缩 (阴影照样被裁,
-             用户报"左右阴影像被切断"), Margin 在裁剪边界之内留出衰减空间 -->
+             用户报"左右阴影像被切断"), Margin 在裁剪边界之内留出衰减空间;
+             底部 24 = 下坠影尾部 (offset 6 + blur 18 ≈ 24) 的衰减空间 -->
         <ScrollViewer VerticalScrollBarVisibility="Hidden"
                       controls:TopFlareWings.IsEnabled="True" controls:TopFlareWings.FlareOverlay="{Binding #PART_TopFlareWings}">
-          <StackPanel Spacing="12" Width="460" Margin="24,0,24,16">
+          <StackPanel Spacing="16" Width="460" Margin="24,0,24,24">
         <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=505}"
                    FontSize="16" FontWeight="SemiBold" />
 
@@ -205,15 +356,17 @@
               <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=781}"
                          FontWeight="SemiBold" />
             </Button>
-            <ComboBox IsVisible="{Binding ShowLanguageOption}"
-                      ItemsSource="{Binding Languages}" SelectedItem="{Binding SelectedLanguage}"
-                      MinWidth="180">
-              <ComboBox.ItemTemplate>
-                <DataTemplate x:DataType="vm:LanguageOption">
-                  <TextBlock Text="{Binding Title}" />
-                </DataTemplate>
-              </ComboBox.ItemTemplate>
-            </ComboBox>
+            <StackPanel Classes="sectionBody" Classes.open="{Binding ShowLanguageOption}"
+                        IsVisible="{Binding ShowLanguageOption}">
+              <ComboBox ItemsSource="{Binding Languages}" SelectedItem="{Binding SelectedLanguage}"
+                        MinWidth="180">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:LanguageOption">
+                    <TextBlock Text="{Binding Title}" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </StackPanel>
           </StackPanel>
         </Border>
 
@@ -236,7 +389,8 @@
               <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=1116}"
                          FontWeight="SemiBold" />
             </Button>
-            <StackPanel IsVisible="{Binding ShowCustomHotkeys}" Spacing="8">
+            <StackPanel Classes="sectionBody" Classes.open="{Binding ShowCustomHotkeys}"
+                        IsVisible="{Binding ShowCustomHotkeys}" Spacing="8">
               <Grid ColumnDefinitions="100,*,26" Margin="0,0,0,2">
                 <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=404}"
                            Foreground="{StaticResource ClaudeStoneGrayBrush}" FontSize="12" />
@@ -286,7 +440,8 @@
               <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=701}"
                          FontWeight="SemiBold" />
             </Button>
-            <StackPanel IsVisible="{Binding ShowMouseOption}" Spacing="8">
+            <StackPanel Classes="sectionBody" Classes.open="{Binding ShowMouseOption}"
+                        IsVisible="{Binding ShowMouseOption}" Spacing="8">
               <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=702}"
                          FontWeight="SemiBold" Foreground="{StaticResource ClaudeTerracottaBrush}" />
               <Grid ColumnDefinitions="176,*">
@@ -348,7 +503,8 @@
               <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=721}"
                          FontWeight="SemiBold" />
             </Button>
-            <StackPanel IsVisible="{Binding ShowKeyboardLayout}" Spacing="10">
+            <StackPanel Classes="sectionBody" Classes.open="{Binding ShowKeyboardLayout}"
+                        IsVisible="{Binding ShowKeyboardLayout}" Spacing="10">
               <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=722}" Foreground="{StaticResource ClaudeStoneGrayBrush}" FontSize="12" />
               <TextBox Text="{Binding Options.KeyboardLayout}" AcceptsReturn="True" AcceptsTab="True"
                        MinHeight="180" FontFamily="Consolas,Courier New" FontSize="13"
@@ -378,7 +534,8 @@
               <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=761}"
                          FontWeight="SemiBold" />
             </Button>
-            <StackPanel IsVisible="{Binding ShowKeymapDelay}" Spacing="8">
+            <StackPanel Classes="sectionBody" Classes.open="{Binding ShowKeymapDelay}"
+                        IsVisible="{Binding ShowKeymapDelay}" Spacing="8">
               <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=762}" Foreground="{StaticResource ClaudeStoneGrayBrush}" FontSize="12" />
               <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=763}" Foreground="{StaticResource ClaudeStoneGrayBrush}" FontSize="12" TextWrapping="Wrap" />
               <ItemsControl ItemsSource="{Binding CustomKeymaps}">
@@ -403,16 +560,19 @@
               <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=741}"
                          FontWeight="SemiBold" />
             </Button>
-            <ItemsControl IsVisible="{Binding ShowSkin}" ItemsSource="{Binding SkinFields}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:SkinFieldViewModel">
-                  <Grid ColumnDefinitions="220,*" Margin="0,2">
-                    <TextBlock Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                    <TextBox Grid.Column="1" Text="{Binding Value}" Padding="6,4" />
-                  </Grid>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
+            <StackPanel Classes="sectionBody" Classes.open="{Binding ShowSkin}"
+                        IsVisible="{Binding ShowSkin}">
+              <ItemsControl ItemsSource="{Binding SkinFields}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:SkinFieldViewModel">
+                    <Grid ColumnDefinitions="220,*" Margin="0,2">
+                      <TextBlock Text="{Binding Label}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                      <TextBox Grid.Column="1" Text="{Binding Value}" Padding="6,4" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
           </StackPanel>
         </Border>
 
@@ -425,7 +585,8 @@
               <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=2500}"
                          FontFamily="{StaticResource ClaudeSerifFont}" FontSize="15" FontWeight="Medium" />
             </Button>
-            <StackPanel IsVisible="{Binding ShowAcrylic}" Spacing="10">
+            <StackPanel Classes="sectionBody" Classes.open="{Binding ShowAcrylic}"
+                        IsVisible="{Binding ShowAcrylic}" Spacing="10">
             <Grid ColumnDefinitions="*,Auto">
               <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=2501}"
                          VerticalAlignment="Center" />
@@ -452,7 +613,8 @@
               <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=907}"
                          FontWeight="SemiBold" />
             </Button>
-            <StackPanel IsVisible="{Binding ShowPathVariables}" Spacing="8">
+            <StackPanel Classes="sectionBody" Classes.open="{Binding ShowPathVariables}"
+                        IsVisible="{Binding ShowPathVariables}" Spacing="8">
               <TextBlock Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=911}"
                          Foreground="{StaticResource ClaudeStoneGrayBrush}" FontSize="12" TextWrapping="Wrap" />
               <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,0,4">

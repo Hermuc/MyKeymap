@@ -59,6 +59,20 @@ public sealed class WindowPickBindingTestApp : Application
         Resources["ToggleSwitchStrokeOffPointerOver"] = new SolidColorBrush(Color.Parse("#87867f"));
         Resources["ToggleSwitchFillOffPressed"] = new SolidColorBrush(Colors.Transparent);
         Resources["ToggleSwitchStrokeOffPressed"] = new SolidColorBrush(Color.Parse("#5e5d59"));
+        // 镜像 App.axaml 的系统强调色暖色化 (2026-09-13, 机制见 App.axaml 同名注释): 类型必须是 Color
+        // —— Fluent 的 RadioButton/CheckBox/Slider/AutoComplete 选中态引用 SystemAccentColor 系,
+        // 不覆盖则测试中这些控件退回 OS 蓝 #0078d7, SkinContractTests 的暖色契约也会红。
+        Resources["SystemAccentColor"] = Color.Parse("#c96442");
+        Resources["SystemAccentColorDark1"] = Color.Parse("#a8522f");
+        Resources["SystemAccentColorDark2"] = Color.Parse("#8f4426");
+        Resources["SystemAccentColorDark3"] = Color.Parse("#75351c");
+        Resources["SystemAccentColorLight1"] = Color.Parse("#d97757");
+        Resources["SystemAccentColorLight2"] = Color.Parse("#e1957a");
+        Resources["SystemAccentColorLight3"] = Color.Parse("#f0b49e");
+        // 镜像 App.axaml 的 ComboBox 弹层暖化与统一圆角 (2026-09-13, 机制见 App.axaml 同名注释)
+        Resources["ComboBoxDropdownBackground"] = new SolidColorBrush(Color.Parse("#faf9f5"));
+        Resources["ComboBoxDropdownBorderBrush"] = new SolidColorBrush(Color.Parse("#e8e6dc"));
+        Resources["OverlayCornerRadius"] = new CornerRadius(8);
     }
 }
 

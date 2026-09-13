@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Media;
+using Avalonia.Styling;
 using Avalonia.Threading;
 using KeyFlux.Settings.Models;
 using KeyFlux.Settings.Theming;
@@ -121,7 +122,8 @@ public sealed class SkinContractTests
         "ClaudeStoneGrayBrush", "ClaudeDarkWarmBrush", "ClaudeTerracottaBrush",
         "ClaudeCoralBrush", "ClaudeCoralLightBrush", "ClaudeErrorBrush", "ClaudeMutedGreenBrush",
         "ClaudeMutedGreenSoftBrush", "ClaudeBorderCreamBrush", "ClaudeBorderWarmBrush",
-        "ClaudeRingWarmBrush", "ClaudeRingDeepBrush",
+              "ClaudeRingWarmBrush", "ClaudeRingDeepBrush",
+              "ClaudeTerracottaSoftBrush",
         // 亚克力分层: 画布 (窗口根) + 侧栏面, 二者必须带 alpha 且存在于任何皮肤中
         "ClaudeWindowSurfaceBrush", "ClaudeSidebarSurfaceBrush",
         // 暗色桩: 定义但不接线, 仍纳入契约以免新增皮肤时漏掉
@@ -133,7 +135,7 @@ public sealed class SkinContractTests
     [
         "ClaudeShadowHoverRing", "ClaudeShadowCtaRing", "ClaudeShadowPressedInset",
         "ClaudeShadowFocusRing", "ClaudeShadowWhisper", "ClaudeShadowCard",
-        "ClaudeShadowCardHover",
+        "ClaudeShadowCardHover", "ClaudeShadowCardDeep",
     ];
 
     private static readonly string[] RadiusKeys =
@@ -174,6 +176,96 @@ public sealed class SkinContractTests
         {
             Assert.True(app.TryFindResource(key, out var value), $"皮肤契约缺键: {key}");
             Assert.IsType<CornerRadius>(value);
+        }
+    }
+
+    /// <summary>
+    /// 契约: 动效时长令牌 (<see cref="ClaudeMotion"/>, C# 强类型真源) 必须 ≤300ms
+    /// (生产率工具基线) 且按 按压 &lt; 悬停微交互 &lt; 标准过渡 &lt; 入场 递增。
+    /// </summary>
+    [AvaloniaFact]
+    public void Skin_Contract_Motion_Tokens_Are_Ordered_And_Bounded()
+    {
+        var values = new[]
+        {
+            ClaudeMotion.Press, ClaudeMotion.Micro, ClaudeMotion.Standard, ClaudeMotion.Enter,
+        };
+        Assert.All(values, v => Assert.InRange(v.TotalMilliseconds, 10, 300));
+        Assert.True(values.SequenceEqual(values.OrderBy(v => v)),
+            $"动效时长令牌必须按 按压<微交互<标准<入场 递增, 实际: {string.Join(", ", values)}");
+    }
+
+    /// <summary>
+    /// 契约: 系统强调色 7 阶必须存在、主阶 = Terracotta 且全部暖色 (R&gt;B)。
+    /// 历史回归锁 —— Fluent 的 RadioButton 选中圆 / CheckBox 勾选框 / Slider 轨道填充 /
+    /// AutoCompleteBox 下拉选中等全部强调色态引用 SystemAccentColor (默认 OS 蓝 #0078d7),
+    /// 不覆盖则与 Claude 暖色体系冲突 (2026-09-13 用户报「行为选择器与整体 UI 不匹配」;
+    /// headless 实证: 覆盖后三控件选中态全部转 Terracotta, 派生画刷自动跟随)。
+    /// </summary>
+    [AvaloniaFact]
+    public void Skin_Contract_SystemAccent_Family_Is_Warm()
+    {
+        var app = Application.Current!;
+        Assert.True(app.TryFindResource("SystemAccentColor", out var primary), "缺 SystemAccentColor");
+        Assert.Equal(Color.Parse("#c96442"), Assert.IsType<Color>(primary));
+
+        foreach (var key in new[]
+                 {
+                     "SystemAccentColorDark1", "SystemAccentColorDark2", "SystemAccentColorDark3",
+                     "SystemAccentColorLight1", "SystemAccentColorLight2", "SystemAccentColorLight3",
+                 })
+        {
+            Assert.True(app.TryFindResource(key, out var v), $"缺 {key}");
+            var c = Assert.IsType<Color>(v);
+            Assert.True(c.R > c.B, $"{key} 非暖色 (R={c.R} B={c.B})");
+        }
+
+        // 派生画刷跟随 (Fluent 模板实际消费的键族之一)
+        Assert.True(app.TryGetResource("SystemControlBackgroundAccentBrush", out var brush));
+        var scb = Assert.IsType<SolidColorBrush>(brush);
+        Assert.True(scb.Color.R > scb.Color.B, $"派生强调画刷仍为冷色: {scb.Color}");
+    }
+
+    /// <summary>契约: 芯片单选 ControlTheme 存在且 TargetType = RadioButton (行为选择器重构的锚点)。</summary>
+    [AvaloniaFact]
+    public void Skin_Contract_ChipRadio_Theme_Resolves()
+    {
+        var app = Application.Current!;
+        Assert.True(app.TryFindResource("ChipRadio", out var theme), "皮肤契约缺键: ChipRadio");
+        Assert.Equal(typeof(RadioButton), Assert.IsType<ControlTheme>(theme).TargetType);
+    }
+
+    /// <summary>
+    /// 契约: ComboBox 弹层暖化键存在且暖色, 弹层统一圆角 = 8, ComboBoxItem 高亮内缩圆角生效
+    /// (2026-09-13 用户报弹层方正违和; 弹层 Border 实证经 OverlayCornerRadius 驱动,
+    /// 条目高亮画在模板 PART_ContentPresenter 上且 CornerRadius 经 TemplateBinding 绑定控件值)。
+    /// </summary>
+    [AvaloniaFact]
+    public void Skin_Contract_Combo_Dropdown_Keys_Are_Warm()
+    {
+        var app = Application.Current!;
+        foreach (var key in new[] { "ComboBoxDropdownBackground", "ComboBoxDropdownBorderBrush" })
+        {
+            Assert.True(app.TryGetResource(key, out var v), $"缺 {key}");
+            var c = ((ISolidColorBrush)v!).Color;
+            Assert.True(c.R > c.B, $"{key} 非暖色: {c}");
+        }
+        Assert.True(app.TryGetResource("OverlayCornerRadius", out var cr));
+        Assert.Equal(new CornerRadius(8), Assert.IsType<CornerRadius>(cr));
+
+        // 皮肤 ComboBoxItem 样式生效 (圆角 + 内缩边距)
+        var item = new ComboBoxItem { Content = "x" };
+        var host = new Window { Width = 120, Height = 60, Content = item };
+        host.Show();
+        Dispatcher.UIThread.RunJobs();
+        try
+        {
+            Assert.Equal(new CornerRadius(6), item.CornerRadius);
+            Assert.Equal(new Thickness(6, 3), item.Margin);
+        }
+        finally
+        {
+            host.Close();
         }
     }
 

@@ -19,12 +19,13 @@
           Height="430" Padding="16,12" HorizontalAlignment="Stretch">
     <DockPanel>
 
-      <!-- 头部: 窗口分组 (5/12) + 动作类型 (7/12) -->
+      <!-- 头部: 窗口分组 (5/12) + 动作类型 (7/12); claudeInput = White 底+Cream 边+焦点 Coral -->
       <Grid DockPanel.Dock="Top" ColumnDefinitions="5*,7*" Margin="0,0,0,10">
-        <ComboBox ItemsSource="{Binding GroupOptions}"
+        <ComboBox Classes="claudeInput"
+                  ItemsSource="{Binding GroupOptions}"
                   SelectedItem="{Binding SelectedGroup}"
                   HorizontalAlignment="Stretch" Margin="0,0,10,0" />
-        <ComboBox Grid.Column="1"
+        <ComboBox Grid.Column="1" Classes="claudeInput"
                   ItemsSource="{Binding TypeOptions}"
                   SelectedItem="{Binding SelectedType}"
                   IsEnabled="{Binding HasHotkey}"
@@ -43,7 +44,7 @@
               <Grid ColumnDefinitions="140,*,Auto" ColumnSpacing="10" Margin="0,6,0,0">
                 <TextBlock Text="{Binding #PanelRoot.((vm:ActionEditorViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=301}"
                            Foreground="{StaticResource ClaudeStoneGrayBrush}" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" />
-                <TextBox Grid.Column="1" Text="{Binding WinTitle}" Padding="8,6" />
+                <TextBox Grid.Column="1" Classes="claudeInput" Text="{Binding WinTitle}" Padding="8,6" />
                 <controls:WindowPickButton Grid.Column="2" Text="{Binding WinTitle}" Kind="TitleAndExe"
                                            Margin="6,0,0,0" VerticalAlignment="Center" />
               </Grid>
@@ -62,17 +63,17 @@
               <Grid ColumnDefinitions="140,*" ColumnSpacing="10" Margin="0,6,0,0">
                 <TextBlock Text="{Binding #PanelRoot.((vm:ActionEditorViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=303}"
                            Foreground="{StaticResource ClaudeStoneGrayBrush}" FontSize="12" VerticalAlignment="Center" />
-                <TextBox Grid.Column="1" Text="{Binding Args}" Padding="8,6" />
+                <TextBox Grid.Column="1" Classes="claudeInput" Text="{Binding Args}" Padding="8,6" />
               </Grid>
               <Grid ColumnDefinitions="140,*" ColumnSpacing="10">
                 <TextBlock Text="{Binding #PanelRoot.((vm:ActionEditorViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=304}"
                            Foreground="{StaticResource ClaudeStoneGrayBrush}" FontSize="12" VerticalAlignment="Center" />
-                <TextBox Grid.Column="1" Text="{Binding WorkingDir}" Padding="8,6" />
+                <TextBox Grid.Column="1" Classes="claudeInput" Text="{Binding WorkingDir}" Padding="8,6" />
               </Grid>
               <Grid ColumnDefinitions="140,*" ColumnSpacing="10">
                 <TextBlock Text="{Binding #PanelRoot.((vm:ActionEditorViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=305}"
                            Foreground="{StaticResource ClaudeStoneGrayBrush}" FontSize="12" VerticalAlignment="Center" />
-                <TextBox Grid.Column="1" Text="{Binding Comment}" Padding="8,6" />
+                <TextBox Grid.Column="1" Classes="claudeInput" Text="{Binding Comment}" Padding="8,6" />
               </Grid>
 
               <WrapPanel Margin="0,8,0,0">
@@ -91,25 +92,31 @@
             </StackPanel>
           </DataTemplate>
 
-          <!-- ===================== 类型 2/3/4/7/9: 枚举单选 ===================== -->
+          <!-- ===================== 类型 2/3/4/7/9: 枚举单选 (2026-09-13 芯片重构) =====================
+               旧版 = 裸圆圈 RadioButton (Fluent 冷蓝选中态 + 圆圈热区小, 用户报与 UI 不匹配/不易交互)。
+               新版 = ChipRadio 卡片式单选 (皮肤 ControlTheme): 整块可点、悬停描边、
+               选中 Terracotta 软底+描边、焦点 Coral 描边。
+               布局 = 组内 WrapPanel 横向流动换行 (标签云), 组间纵向堆叠 (2026-09-13 二次返工:
+               首版沿用 行->列 纵向长列, 类型 7 两列各 8 行又高又呆, 用户报丑)。
+               选项标签自带组前缀 (光标- / 选择-), 组语义不丢 -->
           <DataTemplate DataType="vm:RadioGroupEditorVm" x:DataType="vm:RadioGroupEditorVm">
-            <!-- 行 -> 列(横向) -> 选项(纵向); 内层集合元素类型推断不便, 关闭编译绑定用反射 -->
-            <ItemsControl ItemsSource="{Binding Rows}">
+            <ItemsControl ItemsSource="{Binding Rows}" Margin="0,4,0,4">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="{x:Null}">
-                  <ItemsControl ItemsSource="{Binding}" Margin="0,4,0,8">
-                    <ItemsControl.ItemsPanel>
-                      <ItemsPanelTemplate>
-                        <StackPanel Orientation="Horizontal" Spacing="40" />
-                      </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
+                  <ItemsControl ItemsSource="{Binding}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="{x:Null}">
-                        <ItemsControl ItemsSource="{Binding}">
+                        <ItemsControl ItemsSource="{Binding}" Margin="0,0,0,4">
+                          <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                              <WrapPanel />
+                            </ItemsPanelTemplate>
+                          </ItemsControl.ItemsPanel>
                           <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:RadioOptionVm">
-                              <RadioButton Content="{Binding Label}" IsChecked="{Binding IsChecked}"
-                                           GroupName="ActionRadio" Margin="0,3" />
+                              <RadioButton Classes="chip" Theme="{StaticResource ChipRadio}"
+                                           GroupName="ActionRadio" Margin="0,0,8,8"
+                                           Content="{Binding Label}" IsChecked="{Binding IsChecked}" />
                             </DataTemplate>
                           </ItemsControl.ItemTemplate>
                         </ItemsControl>
@@ -145,11 +152,11 @@
             <StackPanel Spacing="8">
               <TextBlock Text="{Binding #PanelRoot.((vm:ActionEditorViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=402}"
                          Foreground="{StaticResource ClaudeStoneGrayBrush}" FontSize="12" />
-              <TextBox Text="{Binding KeysToSend}" AcceptsReturn="True" MinHeight="80"
+              <TextBox Classes="claudeInput" Text="{Binding KeysToSend}" AcceptsReturn="True" MinHeight="80"
                        FontFamily="Consolas,Courier New" FontSize="13" Padding="8,6" />
               <TextBlock Text="{Binding #PanelRoot.((vm:ActionEditorViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=305}"
                          Foreground="{StaticResource ClaudeStoneGrayBrush}" FontSize="12" />
-              <TextBox Text="{Binding Comment}" Padding="8,6" />
+              <TextBox Classes="claudeInput" Text="{Binding Comment}" Padding="8,6" />
             </StackPanel>
           </DataTemplate>
 
@@ -159,13 +166,13 @@
               <TextBlock Text="{Binding #PanelRoot.((vm:ActionEditorViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=403}"
                          Foreground="{StaticResource ClaudeStoneGrayBrush}" FontSize="12" />
               <!-- 跟随面板宽度铺满 (原先 MinWidth=420 在动态窄面板下强制溢出, 已移除; 720 页本就满宽无副作用) -->
-              <ComboBox ItemsSource="{Binding Examples}" SelectionChanged="OnAhkExampleSelected"
+              <ComboBox Classes="claudeInput" ItemsSource="{Binding Examples}" SelectionChanged="OnAhkExampleSelected"
                         HorizontalAlignment="Stretch" />
-              <TextBox Text="{Binding AhkCode}" AcceptsReturn="True" AcceptsTab="True" MinHeight="100"
+              <TextBox Classes="claudeInput" Text="{Binding AhkCode}" AcceptsReturn="True" AcceptsTab="True" MinHeight="100"
                        FontFamily="Consolas,Courier New" FontSize="13" Padding="8,6" />
               <TextBlock Text="{Binding #PanelRoot.((vm:ActionEditorViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=305}"
                          Foreground="{StaticResource ClaudeStoneGrayBrush}" FontSize="12" />
-              <TextBox Text="{Binding Comment}" Padding="8,6" />
+              <TextBox Classes="claudeInput" Text="{Binding Comment}" Padding="8,6" />
               <TextBlock Text="Tips:" FontWeight="SemiBold" Margin="0,8,0,0" />
               <TextBlock Text="{Binding #PanelRoot.((vm:ActionEditorViewModel)DataContext).LanguageTick, Converter={StaticResource Tr}, ConverterParameter=955}"
                          Foreground="{StaticResource ClaudeStoneGrayBrush}" FontSize="12" TextWrapping="Wrap" />
