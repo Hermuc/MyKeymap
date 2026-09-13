@@ -235,6 +235,15 @@ public sealed class SkinContractTests
         Assert.Equal(typeof(RadioButton), Assert.IsType<ControlTheme>(theme).TargetType);
     }
 
+    /// <summary>契约: 背退格删除键 ControlTheme 存在且 TargetType = Button (7 处红 ✕ 统一的锚点)。</summary>
+    [AvaloniaFact]
+    public void Skin_Contract_DeleteKey_Theme_Resolves()
+    {
+        var app = Application.Current!;
+        Assert.True(app.TryFindResource("DeleteKey", out var theme), "皮肤契约缺键: DeleteKey");
+        Assert.Equal(typeof(Button), Assert.IsType<ControlTheme>(theme).TargetType);
+    }
+
     /// <summary>
     /// 契约: ComboBox 弹层暖化键存在且暖色, 弹层统一圆角 = 8, ComboBoxItem 高亮内缩圆角生效
     /// (2026-09-13 用户报弹层方正违和; 弹层 Border 实证经 OverlayCornerRadius 驱动,

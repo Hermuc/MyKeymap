@@ -74,8 +74,7 @@
                   </ItemsControl>
                 </StackPanel>
               </StackPanel>
-              <TextBlock Text="{Binding MatchHint}" FontSize="11" Foreground="{StaticResource ClaudeStoneGrayBrush}"
-                         TextWrapping="Wrap" />
+              <!-- (原 MatchHint 类型副标题已删: 2026-09-13 用户清理冗余文字) -->
             </StackPanel>
 
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Top">
@@ -83,7 +82,7 @@
                       Background="Transparent"
                       ToolTip.ShowDelay="200"
                       ToolTip.Tip="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=990}" />
-              <Button Classes="icon-btn danger" Command="{Binding AskRemoveCommand}" Content="✕" FontWeight="Bold"
+              <Button Theme="{StaticResource DeleteKey}" Command="{Binding AskRemoveCommand}"
                       ToolTip.ShowDelay="200"
                       ToolTip.Tip="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=1120}" />
             </StackPanel>
@@ -131,13 +130,12 @@
                                   IsEnabled="{Binding CanMoveUp}" Content="↑" />
                           <Button Classes="icon-btn" Command="{Binding MoveDownCommand}"
                                   IsEnabled="{Binding CanMoveDown}" Content="↓" />
-                          <Button Classes="icon-btn danger" Command="{Binding RemoveCommand}"
-                                  IsEnabled="{Binding CanRemove}" Content="✕" FontWeight="Bold"
+                          <Button Theme="{StaticResource DeleteKey}" Command="{Binding RemoveCommand}"
+                                  IsEnabled="{Binding CanRemove}"
                                   ToolTip.Tip="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=1108}" />
                         </StackPanel>
                       </Grid>
-                      <TextBlock Text="{Binding BehaviorHint}" FontSize="11" Foreground="{StaticResource ClaudeStoneGrayBrush}"
-                                 TextWrapping="Wrap" />
+                      <!-- (原 BehaviorHint 行为描述已删: 随行为切换变化, 用户清理冗余文字) -->
                       <!-- 命令模板 -->
                       <StackPanel IsVisible="{Binding ShowTemplate}" Spacing="4">
                         <TextBlock FontSize="11" Foreground="{StaticResource ClaudeStoneGrayBrush}"
@@ -270,18 +268,8 @@
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Foreground" Value="{StaticResource ClaudeWarmSilverBrush}" />
     </Style>
-    <!-- 删除按钮: 红色, 悬停/按下仍保持红 -->
-    <Style Selector="Button.icon-btn.danger">
-      <Setter Property="Foreground" Value="{StaticResource ClaudeErrorBrush}" />
-    </Style>
-    <Style Selector="Button.icon-btn.danger:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="Foreground" Value="{StaticResource ClaudeErrorBrush}" />
-    </Style>
-    <Style Selector="Button.icon-btn.danger:pressed /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="Foreground" Value="{StaticResource ClaudeErrorBrush}" />
-    </Style>
+    <!-- (原 Button.icon-btn.danger 红色 ✕ 样式已废: 2026-09-13 删除键统一改皮肤
+         DeleteKey 背退格键形 ControlTheme, 见 Styles/Skins/Claude.axaml) -->
     <!-- 黄色提示条 (StatusText / 热键卡提示): 统一底色与内距 -->
     <Style Selector="Border.hint">
       <Setter Property="Background" Value="{StaticResource ClaudeSandBrush}" />
@@ -493,7 +481,6 @@
                              Text="{Binding LanguageTick, Converter={StaticResource Tr}, ConverterParameter=1005}" />
                   <TextBox Text="{Binding MatchValue}" IsReadOnly="True" Focusable="False"
                            Background="{StaticResource ClaudeIvoryBrush}" />
-                  <TextBlock FontSize="11" Foreground="{StaticResource ClaudeStoneGrayBrush}" TextWrapping="Wrap" Text="{Binding MatchHint}" />
                 </StackPanel>
 
                 <!-- 步骤 3: 行为勾选 (勾选顺序 = 菜单键位; 最多 9) -->

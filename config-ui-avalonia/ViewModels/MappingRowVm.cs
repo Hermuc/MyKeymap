@@ -75,9 +75,6 @@ public sealed partial class MappingRowVm : ObservableObject
         }
     }
 
-    /// <summary>匹配提示 (1034/1035)。</summary>
-    public string MatchHint => ActionSchemeCatalog.MatchTypeHint(MatchType);
-
     // ---- textType 行: 特征四选一 (Toggle 直选, 替代 ComboBox——所见即所选, 无 ComboOption 概念) ----
 
     /// <summary>四个互斥开关的公共读写: 直接落 Mapping.MatchValue (含 UI 联动)。</summary>
@@ -443,7 +440,6 @@ public sealed partial class MappingRowVm : ObservableObject
         OnPropertyChanged(nameof(LanguageTick));
         OnPropertyChanged(nameof(TypeBadgeText));
         OnPropertyChanged(nameof(MatchSummary));
-        OnPropertyChanged(nameof(MatchHint));
         OnPropertyChanged(nameof(TextTypeOptions));
         OnPropertyChanged(nameof(FileGroupOptions));
         OnPropertyChanged(nameof(ShowFileGroupFill));

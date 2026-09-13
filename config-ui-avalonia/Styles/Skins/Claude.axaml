@@ -117,7 +117,8 @@
     类样式:    TextBlock.claude{Title,Subtitle,Body,Muted,Dim} /
               Border.claudeCard / Button.claude{Cta,Sand,Ghost,Danger} /
               ToggleSwitch.claudeCompact / TextBox·ComboBox.claudeInput /
-              ControlTheme ChipRadio (芯片单选, 契约 = 键存在且 TargetType=RadioButton)
+              ControlTheme ChipRadio (芯片单选, 契约 = 键存在且 TargetType=RadioButton) /
+              ControlTheme DeleteKey (背退格删除键, 契约 = 键存在且 TargetType=Button)
 
   【本皮肤仍需遵守的设计约束 (来自 DESIGN.md, 换肤时按新皮肤规范替换)】
     · 不得引入高饱和色 (仅允许品牌色做强调)
@@ -319,6 +320,57 @@
     </Style>
     <Style Selector="^:disabled">
       <Setter Property="Opacity" Value="0.4" />
+    </Style>
+  </ControlTheme>
+
+  <!-- ── 删除按钮 (DeleteKey, 2026-09-13 用户定稿: 只是要粗壮方正的大 X 本体) ──
+       一~四版误做成"背退格键形底板+小 X"被连续否决 —— 用户要的是 X 本身:
+       粗描边 (3.8) 方头 (SquareCap, 对齐示意图的方正端点) 大 X, 危险红 (符合 UI 配色);
+       悬停/键盘焦点浮现比 X 浅的圆角方圈光圈 (TerracottaSoft), 按下下沉 1px,
+       禁用降透明。自绘模板零 Fluent 部件依赖; 路径坐标归零 (坑 46)。
+       消费面 = 全部 7 处红 ✕: 设置页 3 / 选中动作页 2 / 插件页 1 / QuickSwitch 弹窗 1。
+       用法: <Button Theme="{StaticResource DeleteKey}" Command=.../> -->
+  <ControlTheme x:Key="DeleteKey" TargetType="Button">
+    <Setter Property="Width" Value="20" />
+    <Setter Property="Height" Value="20" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Foreground" Value="{StaticResource ClaudeErrorBrush}" />
+    <Setter Property="RenderTransform" Value="translateY(0px)" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="{x:Static vm:ClaudeMotion.Press}" Easing="QuadraticEaseOut" />
+      </Transitions>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Grid Width="20" Height="20">
+          <Border Name="PART_Halo" CornerRadius="6" Background="Transparent" />
+          <!-- X 本体: 10.2×10.2 (描边 2.8 + 方头外扩), 危险红 -->
+          <Path Data="M 0,0 L 7.4,7.4 M 7.4,0 L 0,7.4"
+                Stroke="{TemplateBinding Foreground}" StrokeThickness="2.8"
+                StrokeLineCap="Square" StrokeJoin="Miter" Stretch="None"
+                HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^ /template/ Border#PART_Halo">
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="{x:Static vm:ClaudeMotion.Micro}" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="^:pointerover /template/ Border#PART_Halo">
+      <Setter Property="Background" Value="{StaticResource ClaudeTerracottaSoftBrush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Halo">
+      <Setter Property="Background" Value="{StaticResource ClaudeTerracottaSoftBrush}" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="RenderTransform" Value="translateY(1px)" />
+    </Style>
+    <Style Selector="^:disabled">
+      <Setter Property="Opacity" Value="0.35" />
     </Style>
   </ControlTheme>
 </Styles.Resources>

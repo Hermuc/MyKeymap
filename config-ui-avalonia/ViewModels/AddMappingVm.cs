@@ -74,7 +74,6 @@ public sealed partial class AddMappingVm : ObservableObject
             MatchValue = GroupMatchValue ?? ""; // 分组项: 条件值 = 该组后缀集
         }
         OnPropertyChanged(nameof(IsFileExt));
-        OnPropertyChanged(nameof(MatchHint));
         RebuildPicks(); // 无条件重建: 各类型覆盖集不同 (fileExt 按条件值 / 文本特征按特征词)
     }
 
@@ -89,9 +88,6 @@ public sealed partial class AddMappingVm : ObservableObject
                 ? string.Join(",", exts)
                 : null
             : null;
-
-    /// <summary>匹配提示 (fileExt=1034 / textType=1035)。</summary>
-    public string MatchHint => ActionSchemeCatalog.MatchTypeHint(IsFileExt ? "fileExt" : "textType");
 
     // ---- 步骤 2: 条件值 (仅 fileExt) ----
 

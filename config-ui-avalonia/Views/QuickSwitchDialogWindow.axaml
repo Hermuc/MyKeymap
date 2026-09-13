@@ -53,12 +53,11 @@
           <ItemsControl ItemsSource="{Binding ExcludedPrefixRows}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:ExcludedPrefixRowVm">
-                <Grid ColumnDefinitions="*,26" Margin="0,2">
+                <Grid ColumnDefinitions="*,20" Margin="0,2">
                   <TextBox Text="{Binding Value}" Padding="6,4" FontSize="13" />
-                  <Button Grid.Column="1" Content="✕"
+                  <Button Grid.Column="1" Theme="{StaticResource DeleteKey}"
                           Command="{Binding #DlgRoot.((vm:QuickSwitchDialogViewModel)DataContext).RemoveExcludedPrefixCommand}"
-                          CommandParameter="{Binding}"
-                          Background="Transparent" Foreground="{StaticResource ClaudeErrorBrush}" Padding="6,3" />
+                          CommandParameter="{Binding}" />
                 </Grid>
               </DataTemplate>
             </ItemsControl.ItemTemplate>

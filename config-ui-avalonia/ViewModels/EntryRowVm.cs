@@ -87,9 +87,6 @@ public sealed partial class EntryRowVm : ObservableObject
         _row.RefreshChips();
     }
 
-    /// <summary>行为提示 (包 description)。</summary>
-    public string BehaviorHint => BehaviorCatalog.HintFor(Entry.Behavior);
-
     /// <summary>语言切换刻度, 行内绑定读此重译。</summary>
     public int LanguageTick => _row.LanguageTick;
 
@@ -158,7 +155,6 @@ public sealed partial class EntryRowVm : ObservableObject
     public void RefreshOptions()
     {
         OnPropertyChanged(nameof(BehaviorOptions));
-        OnPropertyChanged(nameof(BehaviorHint));
     }
 
     /// <summary>语言切换: 刷新行为下拉副本与即时拼接文案。</summary>
